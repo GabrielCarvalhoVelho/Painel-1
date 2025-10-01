@@ -4,10 +4,9 @@ import {
   X, 
   Download, 
   Upload, 
-  RefreshCw, 
   Trash2, 
   Paperclip,
-  Image as ImageIcon,
+  FileText,
   AlertCircle,
   CheckCircle,
   Loader2
@@ -30,10 +29,13 @@ export default function AttachmentProductModal({
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
+      setAttachments([]); // Limpa anexos antigos
+      setMessage(null);   // Limpa mensagens antigas
       checkAttachments();
       console.log('🆔 Modal aberto para produto ID:', productId);
     }
@@ -57,7 +59,7 @@ export default function AttachmentProductModal({
     try {
       setLoading(true);
       setMessage(null);
-      await AttachmentProductService.downloadAttachment(productId, type === 'pdf' ? 'pdf' : 'jpg');
+  await AttachmentProductService.downloadAttachment(productId, type === 'pdf' ? 'pdf' : 'jpg');
       setMessage({ type: 'success', text: 'Download iniciado com sucesso!' });
     } catch (error) {
       setMessage({ 
@@ -69,61 +71,82 @@ export default function AttachmentProductModal({
     }
   };
 
-  const handleFileSelect = () => {
-    fileInputRef.current?.click();
-  };
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Handlers separados para imagem e PDF
+  const handleImageSelect = () => imageInputRef.current?.click();
+  const handlePdfSelect = () => pdfInputRef.current?.click();
+
+  const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     try {
       setLoading(true);
       setMessage(null);
-      
-      // Validar arquivo
       const error = AttachmentProductService.validateFile(file);
       if (error) {
         setMessage({ type: 'error', text: error });
         return;
       }
-
-      // Upload (imagem ou PDF)
       await AttachmentProductService.uploadAttachment(productId, file);
-      setMessage({ type: 'success', text: 'Anexo salvo com sucesso!' });
-      
-      // Atualizar estado
+      setMessage({ type: 'success', text: 'Imagem salva com sucesso!' });
       await checkAttachments();
-      
     } catch (error) {
-      setMessage({ 
-        type: 'error', 
-        text: error instanceof Error ? error.message : 'Erro ao processar arquivo' 
-      });
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Erro ao processar imagem' });
     } finally {
       setLoading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if (imageInputRef.current) imageInputRef.current.value = '';
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm('Tem certeza que deseja excluir os anexos deste produto?')) {
-      return;
-    }
-
+  const handlePdfChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
     try {
       setLoading(true);
       setMessage(null);
-      await AttachmentProductService.deleteAttachment(productId);
-      setMessage({ type: 'success', text: 'Anexos excluídos com sucesso!' });
+      const error = AttachmentProductService.validateFile(file);
+      if (error) {
+        setMessage({ type: 'error', text: error });
+        return;
+      }
+      await AttachmentProductService.uploadAttachment(productId, file);
+      setMessage({ type: 'success', text: 'Arquivo PDF salvo com sucesso!' });
       await checkAttachments();
     } catch (error) {
-      setMessage({ 
-        type: 'error', 
-        text: error instanceof Error ? error.message : 'Erro ao excluir anexos' 
-      });
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Erro ao processar arquivo' });
+    } finally {
+      setLoading(false);
+      if (pdfInputRef.current) pdfInputRef.current.value = '';
+    }
+  };
+
+
+  // Excluir individualmente imagem ou PDF
+  const handleDeleteImage = async () => {
+    if (!confirm('Excluir imagem deste produto?')) return;
+    try {
+      setLoading(true);
+      setMessage(null);
+      await AttachmentProductService.deleteSingleAttachment(productId, 'jpg');
+      setMessage({ type: 'success', text: 'Imagem excluída!' });
+      await checkAttachments();
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Erro ao excluir imagem' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeletePdf = async () => {
+    if (!confirm('Excluir arquivo PDF deste produto?')) return;
+    try {
+      setLoading(true);
+      setMessage(null);
+      await AttachmentProductService.deleteSingleAttachment(productId, 'pdf');
+      setMessage({ type: 'success', text: 'Arquivo PDF excluído!' });
+      await checkAttachments();
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Erro ao excluir arquivo' });
     } finally {
       setLoading(false);
     }
@@ -149,38 +172,10 @@ export default function AttachmentProductModal({
             onClick={onClose}
             className="p-1 text-gray-500 hover:text-gray-700 rounded"
             disabled={loading}
+            aria-label="Fechar"
           >
             <X className="w-5 h-5" />
           </button>
-        </div>
-
-        {/* Lista de anexos */}
-        <div className="mb-6 space-y-3">
-          {attachments.length === 0 && (
-            <div className="text-sm text-gray-600">Nenhum anexo encontrado</div>
-          )}
-
-          {attachments.map(att => (
-            <div key={att.name} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border">
-              <div className="flex items-center space-x-2">
-                {att.type === 'image' ? (
-                  <img src={att.url} alt={att.name} className="w-12 h-12 object-cover rounded" />
-                ) : (
-                  <span className="text-red-600 font-medium">📄 PDF</span>
-                )}
-                <span className="text-sm truncate max-w-[150px]">{att.name}</span>
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => handleDownload(att.type)}
-                  disabled={loading}
-                  className="p-2 text-blue-600 hover:text-blue-800"
-                >
-                  <Download className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          ))}
         </div>
 
         {/* Mensagem de feedback */}
@@ -203,54 +198,113 @@ export default function AttachmentProductModal({
           </div>
         )}
 
-        {/* Botões de ação */}
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={checkAttachments}
-            disabled={loading}
-            className="flex items-center justify-center space-x-2 px-4 py-3 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 transition-colors"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            <span>Atualizar</span>
-          </button>
+        {/* Área de anexos */}
+        <div className="mb-6 space-y-4">
+          {/* Botões de anexar sempre disponíveis para o tipo que não existe */}
+          <div className="flex flex-col gap-4">
+            {!attachments.find(a => a.type === 'image') && (
+              <button
+                className="flex items-center justify-center gap-2 bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
+                onClick={handleImageSelect}
+                disabled={loading}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> Anexar Imagem
+              </button>
+            )}
+            {!attachments.find(a => a.type === 'pdf') && (
+              <button
+                className="flex items-center justify-center gap-2 bg-green-500 text-white py-2 rounded hover:bg-green-600"
+                onClick={handlePdfSelect}
+                disabled={loading}
+              >
+                <FileText className="w-5 h-5" /> Anexar Arquivo
+              </button>
+            )}
+          </div>
 
-          <button
-            onClick={handleFileSelect}
-            disabled={loading}
-            className="flex items-center justify-center space-x-2 px-4 py-3 rounded-lg text-sm font-medium bg-[#86b646] text-white hover:bg-[#397738] transition-colors"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            <span>Adicionar</span>
-          </button>
+          {/* Se houver imagem */}
+          {attachments.find(a => a.type === 'image') && (
+            <div className="flex flex-col items-center gap-2 bg-gray-50 p-3 rounded-lg border">
+              <img
+                src={attachments.find(a => a.type === 'image')?.url}
+                alt="Imagem anexada"
+                className="max-h-32 mb-2 rounded border"
+              />
+              <div className="flex gap-2 mb-2">
+                <button
+                  className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 flex items-center gap-1"
+                  onClick={() => handleDownload('image')}
+                  disabled={loading}
+                >
+                  <Download className="w-4 h-4" /> Download
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 flex items-center gap-1"
+                  onClick={handleImageSelect}
+                  disabled={loading}
+                >
+                  <Upload className="w-4 h-4" /> Substituir Imagem
+                </button>
+                <button
+                  className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 flex items-center gap-1"
+                  onClick={handleDeleteImage}
+                  disabled={loading}
+                >
+                  <Trash2 className="w-4 h-4" /> Excluir Imagem
+                </button>
+              </div>
+            </div>
+          )}
 
-          <button
-            onClick={handleDelete}
-            disabled={attachments.length === 0 || loading}
-            className={`flex items-center justify-center space-x-2 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-              attachments.length > 0 && !loading
-                ? 'bg-red-600 text-white hover:bg-red-700'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            }`}
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-            <span>Excluir</span>
-          </button>
-
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="flex items-center justify-center space-x-2 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
-          >
-            <X className="w-4 h-4" />
-            <span>Fechar</span>
-          </button>
+          {/* Se houver PDF */}
+          {attachments.find(a => a.type === 'pdf') && (
+            <div className="flex flex-col items-center gap-2 bg-gray-50 p-3 rounded-lg border">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="w-5 h-5 text-red-600" />
+                <span className="font-medium">PDF anexado</span>
+                <button
+                  className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 flex items-center gap-1"
+                  onClick={() => handleDownload('pdf')}
+                  disabled={loading}
+                >
+                  <Download className="w-4 h-4" /> Download
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 flex items-center gap-1"
+                  onClick={handlePdfSelect}
+                  disabled={loading}
+                >
+                  <Upload className="w-4 h-4" /> Substituir Arquivo
+                </button>
+                <button
+                  className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 flex items-center gap-1"
+                  onClick={handleDeletePdf}
+                  disabled={loading}
+                >
+                  <Trash2 className="w-4 h-4" /> Excluir Arquivo
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
+        {/* Inputs ocultos */}
         <input
-          ref={fileInputRef}
+          ref={imageInputRef}
           type="file"
-          accept="image/*,application/pdf"
-          onChange={handleFileChange}
+          accept="image/*"
+          onChange={handleImageChange}
+          className="hidden"
+        />
+        <input
+          ref={pdfInputRef}
+          type="file"
+          accept="application/pdf"
+          onChange={handlePdfChange}
           className="hidden"
         />
       </div>

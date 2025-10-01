@@ -1,3 +1,4 @@
+  // (Removido bloco duplicado fora da classe)
 // src/services/attachmentProductService.ts
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -261,5 +262,26 @@ export class AttachmentProductService {
       img.onerror = () => reject(new Error('Erro ao carregar imagem'));
       img.src = URL.createObjectURL(file);
     });
+  }
+
+  /**
+   * Exclui apenas um anexo (imagem ou pdf)
+   */
+  static async deleteSingleAttachment(productId: string, ext: 'jpg' | 'pdf'): Promise<boolean> {
+    try {
+      const filePath = this.getFilePath(productId, ext);
+      const { error } = await supabaseServiceRole
+        .storage
+        .from(this.BUCKET_NAME)
+        .remove([filePath]);
+      if (error) {
+        console.error('❌ Erro na exclusão:', error);
+        throw error;
+      }
+      return true;
+    } catch (error) {
+      console.error('💥 Erro na exclusão de anexo:', error);
+      throw error;
+    }
   }
 }

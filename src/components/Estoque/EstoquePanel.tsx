@@ -1,5 +1,5 @@
 // src/components/Estoque/EstoquePanel.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Package, Minus, Paperclip, Sprout, Hammer, Bug,
   Microscope, Droplets, X
@@ -65,7 +65,7 @@ export default function EstoquePanel() {
           return;
         }
 
-        const dados = await EstoqueService.getProdutos(user.user_id);
+  const dados = await EstoqueService.getProdutos();
         setProdutos(dados);
       } catch (error) {
         console.error("❌ Erro ao carregar estoque:", error);
@@ -104,28 +104,30 @@ export default function EstoquePanel() {
     valorTotal: produtos.reduce((acc, item) => acc + (item.quantidade * (item.valor || 0)), 0)
   };
 
-  // 🔎 Aplicação dos filtros e ordenação
-  const produtosFiltrados = produtos
-    .filter((p) => p.nome_produto.toLowerCase().includes(search.toLowerCase()))
-    .filter((p) => (categoria ? p.categoria === categoria : true))
-    .sort((a, b) => {
-      if (ordem === "alfabetica") {
-        return ordemDirecao === "asc"
-          ? a.nome_produto.localeCompare(b.nome_produto)
-          : b.nome_produto.localeCompare(a.nome_produto);
-      }
-      if (ordem === "dataLancamento") {
-        const da = new Date(a.created_at || "").getTime();
-        const db = new Date(b.created_at || "").getTime();
-        return ordemDirecao === "asc" ? da - db : db - da;
-      }
-      if (ordem === "validade") {
-        const va = new Date(a.validade || "").getTime();
-        const vb = new Date(b.validade || "").getTime();
-        return ordemDirecao === "asc" ? va - vb : vb - va;
-      }
-      return 0;
-    });
+  // 🔎 Aplicação dos filtros e ordenação (useMemo para evitar loops)
+  const produtosFiltrados = useMemo(() => {
+    return produtos
+      .filter((p) => p.nome_produto.toLowerCase().includes(search.toLowerCase()))
+      .filter((p) => (categoria ? p.categoria === categoria : true))
+      .sort((a, b) => {
+        if (ordem === "alfabetica") {
+          return ordemDirecao === "asc"
+            ? a.nome_produto.localeCompare(b.nome_produto)
+            : b.nome_produto.localeCompare(a.nome_produto);
+        }
+        if (ordem === "dataLancamento") {
+          const da = new Date(a.created_at || "").getTime();
+          const db = new Date(b.created_at || "").getTime();
+          return ordemDirecao === "asc" ? da - db : db - da;
+        }
+        if (ordem === "validade") {
+          const va = new Date(a.validade || "").getTime();
+          const vb = new Date(b.validade || "").getTime();
+          return ordemDirecao === "asc" ? va - vb : vb - va;
+        }
+        return 0;
+      });
+  }, [produtos, search, categoria, ordem, ordemDirecao]);
 
   // 👀 Sempre que filtros ou mostrarTodos mudam → atualiza lista visível
   useEffect(() => {
