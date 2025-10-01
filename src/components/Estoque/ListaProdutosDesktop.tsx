@@ -1,6 +1,6 @@
 // src/components/Estoque/ListaProdutosDesktop.tsx
 import React from "react";
-import { Minus, Paperclip } from "lucide-react";
+import { Paperclip } from "lucide-react";
 import { ProdutoEstoque } from "../../services/estoqueService";
 
 interface Props {
@@ -88,7 +88,7 @@ export default function ListaProdutosDesktop({
                 onClick={() => setHistoryModal({ isOpen: true, product: item })}
                 className="px-3 py-1.5 bg-[#397738]/10 text-[#397738] hover:bg-[#397738]/10 rounded-lg border border-[#397738]/10 text-xs flex items-center gap-1"
               >
-                📊 Histórico
+                Histórico
               </button>
 
               <button
@@ -102,7 +102,7 @@ export default function ListaProdutosDesktop({
                 }
                 className="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg border border-red-200 text-xs flex items-center gap-1"
               >
-                <Minus className="w-4 h-4" /> Remover
+                Remover
               </button>
             </div>
 

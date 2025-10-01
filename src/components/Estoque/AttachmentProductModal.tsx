@@ -205,14 +205,14 @@ export default function AttachmentProductModal({
             </p>
             <div className="flex gap-4 mt-2">
               <button
-                className="px-4 py-2 rounded-lg bg-[#f3f4f6] text-[#092f20] hover:bg-[#e5e7eb] border border-[#e5e7eb]"
+                className="px-4 py-2 rounded-lg bg-[#f3f4f6] text-[#092f20] hover:bg-[#e5e7eb]"
                 onClick={() => setConfirmState({ type: null })}
                 disabled={loading}
               >
                 Cancelar
               </button>
               <button
-                className="px-4 py-2 rounded-lg bg-[#ffeaea] text-[#b71c1c] hover:bg-[#ffd6d6] border border-[#e53935]"
+                className="px-4 py-2 rounded-lg bg-[#ffeaea] text-[#b71c1c] hover:bg-[#ffd6d6]"
                 onClick={confirmState.onConfirm}
                 disabled={loading}
               >
@@ -298,7 +298,7 @@ export default function AttachmentProductModal({
               />
               <div className="flex gap-2 mb-2">
                 <button
-                  className="bg-[#f3f4f6] text-[#092f20] px-2 py-1 rounded hover:bg-[#e5e7eb] border border-[#e5e7eb] flex items-center gap-1 transition-colors"
+                  className="bg-[#f3f4f6] text-[#092f20] px-2 py-1 rounded hover:bg-[#e5e7eb] flex items-center gap-1 transition-colors"
                   onClick={() => handleDownload('image')}
                   disabled={loading}
                 >
@@ -307,14 +307,14 @@ export default function AttachmentProductModal({
               </div>
               <div className="flex gap-2">
                 <button
-                  className="bg-[#eaf4ec] text-[#092f20] px-3 py-1 rounded hover:bg-[#d3e7d8] border border-[#86b646] flex items-center gap-1 transition-colors"
+                  className="bg-[#eaf4ec] text-[#092f20] px-3 py-1 rounded hover:bg-[#d3e7d8] flex items-center gap-1 transition-colors"
                   onClick={() => handleImageSelect(true)}
                   disabled={loading}
                 >
                   <Upload className="w-4 h-4" /> Substituir Imagem
                 </button>
                 <button
-                  className="bg-[#ffeaea] text-[#b71c1c] px-3 py-1 rounded hover:bg-[#ffd6d6] border border-[#e53935] flex items-center gap-1 transition-colors"
+                  className="bg-[#ffeaea] text-[#b71c1c] px-3 py-1 rounded hover:bg-[#ffd6d6] flex items-center gap-1 transition-colors"
                   onClick={handleDeleteImage}
                   disabled={loading}
                 >
@@ -333,7 +333,7 @@ export default function AttachmentProductModal({
               </div>
               <div className="flex gap-2 mb-2">
                 <button
-                  className="bg-[#f3f4f6] text-[#092f20] px-2 py-1 rounded hover:bg-[#e5e7eb] border border-[#e5e7eb] flex items-center gap-1 transition-colors"
+                  className="bg-[#f3f4f6] text-[#092f20] px-2 py-1 rounded hover:bg-[#e5e7eb] flex items-center gap-1 transition-colors"
                   onClick={() => handleDownload('pdf')}
                   disabled={loading}
                 >
@@ -342,14 +342,14 @@ export default function AttachmentProductModal({
               </div>
               <div className="flex gap-2">
                 <button
-                  className="bg-[#eaf4ec] text-[#092f20] px-3 py-1 rounded hover:bg-[#d3e7d8] border border-[#86b646] flex items-center gap-1 transition-colors"
+                  className="bg-[#eaf4ec] text-[#092f20] px-3 py-1 rounded hover:bg-[#d3e7d8] flex items-center gap-1 transition-colors"
                   onClick={() => handlePdfSelect(true)}
                   disabled={loading}
                 >
                   <Upload className="w-4 h-4" /> Substituir Arquivo
                 </button>
                 <button
-                  className="bg-[#ffeaea] text-[#b71c1c] px-3 py-1 rounded hover:bg-[#ffd6d6] border border-[#e53935] flex items-center gap-1 transition-colors"
+                  className="bg-[#ffeaea] text-[#b71c1c] px-3 py-1 rounded hover:bg-[#ffd6d6] flex items-center gap-1 transition-colors"
                   onClick={handleDeletePdf}
                   disabled={loading}
                 >

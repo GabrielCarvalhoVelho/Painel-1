@@ -37,7 +37,7 @@ export default function ListaProdutosMobile({
                 {getCategoryIcon(item.categoria)}
               </div>
               <div className="flex-1">
-                <h4 className="text-base font-semibold text-[#092f20]">
+                <h4 className="text-base font-semibold text-[#092f20] md:text-lg md:font-semibold">
                   {item.nome_produto}
                 </h4>
                 <p className="text-xs text-gray-600">
@@ -92,7 +92,7 @@ export default function ListaProdutosMobile({
                 onClick={() => setHistoryModal({ isOpen: true, product: item })}
                 className="px-2 py-1 bg-[#397738]/10 text-[#397738] hover:bg-[#397738]/10 rounded-lg border border-[#397738]/10 text-xs flex items-center gap-1"
               >
-                📊 Histórico
+                Histórico
               </button>
 
               <button
@@ -106,7 +106,7 @@ export default function ListaProdutosMobile({
                 }
                 className="px-2 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg border border-red-200 text-xs flex items-center gap-1"
               >
-                <Minus className="w-4 h-4" /> Remover
+                Remover
               </button>
             </div>
           </div>
