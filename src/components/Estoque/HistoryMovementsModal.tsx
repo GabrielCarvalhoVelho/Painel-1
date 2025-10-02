@@ -43,7 +43,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
               user_id: p.user_id,
               tipo: 'entrada',
               quantidade: p.quantidade,
-              observacao: 'Lançamento inicial do produto',
+              observacao: null,
               created_at: p.created_at || new Date().toISOString(),
               nome_produto: p.nome_produto,
               marca: p.marca,
