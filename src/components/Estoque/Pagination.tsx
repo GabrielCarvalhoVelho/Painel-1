@@ -73,7 +73,7 @@ export default function Pagination({
           <ChevronLeft className="w-4 h-4 text-gray-600" />
         </button>
 
-        <div className="px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg">
+        <div className="px-4 py-2 text-xs font-medium text-gray-900 bg-white border border-gray-300 rounded-lg">
           Página {currentPage} de {totalPages}
         </div>
 
