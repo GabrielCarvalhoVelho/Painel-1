@@ -92,31 +92,35 @@ export default function EstoquePanel() {
     valorTotal: produtos.reduce((acc, item) => acc + (item.quantidade * (item.valor || 0)), 0)
   };
 
-  // 🔎 Aplicação dos filtros e ordenação (useMemo para evitar loops)
-  const produtosFiltrados = useMemo(() => {
-    return produtos
-      .filter((p) => p.nome_produto && typeof p.nome_produto === 'string')
-      .filter((p) => p.nome_produto.toLowerCase().includes(search.toLowerCase()))
-      .filter((p) => (categoria ? p.categoria === categoria : true))
+  // 🔎 Aplicação dos filtros e ordenação nos grupos (useMemo para evitar loops)
+  const produtosAgrupadosFiltrados = useMemo(() => {
+    return produtosAgrupados
+      .filter((grupo) => grupo.nome.toLowerCase().includes(search.toLowerCase()))
+      .filter((grupo) => (categoria ? grupo.categorias.includes(categoria) : true))
       .sort((a, b) => {
         if (ordem === "alfabetica") {
           return ordemDirecao === "asc"
-            ? a.nome_produto.localeCompare(b.nome_produto)
-            : b.nome_produto.localeCompare(a.nome_produto);
+            ? a.nome.localeCompare(b.nome)
+            : b.nome.localeCompare(a.nome);
         }
         if (ordem === "dataLancamento") {
-          const da = new Date(a.created_at || "").getTime();
-          const db = new Date(b.created_at || "").getTime();
+          const da = new Date(a.produtos[0].created_at || "").getTime();
+          const db = new Date(b.produtos[0].created_at || "").getTime();
           return ordemDirecao === "asc" ? da - db : db - da;
         }
         if (ordem === "validade") {
-          const va = new Date(a.validade || "").getTime();
-          const vb = new Date(b.validade || "").getTime();
+          const va = new Date(a.validades.filter(v => v)[0] || "").getTime();
+          const vb = new Date(b.validades.filter(v => v)[0] || "").getTime();
           return ordemDirecao === "asc" ? va - vb : vb - va;
         }
         return 0;
       });
-  }, [produtos, search, categoria, ordem, ordemDirecao]);
+  }, [produtosAgrupados, search, categoria, ordem, ordemDirecao]);
+
+  // 📄 Paginação dos grupos
+  const gruposExibidos = mostrarTodos 
+    ? produtosAgrupadosFiltrados 
+    : produtosAgrupadosFiltrados.slice(0, INITIAL_ITEM_COUNT);
 
   return (
     <div className="space-y-6">
@@ -138,7 +142,7 @@ export default function EstoquePanel() {
 
       {/* Listas */}
             <ListaProdutosDesktop
-        produtos={produtosAgrupados}
+        produtos={gruposExibidos}
         getCategoryIcon={getCategoryIcon}
         setHistoryModal={setHistoryModal}
         setRemoveModal={(params) => {
@@ -155,7 +159,7 @@ export default function EstoquePanel() {
       />
 
             <ListaProdutosMobile
-        produtos={produtosAgrupados}
+        produtos={gruposExibidos}
         getCategoryIcon={getCategoryIcon}
         setHistoryModal={setHistoryModal}
         setRemoveModal={(params) => {
@@ -172,14 +176,14 @@ export default function EstoquePanel() {
       />
 
       {/* Botões de Ver mais / Ver menos */}
-      {produtosFiltrados.length > INITIAL_ITEM_COUNT && (
+      {produtosAgrupadosFiltrados.length > INITIAL_ITEM_COUNT && (
         <div className="flex justify-center pt-4">
           {!mostrarTodos ? (
             <button
               onClick={() => setMostrarTodos(true)}
               className="px-4 py-2 text-sm font-semibold text-[#397738] bg-white border-2 border-[#86b646] rounded-lg hover:bg-[#86b646]/10 transition-colors"
             >
-              Ver todos ({produtosFiltrados.length})
+              Ver todos ({produtosAgrupadosFiltrados.length} grupos)
             </button>
           ) : (
             <button
