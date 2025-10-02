@@ -1,5 +1,4 @@
 // src/components/Estoque/ListaProdutosDesktop.tsx
-import { Paperclip } from "lucide-react";
 import { ProdutoAgrupado } from '../../services/agruparProdutosService';
 
 type ModalParams = {
@@ -12,7 +11,6 @@ type ModalParams = {
 interface Props {
   produtos: ProdutoAgrupado[];
   getCategoryIcon: (categoria: string) => JSX.Element;
-  openAttachmentModal: (productId: string, productName: string) => void;
   setHistoryModal: (params: ModalParams) => void;
   setRemoveModal: (params: ModalParams) => void;
 }
@@ -20,7 +18,6 @@ interface Props {
 export default function ListaProdutosDesktop({
   produtos,
   getCategoryIcon,
-  openAttachmentModal,
   setHistoryModal,
   setRemoveModal,
 }: Props) {
@@ -73,15 +70,6 @@ export default function ListaProdutosDesktop({
 
             {/* 4) BOTÕES */}
             <div className="flex items-center justify-end gap-2 shrink-0">
-              <button
-                onClick={() =>
-                  openAttachmentModal(String(item.produtos[0].id), item.nome)
-                }
-                className="px-3 py-1.5 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-lg border border-gray-200 text-xs flex items-center gap-1"
-              >
-                <Paperclip className="w-4 h-4" />
-              </button>
-
               <button
                 onClick={() => setHistoryModal({ isOpen: true, product: item })}
                 className="px-3 py-1.5 bg-[#397738]/10 text-[#397738] hover:bg-[#397738]/10 rounded-lg border border-[#397738]/10 text-xs flex items-center gap-1"

@@ -175,17 +175,19 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                         )}
                       </div>
 
-                      <button
-                        onClick={() => openAttachmentModal(
-                          m.produto_id.toString(),
-                          m.nome_produto || 'Produto'
-                        )}
-                        className="flex items-center gap-1 px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-                        title="Ver anexos"
-                      >
-                        <Paperclip className="w-4 h-4" />
-                        Anexos
-                      </button>
+                      {m.tipo === 'entrada' && (
+                        <button
+                          onClick={() => openAttachmentModal(
+                            m.produto_id.toString(),
+                            m.nome_produto || 'Produto'
+                          )}
+                          className="flex items-center gap-1 px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                          title="Ver anexos"
+                        >
+                          <Paperclip className="w-4 h-4" />
+                          Anexos
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}

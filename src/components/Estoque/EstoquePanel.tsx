@@ -140,7 +140,6 @@ export default function EstoquePanel() {
             <ListaProdutosDesktop
         produtos={produtosAgrupados}
         getCategoryIcon={getCategoryIcon}
-        openAttachmentModal={(id, nome) => setAttachmentModal({ isOpen: true, productId: id, productName: nome })}
         setHistoryModal={setHistoryModal}
         setRemoveModal={(params) => {
           const { isOpen, product } = params;
@@ -158,7 +157,6 @@ export default function EstoquePanel() {
             <ListaProdutosMobile
         produtos={produtosAgrupados}
         getCategoryIcon={getCategoryIcon}
-        openAttachmentModal={(id, nome) => setAttachmentModal({ isOpen: true, productId: id, productName: nome })}
         setHistoryModal={setHistoryModal}
         setRemoveModal={(params) => {
           const { isOpen, product } = params;
