@@ -156,12 +156,17 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
               required
             >
               <option value="">Selecione...</option>
-              <option value="Trator">Trator</option>
+              <option value="Adubadeira">Adubadeira</option>
+              <option value="Carreta">Carreta</option>
               <option value="Colheitadeira">Colheitadeira</option>
-              <option value="Pulverizador">Pulverizador</option>
-              <option value="Implemento">Implemento</option>
-              <option value="Caminhão">Caminhão</option>
-              <option value="Outro">Outro</option>
+              <option value="Equipamentos manuais">Equipamentos manuais</option>
+              <option value="Esqueletadeira">Esqueletadeira</option>
+              <option value="Grade/Subsolador">Grade/Subsolador</option>
+              <option value="Pulverizador/Bomba">Pulverizador/Bomba</option>
+              <option value="Roçadeira/Trincha">Roçadeira/Trincha</option>
+              <option value="Trator">Trator</option>
+              <option value="Varredora">Varredora</option>
+              <option value="Outra">Outra</option>
             </select>
           </div>
 
