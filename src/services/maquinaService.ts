@@ -162,4 +162,24 @@ export class MaquinaService {
                 }
             }
 
+            async deleteMaquina(maquinaId: string): Promise<void> {
+                try {
+                    console.log('🗑️ Deletando máquina:', maquinaId);
+
+                    const { error } = await supabase
+                        .from('maquinas_equipamentos')
+                        .delete()
+                        .eq('id_maquina', maquinaId);
+
+                    if (error) {
+                        throw new Error(`Error deleting machine: ${error.message}`);
+                    }
+
+                    console.log('✅ Máquina deletada com sucesso');
+                } catch (error) {
+                    console.error('Erro ao deletar máquina:', error);
+                    throw error;
+                }
+            }
+
 }
