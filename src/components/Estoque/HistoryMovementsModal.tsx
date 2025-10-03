@@ -230,7 +230,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                               {m.tipo === 'entrada' ? 'Entrada' : 'Saída'}
                             </span>
                             <span className="font-medium text-gray-900">
-                              {m.quantidade} {m.unidade?.replace(/\s*\([^)]*\)/g, '') || ''}
+                              {m.quantidade} {m.unidade}
                             </span>
                           </div>
                           <div className="text-gray-500 text-xs text-right">
