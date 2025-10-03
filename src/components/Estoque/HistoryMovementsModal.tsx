@@ -188,7 +188,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
           <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-gray-50 to-gray-100">
             <div>
               <h3 className="text-xl font-bold text-gray-900">
-                Histórico - {product?.nome}
+                {product?.nome}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-1 md:gap-4 text-sm text-gray-600 mt-2">
                 <span className="whitespace-nowrap"><strong>Total Entradas:</strong> {totalEntradas} {formatUnitAbbreviated(product?.produtos[0]?.unidade)}</span>
