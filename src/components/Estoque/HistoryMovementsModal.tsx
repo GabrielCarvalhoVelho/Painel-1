@@ -149,6 +149,20 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
     });
   };
 
+  const formatValidity = (validadeStr: string | null) => {
+    if (!validadeStr) return '—';
+    
+    const date = new Date(validadeStr);
+    const defaultDate = new Date('2000-01-01');
+
+    // Se a data for 01/01/2000, retorna "-"
+    if (date.getTime() === defaultDate.getTime()) {
+      return '—';
+    }
+    
+    return date.toLocaleDateString('pt-BR');
+  };
+
   const openAttachmentModal = (productId: string, productName: string) => {
     setAttachmentModal({
       isOpen: true,
@@ -227,7 +241,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                             <div><strong>Marca:</strong> {m.marca || '—'}</div>
                             <div><strong>Fornecedor:</strong> {m.fornecedor || '—'}</div>
                             <div><strong>Lote:</strong> {m.lote || '—'}</div>
-                            <div><strong>Validade:</strong> {m.validade ? new Date(m.validade).toLocaleDateString('pt-BR') : '—'}</div>
+                            <div><strong>Validade:</strong> {formatValidity(m.validade)}</div>
                             {m.valor && (
                               <div><strong>Valor unitário:</strong> R$ {Number(m.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
                             )}
