@@ -213,7 +213,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                               {m.quantidade} {m.unidade}
                             </span>
                           </div>
-                          <span className="text-gray-500 text-sm">
+                          <span className="text-gray-500 text-xs">
                             {formatDateTime(m.created_at)}
                           </span>
                         </div>
