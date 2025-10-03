@@ -474,14 +474,11 @@ export default function FileAttachmentModal({
                       ) : (
                         <div className="flex flex-col items-center justify-center gap-2 py-2">
                           <div className="text-[#397738]">
-                            {getFileIcon(slot.fileType)}
+                            <CheckCircle className="w-8 h-8" />
                           </div>
                           <div className="text-center">
                             <p className="text-sm font-bold text-[#397738]">
-                              {slot.fileName || 'Arquivo anexado'}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {slot.fileType?.toUpperCase() || 'Tipo desconhecido'}
+                              Arquivo anexado
                             </p>
                           </div>
                         </div>
