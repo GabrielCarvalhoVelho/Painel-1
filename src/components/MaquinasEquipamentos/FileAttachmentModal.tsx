@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
@@ -548,3 +549,5 @@ export default function FileAttachmentModal({
     </div>
   );
 }
+=======
+>>>>>>> Stashed changes
