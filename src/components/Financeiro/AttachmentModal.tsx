@@ -425,7 +425,7 @@ export default function AttachmentModal({
                 onClick={() => handleFileSelect(false)}
                 disabled={loading}
               >
-                <FileText className="w-5 h-5" /> Anexar Arquivo (PDF/XML)
+                <FileText className="w-5 h-5" /> Anexar Arquivo
               </button>
             )}
           </div>
