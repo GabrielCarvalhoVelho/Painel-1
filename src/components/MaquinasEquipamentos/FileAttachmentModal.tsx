@@ -56,6 +56,7 @@ export default function FileAttachmentModal({
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const [activeUploadSlot, setActiveUploadSlot] = useState<'primeiro_envio' | 'segundo_envio' | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -215,12 +216,25 @@ export default function FileAttachmentModal({
         onConfirm: () => {
           setConfirmState({ type: null });
           setActiveUploadSlot(slotId);
-          fileInputRef.current?.click();
+          // Pequeno delay para garantir que o estado foi atualizado
+          setTimeout(() => {
+            const input = fileInputRefs.current[slotId];
+            if (input) {
+              input.value = ''; // Limpa o input antes de abrir
+              input.click();
+            }
+          }, 100);
         }
       });
     } else {
       setActiveUploadSlot(slotId);
-      fileInputRef.current?.click();
+      setTimeout(() => {
+        const input = fileInputRefs.current[slotId];
+        if (input) {
+          input.value = ''; // Limpa o input antes de abrir
+          input.click();
+        }
+      }, 100);
     }
   };
 
@@ -417,7 +431,7 @@ export default function FileAttachmentModal({
                   </label>
                   <input
                     id={`file-input-${slot.id}`}
-                    ref={activeUploadSlot === slot.id ? fileInputRef : null}
+                    ref={(el) => { fileInputRefs.current[slot.id] = el; }}
                     type="file"
                     accept=".xml,.jpg,.jpeg,.pdf,.png,.webp,image/jpeg,image/png,image/webp,application/xml,application/pdf"
                     onChange={(e) => {
