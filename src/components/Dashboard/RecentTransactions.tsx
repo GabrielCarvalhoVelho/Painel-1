@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { 
-  CheckCircle, 
-  TrendingUp, 
-  TrendingDown, 
+import {
+  CheckCircle,
+  TrendingUp,
+  TrendingDown,
   PiggyBank,
   Paperclip,
   Calendar
@@ -10,6 +10,7 @@ import {
 import { TransacaoFinanceira } from '../../lib/supabase';
 import { FinanceService } from '../../services/financeService';
 import { parseISO, startOfDay } from 'date-fns';
+import { formatDateBR } from '../../lib/dateUtils';
 import AttachmentModal from '../Financeiro/AttachmentModal';
 
 interface RecentTransactionsProps {
@@ -75,12 +76,7 @@ export default function RecentTransactions({ transactions }: RecentTransactionsP
   }, [transactions]);
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Data não informada';
-    try {
-      return new Date(dateString).toLocaleDateString('pt-BR');
-    } catch {
-      return dateString;
-    }
+    return formatDateBR(dateString);
   };
 
   return (
@@ -175,7 +171,7 @@ export default function RecentTransactions({ transactions }: RecentTransactionsP
                     {/* Informação de lançamento para transações futuras */}
                     {transaction.data_registro && (
                       <div className="text-xs text-gray-500 flex-shrink-0">
-                        Lançado em {new Date(transaction.data_registro).toLocaleDateString('pt-BR')}
+                        Lançado em {formatDateBR(transaction.data_registro)}
                       </div>
                     )}
                     {/* Espaçador quando não há informação de lançamento */}

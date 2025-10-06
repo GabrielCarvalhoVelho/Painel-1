@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { 
-  Calendar, 
-  Tag, 
-  CreditCard, 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
+import {
+  Calendar,
+  Tag,
+  CreditCard,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
   Filter,
   CheckCircle,
   Clock,
@@ -16,6 +16,7 @@ import { TransacaoFinanceira } from '../../lib/supabase';
 import { FinanceService } from '../../services/financeService';
 import { format, parseISO, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { formatDateBR } from '../../lib/dateUtils';
 import AttachmentModal from '../Financeiro/AttachmentModal';
 
 interface TransactionTableProps {
@@ -51,11 +52,7 @@ export default function TransactionTable({ transactions, limit }: TransactionTab
     });
   };
   const formatDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), 'dd/MM/yyyy', { locale: ptBR });
-    } catch {
-      return dateString;
-    }
+    return formatDateBR(dateString);
   };
 
   const parseDate = (dateStr?: string): Date => {

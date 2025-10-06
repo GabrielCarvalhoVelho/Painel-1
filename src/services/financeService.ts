@@ -1,7 +1,7 @@
 import { supabase, TransacaoFinanceira } from '../lib/supabase';
 import { startOfMonth, endOfMonth, format, parseISO, subMonths, startOfDay, endOfDay, subDays, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { supabase } from '../lib/supabase'; // ✅
+import { formatDateBR } from '../lib/dateUtils';
 
 
 export interface ResumoFinanceiro {
@@ -1049,38 +1049,13 @@ static async getTotalNegativeTransactions(userId: string): Promise<number> {
     if (!dataText) return 'Data não informada';
 
     try {
-      let data: Date;
-
-      if (dataText.includes('T')) {
-        data = new Date(dataText);
-      } else if (dataText.includes('/')) {
-        const partes = dataText.split('/');
-        if (partes.length === 3) {
-          const [primeira, segunda, terceira] = partes;
-          if (terceira.length === 4) {
-            data = new Date(parseInt(terceira), parseInt(segunda) - 1, parseInt(primeira));
-          } else {
-            data = new Date(parseInt(terceira) + 2000, parseInt(primeira) - 1, parseInt(segunda));
-          }
-        } else {
-          return dataText;
-        }
-      } else if (dataText.includes('-')) {
-        if (dataText.length === 10) {
-          data = parseISO(dataText);
-        } else {
-          return dataText;
-        }
-      } else {
+      // Se já está no formato brasileiro (dd/MM/yyyy), retorna direto
+      if (dataText.includes('/')) {
         return dataText;
       }
 
-      if (isNaN(data.getTime())) {
-        return dataText;
-      }
-
-      // Sempre retorna no formato dd/MM/yyyy
-      return format(data, 'dd/MM/yyyy');
+      // Usa a função utilitária que trata corretamente o problema de timezone
+      return formatDateBR(dataText);
     } catch (error) {
       console.error('Erro ao formatar data de pagamento:', error);
       return dataText;
