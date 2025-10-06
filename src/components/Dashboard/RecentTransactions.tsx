@@ -15,9 +15,10 @@ import AttachmentModal from '../Financeiro/AttachmentModal';
 
 interface RecentTransactionsProps {
   transactions: TransacaoFinanceira[];
+  ultimas5?: TransacaoFinanceira[];
 }
 
-export default function RecentTransactions({ transactions }: RecentTransactionsProps) {
+export default function RecentTransactions({ transactions, ultimas5 }: RecentTransactionsProps) {
   const [attachmentModal, setAttachmentModal] = useState<{
     isOpen: boolean;
     transactionId: string;
@@ -60,11 +61,19 @@ export default function RecentTransactions({ transactions }: RecentTransactionsP
     }
   };
 
-  // Get the 10 most recent executed transactions
+  // Get the 5 most recent executed transactions
   const recentTransactions = React.useMemo(() => {
+    // Se temos dados otimizados vindo da prop ultimas5, usa eles diretamente
+    if (ultimas5 && ultimas5.length > 0) {
+      console.log('✅ Usando últimas 5 transações otimizadas do backend:', ultimas5.length);
+      return ultimas5;
+    }
+
+    // Fallback: filtrar localmente (lógica antiga)
+    console.log('⚠️ Usando fallback: filtrando transações localmente');
     // First, filter out future transactions
     const executedTransactions = transactions.filter(transaction => !isFutureTransaction(transaction));
-    
+
     // Then sort by execution date (most recent first) and take only 5
     return executedTransactions
       .sort((a, b) => {
@@ -72,8 +81,8 @@ export default function RecentTransactions({ transactions }: RecentTransactionsP
         const dateB = new Date(b.data_transacao || b.data_registro || '').getTime();
         return dateB - dateA; // Descending order (newest first)
       })
-      .slice(0, 5); // Exactly 10 most recent transactions
-  }, [transactions]);
+      .slice(0, 5); // Exactly 5 most recent transactions
+  }, [transactions, ultimas5]);
 
   const formatDate = (dateString?: string) => {
     return formatDateBR(dateString);
