@@ -55,19 +55,27 @@ export default function AttachmentModal({
       console.log('🔄 Verificando anexos para transação:', transactionId);
 
       const imageExists = await AttachmentService.hasAttachment(transactionId);
+      console.log('📸 Imagem existe?', imageExists);
       const files: AttachmentFile[] = [];
 
       if (imageExists) {
         const imageUrl = await AttachmentService.getAttachmentUrl(transactionId);
+        console.log('🔗 URL obtida:', imageUrl);
         if (imageUrl) {
           files.push({
             url: imageUrl,
             type: 'image',
             name: `${transactionId}.jpg`
           });
+          console.log('✅ Arquivo adicionado à lista:', files);
+        } else {
+          console.warn('⚠️ URL não foi gerada apesar do arquivo existir');
         }
+      } else {
+        console.log('❌ Nenhum anexo encontrado para esta transação');
       }
 
+      console.log('📋 Total de anexos encontrados:', files.length);
       setAttachments(files);
     } catch (error) {
       console.error('Erro ao verificar anexos:', error);
@@ -133,11 +141,20 @@ export default function AttachmentModal({
     try {
       setLoading(true);
       setMessage(null);
+      console.log('📤 Iniciando upload da imagem...');
       AttachmentService.validateImageFile(file);
       await AttachmentService.uploadAttachment(transactionId, file);
-      setMessage({ type: 'success', text: 'Imagem salva com sucesso!' });
+      console.log('✅ Upload concluído, aguardando propagação...');
+
+      // Aguardar um momento para garantir que o arquivo está disponível
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      console.log('🔄 Recarregando lista de anexos...');
       await checkAttachments();
+
+      setMessage({ type: 'success', text: 'Imagem salva com sucesso!' });
     } catch (error) {
+      console.error('❌ Erro no upload:', error);
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Erro ao processar imagem' });
     } finally {
       setLoading(false);

@@ -43,12 +43,12 @@ export class AttachmentService {
     try {
       console.log('🔍 Verificando anexo para transação:', transactionId);
       const fileName = `${transactionId}.jpg`;
-      
-      // Tentar buscar o arquivo específico primeiro
+
+      // Método 1: Tentar buscar o arquivo específico com service role
       let { data, error } = await supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
         .list('', {
-          limit: 100,
+          limit: 1000,
           search: transactionId
         });
 
@@ -57,7 +57,7 @@ export class AttachmentService {
         const result = await supabase.storage
           .from(this.BUCKET_NAME)
           .list('', {
-            limit: 100,
+            limit: 1000,
             search: transactionId
           });
         data = result.data;
@@ -65,18 +65,28 @@ export class AttachmentService {
       }
 
       if (error) {
-        console.error('❌ Erro ao verificar anexo:', error);
-        // Tentar método alternativo: verificar URL pública
+        console.error('❌ Erro ao listar arquivos:', error);
+        // Fallback: verificar por URL pública
         return await this.checkFileExistsByUrl(transactionId);
       }
 
       const hasFile = data && data.some(file => file.name === fileName);
-      console.log('📁 Arquivo encontrado:', hasFile, 'Nome procurado:', fileName, 'Arquivos no bucket:', data?.map(f => f.name));
-      
-      return hasFile;
+      console.log('📁 Resultado da busca:', {
+        encontrado: hasFile,
+        nomeProcurado: fileName,
+        arquivosEncontrados: data?.map(f => f.name).join(', ') || 'nenhum'
+      });
+
+      if (hasFile) {
+        return true;
+      }
+
+      // Método 2: Se não encontrou na lista, tentar verificar por URL direta
+      console.log('🔄 Arquivo não encontrado na lista, tentando verificação por URL...');
+      return await this.checkFileExistsByUrl(transactionId);
     } catch (error) {
       console.error('💥 Erro ao verificar anexo:', error);
-      // Fallback: tentar verificar por URL
+      // Fallback final: tentar verificar por URL
       return await this.checkFileExistsByUrl(transactionId);
     }
   }
@@ -357,7 +367,14 @@ export class AttachmentService {
     try {
       console.log('🔗 Obtendo URL do anexo:', transactionId);
       const fileName = `${transactionId}.jpg`;
-      
+
+      // Verificar primeiro se o arquivo realmente existe
+      const exists = await this.hasAttachment(transactionId);
+      if (!exists) {
+        console.log('⚠️ Arquivo não existe no storage');
+        return null;
+      }
+
       // Tentar obter URL pública com service role primeiro
       let { data } = supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
@@ -376,10 +393,12 @@ export class AttachmentService {
         console.log('❌ Não foi possível obter URL pública');
         return null;
       }
-      
-      // Adicionar timestamp para evitar cache do browser
-      const urlWithTimestamp = `${data.publicUrl}?t=${Date.now()}&cache=no-cache`;
-      console.log('📎 URL gerada:', urlWithTimestamp);
+
+      // Adicionar timestamp com mais informação para forçar bypass completo do cache
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(7);
+      const urlWithTimestamp = `${data.publicUrl}?v=${timestamp}&r=${random}&nocache=true`;
+      console.log('📎 URL gerada com cache-busting:', urlWithTimestamp);
       return urlWithTimestamp;
     } catch (error) {
       console.error('💥 Erro ao obter URL do anexo:', error);
