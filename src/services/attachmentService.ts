@@ -506,10 +506,11 @@ export class AttachmentService {
 
       console.log('✅ Substituição concluída:', data);
 
-      // Atualizar URL no banco
-      const publicUrl = await this.getAttachmentUrl(transactionId);
+      // Atualizar URL no banco com refresh forçado para evitar cache
+      const publicUrl = await this.getAttachmentUrl(transactionId, true);
       if (publicUrl) {
         await this.updateSharedAttachmentUrl(transactionId, publicUrl);
+        console.log('🔄 URL compartilhada atualizada no banco de dados');
       }
 
       return true;
@@ -567,27 +568,30 @@ export class AttachmentService {
 
   /**
    * Obtém a URL pública de um anexo
+   * @param transactionId - ID da transação
+   * @param forceRefresh - Se true, ignora cache do banco e busca direto do storage
    */
-  static async getAttachmentUrl(transactionId: string): Promise<string | null> {
+  static async getAttachmentUrl(transactionId: string, forceRefresh = false): Promise<string | null> {
     try {
-      console.log('🔗 Obtendo URL do anexo:', transactionId);
+      console.log('🔗 Obtendo URL do anexo:', transactionId, forceRefresh ? '(forçando refresh)' : '');
 
-      // Primeiro tenta obter do banco (mais rápido)
-      const groupInfo = await this.getTransactionAttachmentGroup(transactionId);
-      if (groupInfo?.anexo_compartilhado_url) {
-        console.log('✅ URL obtida do banco de dados (anexo compartilhado)');
-        return groupInfo.anexo_compartilhado_url;
+      // Se não forçar refresh, tenta obter do banco primeiro (mais rápido)
+      if (!forceRefresh) {
+        const groupInfo = await this.getTransactionAttachmentGroup(transactionId);
+        if (groupInfo?.anexo_compartilhado_url) {
+          console.log('✅ URL obtida do banco de dados (anexo compartilhado)');
+          // Adicionar novo cache-busting mesmo para URLs do banco
+          const urlBase = groupInfo.anexo_compartilhado_url.split('?')[0];
+          const timestamp = Date.now();
+          const random = Math.random().toString(36).substring(7);
+          return `${urlBase}?v=${timestamp}&r=${random}&nocache=true`;
+        }
       }
 
       const fileId = await this.getStorageFileId(transactionId);
       const fileName = `${fileId}.jpg`;
 
-      // Verificar primeiro se o arquivo realmente existe
-      const exists = await this.hasAttachment(transactionId);
-      if (!exists) {
-        console.log('⚠️ Arquivo não existe no storage');
-        return null;
-      }
+      console.log('📦 Gerando URL pública para arquivo:', fileName);
 
       // Tentar obter URL pública com service role primeiro
       let { data } = supabaseServiceRole.storage

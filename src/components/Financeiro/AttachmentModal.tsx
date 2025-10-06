@@ -46,6 +46,7 @@ export default function AttachmentModal({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [groupInfo, setGroupInfo] = useState<TransactionGroupInfo | null>(null);
+  const [imageKey, setImageKey] = useState<number>(Date.now()); // Key para forçar re-render da imagem
   const imageInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
@@ -54,6 +55,7 @@ export default function AttachmentModal({
       setAttachments([]);
       setMessage(null);
       setGroupInfo(null);
+      setImageKey(Date.now()); // Reset image key ao abrir modal
       loadTransactionInfo();
       checkAttachments();
       console.log('🆔 Modal aberto para transação ID:', transactionId);
@@ -87,17 +89,18 @@ export default function AttachmentModal({
     }
   };
 
-  const checkAttachments = async () => {
+  const checkAttachments = async (forceRefresh = false) => {
     try {
       setLoading(true);
-      console.log('🔄 Verificando anexos para transação:', transactionId);
+      console.log('🔄 Verificando anexos para transação:', transactionId, forceRefresh ? '(refresh forçado)' : '');
 
       const imageExists = await AttachmentService.hasAttachment(transactionId);
       console.log('📸 Imagem existe?', imageExists);
       const files: AttachmentFile[] = [];
 
       if (imageExists) {
-        const imageUrl = await AttachmentService.getAttachmentUrl(transactionId);
+        // Forçar refresh da URL quando solicitado (após substituição)
+        const imageUrl = await AttachmentService.getAttachmentUrl(transactionId, forceRefresh);
         console.log('🔗 URL obtida:', imageUrl);
         if (imageUrl) {
           files.push({
@@ -176,21 +179,37 @@ export default function AttachmentModal({
   const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    const isReplacing = attachments.some(a => a.type === 'image');
+
     try {
       setLoading(true);
       setMessage(null);
-      console.log('📤 Iniciando upload da imagem...');
-      AttachmentService.validateImageFile(file);
-      await AttachmentService.uploadAttachment(transactionId, file);
-      console.log('✅ Upload concluído, aguardando propagação...');
+      console.log('📤 Iniciando upload da imagem...', isReplacing ? '(substituição)' : '(nova)');
 
-      // Aguardar um momento para garantir que o arquivo está disponível
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      AttachmentService.validateImageFile(file);
+
+      // Usar método correto dependendo se é substituição ou novo upload
+      if (isReplacing) {
+        await AttachmentService.replaceAttachment(transactionId, file);
+        console.log('✅ Imagem substituída com sucesso');
+      } else {
+        await AttachmentService.uploadAttachment(transactionId, file);
+        console.log('✅ Nova imagem carregada com sucesso');
+      }
+
+      // Forçar atualização do cache da imagem
+      setImageKey(Date.now());
+
+      // Aguardar propagação no storage
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
       console.log('🔄 Recarregando lista de anexos...');
-      await checkAttachments();
+      // Forçar refresh da URL ao recarregar após substituição
+      await checkAttachments(true);
 
-      setMessage({ type: 'success', text: 'Imagem salva com sucesso!' });
+      const successMessage = isReplacing ? 'Imagem substituída com sucesso!' : 'Imagem salva com sucesso!';
+      setMessage({ type: 'success', text: successMessage });
     } catch (error) {
       console.error('❌ Erro no upload:', error);
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Erro ao processar imagem' });
@@ -366,9 +385,12 @@ export default function AttachmentModal({
           {attachments.find(a => a.type === 'image') && (
             <div className="flex flex-col items-center gap-2 bg-gray-50 p-3 rounded-lg border">
               <img
-                src={attachments.find(a => a.type === 'image')?.url}
+                key={imageKey}
+                src={`${attachments.find(a => a.type === 'image')?.url}&t=${imageKey}`}
                 alt="Imagem anexada"
                 className="max-h-32 mb-2 rounded border"
+                onLoad={() => console.log('🖼️ Imagem carregada:', imageKey)}
+                onError={(e) => console.error('❌ Erro ao carregar imagem:', e)}
               />
               <div className="flex gap-2 mb-2">
                 <button
