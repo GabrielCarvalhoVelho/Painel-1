@@ -1,4 +1,5 @@
 // src/services/authService.ts
+import { setAccessToken } from '../lib/supabase';
 
 export interface JWTPayload {
   sub: string;          // UUID do usuário (vem como "sub" no JWT assinado pelo n8n)
@@ -78,9 +79,18 @@ export class AuthService {
       return dev;
     }
 
+    // PRODUÇÃO: usa token do n8n
     const token = localStorage.getItem(this.TOKEN_KEY);
     if (!token) {
       console.warn('⚠️ Nenhum token encontrado no localStorage');
+      return null;
+    }
+
+    // 👉 Injeta o token no Supabase (APENAS PRODUÇÃO)
+    try {
+      await setAccessToken(token);
+    } catch (e) {
+      console.error('❌ Falha ao setar token no Supabase:', e);
       return null;
     }
 

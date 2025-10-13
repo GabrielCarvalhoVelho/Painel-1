@@ -40,8 +40,19 @@ export const supabase: SupabaseClient = createClient(url, apiKey, {
   },
 });
 
-export async function login(login: string, password: string) {
+// Helper para injetar o token do n8n em PRODUÇÃO
+export async function setAccessToken(token: string) {
+  const { error } = await supabase.auth.setSession({
+    access_token: token,
+    refresh_token: 'dummy-refresh', // 🔑 precisa ser não vazio
+  });
 
+  if (error) {
+    console.error('❌ Falha ao setar token no Supabase:', error.message);
+    throw error;
+  }
+
+  console.log('🔑 JWT custom injetado no Supabase para RLS');
 }
 
 // ------------------
