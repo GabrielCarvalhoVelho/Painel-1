@@ -496,18 +496,13 @@ export class FinanceService {
 
   static async getSomaTransacoesAteHoje(userId: string): Promise<number> {
   try {
-    const hoje = new Date();
-    const hojeSemHora = format(hoje, 'yyyy-MM-dd');
-
-
     const { data, error } = await supabase
       .from('transacoes_financeiras')
-      .select('valor, status, data_agendamento_pagamento')
-      .eq('user_id', userId)
-      .or(`status.neq.Agendado,and(status.eq.Agendado,data_agendamento_pagamento.lte.${hojeSemHora})`);
+      .select('valor')
+      .eq('user_id', userId);
 
     if (error) {
-      console.error('Erro ao buscar transações até hoje (otimizado):', error);
+      console.error('Erro ao buscar transações:', error);
       return 0;
     }
 
@@ -515,13 +510,12 @@ export class FinanceService {
       return 0;
     }
 
-
     const somaTotal = data.reduce((acc, transacao) => {
       const valor = Number(transacao.valor) || 0;
       return acc + valor;
     }, 0);
 
-    console.log(`Soma otimizada de transações até hoje para usuário ${userId}:`, {
+    console.log(`Soma total de transações para usuário ${userId}:`, {
       totalTransacoes: data.length,
       somaTotal: this.formatCurrency(somaTotal)
     });
@@ -529,7 +523,7 @@ export class FinanceService {
     return somaTotal;
 
   } catch (error) {
-    console.error('Erro ao calcular soma otimizada de transações até hoje:', error);
+    console.error('Erro ao calcular soma total de transações:', error);
     return 0;
   }
 }
