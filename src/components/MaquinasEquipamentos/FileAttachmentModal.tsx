@@ -451,14 +451,9 @@ export default function FileAttachmentModal({
                             <FileIcon className="w-12 h-12" />
                           </div>
                           <div className="text-center">
-                            <p className="text-sm font-bold text-[#092f20] mb-1">
+                            <p className="text-sm font-bold text-[#092f20]">
                               {fileLabel}
                             </p>
-                            {slot.fileName && (
-                              <p className="text-xs text-gray-500 truncate max-w-xs">
-                                {slot.fileName}
-                              </p>
-                            )}
                           </div>
                         </div>
                       );

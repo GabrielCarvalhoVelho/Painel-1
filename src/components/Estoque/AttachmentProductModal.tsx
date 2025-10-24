@@ -358,9 +358,6 @@ export default function AttachmentProductModal({
                       <FileIcon className="w-8 h-8" />
                     </div>
                     <span className="font-medium text-[#092f20]">{fileLabel}</span>
-                    {attachment.name && (
-                      <p className="text-xs text-gray-500 truncate max-w-xs">{attachment.name}</p>
-                    )}
                   </div>
                 );
               })()}
