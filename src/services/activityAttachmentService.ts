@@ -88,7 +88,7 @@ export class ActivityAttachmentService {
 
       let { data, error } = await supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
-        .list('', {
+        .list(this.IMAGE_FOLDER, {
           limit: 1000,
           search: activityId
         });
@@ -97,7 +97,7 @@ export class ActivityAttachmentService {
         console.log('⚠️ Erro com service role, tentando cliente normal...');
         const result = await supabase.storage
           .from(this.BUCKET_NAME)
-          .list('', {
+          .list(this.IMAGE_FOLDER, {
             limit: 1000,
             search: activityId
           });
@@ -113,7 +113,8 @@ export class ActivityAttachmentService {
       const hasFile = data && data.some(file => file.name === fileName);
       console.log('📁 Resultado da busca:', {
         encontrado: hasFile,
-        nomeProcurado: fileName
+        nomeProcurado: fileName,
+        pasta: this.IMAGE_FOLDER
       });
 
       return hasFile || await this.checkFileExistsByUrl(activityId, false);
@@ -173,8 +174,8 @@ export class ActivityAttachmentService {
       const extensions = isFile ? ['pdf', 'xml'] : ['jpg'];
 
       for (const ext of extensions) {
-        const folder = isFile ? this.FILE_FOLDER : '';
-        const fileName = folder ? `${folder}/${activityId}.${ext}` : `${activityId}.${ext}`;
+        const folder = isFile ? this.FILE_FOLDER : this.IMAGE_FOLDER;
+        const fileName = `${folder}/${activityId}.${ext}`;
 
         const { data } = supabaseServiceRole.storage
           .from(this.BUCKET_NAME)
@@ -215,7 +216,7 @@ export class ActivityAttachmentService {
         }
       }
 
-      const fileName = `${activityId}.jpg`;
+      const fileName = `${this.IMAGE_FOLDER}/${activityId}.jpg`;
 
       let { data } = supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
@@ -301,8 +302,8 @@ export class ActivityAttachmentService {
     try {
       console.log('⬆️ Fazendo upload da imagem:', activityId);
 
-      const fileName = `${activityId}.jpg`;
-      const processedFile = await this.processImageFile(file, fileName);
+      const fileName = `${this.IMAGE_FOLDER}/${activityId}.jpg`;
+      const processedFile = await this.processImageFile(file, `${activityId}.jpg`);
 
       let { data, error } = await supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
@@ -348,8 +349,8 @@ export class ActivityAttachmentService {
     try {
       console.log('🔄 Substituindo imagem:', activityId);
 
-      const fileName = `${activityId}.jpg`;
-      const processedFile = await this.processImageFile(file, fileName);
+      const fileName = `${this.IMAGE_FOLDER}/${activityId}.jpg`;
+      const processedFile = await this.processImageFile(file, `${activityId}.jpg`);
 
       let { data, error } = await supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
@@ -393,7 +394,7 @@ export class ActivityAttachmentService {
     try {
       console.log('🗑️ Excluindo imagem:', activityId);
 
-      const fileName = `${activityId}.jpg`;
+      const fileName = `${this.IMAGE_FOLDER}/${activityId}.jpg`;
 
       let { data, error } = await supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
@@ -562,7 +563,7 @@ export class ActivityAttachmentService {
     try {
       console.log('⬇️ Fazendo download da imagem:', activityId);
 
-      const fileName = `${activityId}.jpg`;
+      const fileName = `${this.IMAGE_FOLDER}/${activityId}.jpg`;
 
       let { data, error } = await supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
