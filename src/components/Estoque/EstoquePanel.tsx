@@ -73,7 +73,16 @@ export default function EstoquePanel() {
     carregar();
   }, []);
 
-  // 📌 Ícone por categoria
+  // � Sempre que a lista de produtos mudar, reagrupa para atualizar a UI automaticamente
+  useEffect(() => {
+    try {
+      setProdutosAgrupados(agruparProdutos(produtos));
+    } catch (err) {
+      console.error('Erro ao reagrupar produtos:', err);
+    }
+  }, [produtos]);
+
+  // �📌 Ícone por categoria
   const getCategoryIcon = (categoria: string) => {
     const c = categoria.toLowerCase();
     if (c.includes('fertilizante')) return <Sprout className="w-6 h-6 text-[#86b646]" />;
