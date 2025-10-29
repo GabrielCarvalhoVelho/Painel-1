@@ -17,6 +17,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
   const [items, setItems] = useState<MovimentacaoExpandida[]>([]);
   const [loading, setLoading] = useState(false);
   const [totais, setTotais] = useState({ entradas: 0, saidas: 0 });
+  // ...existing code...
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [totalEntradas, setTotalEntradas] = useState(0);
@@ -111,6 +112,8 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
       allMovements.sort((a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
+
+      // No activity-aggregated entries: keep only original movimentações list
 
       setTotalCount(totalMovements);
 
@@ -215,69 +218,74 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                 <p className="text-gray-500">Nenhuma movimentação encontrada</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {items.map((m) => (
-                  <div key={`${m.produto_id}-${m.id}`} className="border rounded-lg p-4 bg-gray-50 relative">
-                    <div className="flex items-start justify-between">
+              <div className="space-y-6">
+                {/* Original movement items */}
 
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                              m.tipo === 'entrada'
-                                ? 'bg-[#397738]/10 text-[#397738]'
-                                : 'bg-red-100 text-red-700'
-                            }`}>
-                              {m.tipo === 'entrada' ? 'Entrada' : 'Saída'}
-                            </span>
-                            <span className="font-medium text-gray-900 whitespace-nowrap">
-                              {m.quantidade} {formatUnitAbbreviated(m.unidade)}
-                            </span>
+                {/* Original movement items */}
+                <div className="space-y-4">
+                  {items.map((m) => (
+                    <div key={`${m.produto_id}-${m.id}`} className="border rounded-lg p-4 bg-gray-50 relative">
+                      <div className="flex items-start justify-between">
+
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                                m.tipo === 'entrada'
+                                  ? 'bg-[#397738]/10 text-[#397738]'
+                                  : 'bg-red-100 text-red-700'
+                              }`}>
+                                {m.tipo === 'entrada' ? 'Entrada' : 'Saída'}
+                              </span>
+                              <span className="font-medium text-gray-900 whitespace-nowrap">
+                                {m.quantidade} {formatUnitAbbreviated(m.unidade)}
+                              </span>
+                            </div>
+                            <div className="text-gray-500 text-xs text-right">
+                              <div>{formatDate(m.created_at)}</div>
+                              <div>{formatTime(m.created_at)}</div>
+                            </div>
                           </div>
-                          <div className="text-gray-500 text-xs text-right">
-                            <div>{formatDate(m.created_at)}</div>
-                            <div>{formatTime(m.created_at)}</div>
-                          </div>
+
+                          {m.observacao && (
+                            <p className="text-sm text-gray-600 mt-2">{m.observacao}</p>
+                          )}
+
+                          {m.tipo === 'entrada' && (
+                            <div className="text-sm text-gray-600 space-y-1 mt-2">
+                              <div><strong>Marca:</strong> {m.marca || '—'}</div>
+                              <div><strong>Fornecedor:</strong> {m.fornecedor || '—'}</div>
+                              <div><strong>Lote:</strong> {m.lote || '—'}</div>
+                              <div><strong>Validade:</strong> {formatValidity(m.validade)}</div>
+                              {m.valor && (
+                                <div><strong>Valor unitário:</strong> R$ {Number(m.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                              )}
+                            </div>
+                          )}
+
+                          {m.tipo === 'saida' && m.valor && (
+                            <div className="text-sm text-gray-600 space-y-1 mt-2">
+                              <div><strong>Valor total da saída:</strong> R$ {(Number(m.valor) * m.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                            </div>
+                          )}
                         </div>
-
-                        {m.observacao && (
-                          <p className="text-sm text-gray-600 mt-2">{m.observacao}</p>
-                        )}
-
-                        {m.tipo === 'entrada' && (
-                          <div className="text-sm text-gray-600 space-y-1 mt-2">
-                            <div><strong>Marca:</strong> {m.marca || '—'}</div>
-                            <div><strong>Fornecedor:</strong> {m.fornecedor || '—'}</div>
-                            <div><strong>Lote:</strong> {m.lote || '—'}</div>
-                            <div><strong>Validade:</strong> {formatValidity(m.validade)}</div>
-                            {m.valor && (
-                              <div><strong>Valor unitário:</strong> R$ {Number(m.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-                            )}
-                          </div>
-                        )}
-
-                        {m.tipo === 'saida' && m.valor && (
-                          <div className="text-sm text-gray-600 space-y-1 mt-2">
-                            <div><strong>Valor total da saída:</strong> R$ {(Number(m.valor) * m.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-                          </div>
-                        )}
                       </div>
-                    </div>
 
-                    {m.tipo === 'entrada' && (
-                      <button
-                        onClick={() => openAttachmentModal(
-                          m.produto_id.toString(),
-                          m.nome_produto || 'Produto'
-                        )}
-                        className="absolute bottom-4 right-4 text-gray-600 hover:text-gray-800 transition-colors"
-                        title="Ver anexos"
-                      >
-                        <Paperclip className="w-5 h-5" />
-                      </button>
-                    )}
-                  </div>
-                ))}
+                      {m.tipo === 'entrada' && (
+                        <button
+                          onClick={() => openAttachmentModal(
+                            m.produto_id.toString(),
+                            m.nome_produto || 'Produto'
+                          )}
+                          className="absolute bottom-4 right-4 text-gray-600 hover:text-gray-800 transition-colors"
+                          title="Ver anexos"
+                        >
+                          <Paperclip className="w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

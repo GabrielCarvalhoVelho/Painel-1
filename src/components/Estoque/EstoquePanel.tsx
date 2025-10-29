@@ -53,6 +53,8 @@ export default function EstoquePanel() {
     productName: ''
   });
 
+  // ...existing code...
+
   // 🔄 Carregar produtos ao montar
   useEffect(() => {
     const carregar = async () => {
@@ -81,6 +83,8 @@ export default function EstoquePanel() {
       console.error('Erro ao reagrupar produtos:', err);
     }
   }, [produtos]);
+
+  // ...existing code...
 
   // �📌 Ícone por categoria
   const getCategoryIcon = (categoria: string) => {
@@ -274,7 +278,9 @@ export default function EstoquePanel() {
         onClose={() => setRemoveModal({ isOpen: false, productGroup: null, selectedProduto: null, quantidade: 1, observacao: '' })}
       />
 
-      {/* Modal de Histórico */}
+      {/* inline histórico modal removed; using HistoryMovementsModal component below */}
+
+      {/* Mantém também o modal de histórico original para movimentações detalhadas */}
       <HistoryMovementsModal
         isOpen={historyModal.isOpen}
         product={historyModal.product}

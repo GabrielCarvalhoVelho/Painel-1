@@ -375,4 +375,23 @@ export class EstoqueService {
     const hasMore = data ? data.length === limit : false;
     return { data: data || [], hasMore };
   }
+
+  /**
+   * Busca movimentações para um conjunto de produtos (útil para histórico por grupo)
+   */
+  static async getMovimentacoesPorProdutos(produtoIds: (number | string)[]): Promise<MovimentacaoEstoque[]> {
+    if (!produtoIds || produtoIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from('movimentacoes_estoque')
+      .select('*')
+      .in('produto_id', produtoIds)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erro ao buscar movimentações por produtos:', error);
+      throw error;
+    }
+
+    return (data || []) as MovimentacaoEstoque[];
+  }
 }
