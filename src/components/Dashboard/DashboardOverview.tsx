@@ -25,7 +25,7 @@ import ErrorMessage from './ErrorMessage';
 import WeatherWidget from './WeatherWidget';
 import { AuthService } from '../../services/authService';
 import { UserService } from '../../services/userService';
-import { FinanceService, ResumoFinanceiro, DadosGrafico, OverallBalance } from '../../services/financeService';
+import { FinanceService, ResumoFinanceiro, DadosGrafico, OverallBalance, ResumoMensalFinanceiro } from '../../services/financeService';
 import { ActivityService } from '../../services/activityService';
 import { CotacaoService } from '../../services/cotacaoService';
 import { TalhaoService } from '../../services/talhaoService';
@@ -90,7 +90,7 @@ export default function DashboardOverview() {
   const [transacoes, setTransacoes] = useState<TransacaoFinanceira[]>([]);
   const [proximas5Transacoes, setProximas5Transacoes] = useState<TransacaoFinanceira[]>([]);
   const [ultimas5Transacoes, setUltimas5Transacoes] = useState<TransacaoFinanceira[]>([]);
-  const [atividades, setAtividades] = useState<Array<{ id_atividade: string; nome_atividade?: string; dataFormatada?: string }>>([]);
+  const [atividades, setAtividades] = useState<any[]>([]);
   const [atividadesGrafico, setAtividadesGrafico] = useState<Array<{ data?: string }>>([]);
   const [cotacaoAtual, setCotacaoAtual] = useState(1726);
   const [variacaoCotacao, setVariacaoCotacao] = useState('+2.5');
@@ -173,10 +173,10 @@ export default function DashboardOverview() {
       console.log('📊 Dados do gráfico carregados:', grafico);
       console.log('💰 Exemplo de dados:', grafico.slice(0, 2));
       
-  // Map to minimal shapes used by dashboard components
-  setAtividades((atividadesRecentes || []).map((l: any) => ({ id_atividade: l.atividade_id, nome_atividade: l.nome_atividade, dataFormatada: l.dataFormatada })));
+  // Pass full activity objects so ActivityList can render complete details
+  setAtividades(atividadesRecentes || []);
 
-  setAtividadesGrafico((atividades30Dias || []).map((l: any) => ({ data: l.data_atividade || l.created_at }))); 
+  setAtividadesGrafico((atividades30Dias || []).map((l: any) => ({ data: l.data_atividade || l.created_at })));
       setCotacaoAtual(cotacao);
       setAreaCultivada(areaCafe);
       setTalhoesCafe(talhoes);
@@ -229,6 +229,7 @@ export default function DashboardOverview() {
   const stats = [
   {
   title: 'Saldo Atual',
+  subtitle: 'Disponível',
   value: FinanceService.formatCurrency(somaTransacoesAteHoje),
   change: (
     <div className="flex flex-col">
@@ -249,6 +250,7 @@ export default function DashboardOverview() {
 },
   {
     title: 'Cotação Café (sc 60kg)',
+    subtitle: 'Preço atual (sc/60kg)',
     value: `R$ ${cotacaoAtual.toLocaleString()}`,
     change: `${variacaoCotacao} hoje`,
     changeType: 'neutral', // Changed from 'positive' to neutral
@@ -262,6 +264,7 @@ export default function DashboardOverview() {
   },
   {
   title: 'Receita Estimada da Safra',
+  subtitle: 'Estimativa baseada na produção',
   value: (
     <span className="text-sm md:text-base font-medium whitespace-nowrap">
       {areaCultivada > 0 
@@ -293,6 +296,7 @@ export default function DashboardOverview() {
 },
   {
     title: 'Custo Médio por saca',
+    subtitle: 'Custo por saca estimado',
     value: (
       <span className="text-sm md:text-base font-medium whitespace-nowrap">
         {producaoTotal > 0 
@@ -316,6 +320,7 @@ export default function DashboardOverview() {
   },
   {
     title: 'Custo Médio por Hectare (estimado)',
+    subtitle: 'Custo por hectare estimado',
     value: (
       <span className="text-sm md:text-base font-medium whitespace-nowrap">
         {areaCultivada > 0 

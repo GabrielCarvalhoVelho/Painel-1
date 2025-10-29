@@ -17,7 +17,7 @@ export interface DadosGrafico {
   despesas: number;
 }
 
-interface ResumoMensalFinanceiro {
+export interface ResumoMensalFinanceiro {
   totalReceitas: number;
   totalDespesas: number;
 }
@@ -59,7 +59,18 @@ export type FilterPeriod =
   | 'personalizado'
   | 'todos';
 
+// Tipo auxiliar para aceitar objetos retornados por queries parciais
+// (nem sempre a query traz todos os campos de `TransacaoFinanceira`).
+// Inclui as propriedades que usamos nas validações de data/estado.
+type MaybeTransacao = Partial<TransacaoFinanceira> & {
+  data_agendamento_pagamento?: string | Date;
+  status?: string;
+  valor?: any;
+};
+
 export class FinanceService {
+  // ...existing code...
+
   static async getResumoFinanceiro(userId: string): Promise<ResumoFinanceiro> {
     try {
       const agora = new Date();
@@ -471,7 +482,7 @@ export class FinanceService {
 
 
   
-  static async getTransactionsByCategory(userId: string): Promise<Transaction[]> {
+  static async getTransactionsByCategory(userId: string): Promise<TransacaoFinanceira[]> {
     try {
       const { data, error } = await supabase
         .from('transacoes_financeiras')
@@ -484,9 +495,12 @@ export class FinanceService {
       }
 
       // Filtra apenas os valores negativos
-      return (data ?? [])
+      const resultado = (data ?? [])
         .map(item => ({ ...item, valor: Number(item.valor) }))
         .filter(item => item.valor < 0); // Mantém só negativos
+
+      // Cast seguro para o tipo do projeto
+      return resultado as unknown as TransacaoFinanceira[];
 
     } catch (err) {
       console.error('Error in financial service:', err);
@@ -711,7 +725,9 @@ static async getResumoMensalFinanceiro(userId: string): Promise<{ totalReceitas:
   /**
    * Verifica se uma transação já foi processada (não é futura)
    */
-  private static isTransacaoProcessada(transacao: TransacaoFinanceira): boolean {
+  private static isTransacaoProcessada(transacao: MaybeTransacao): boolean {
+    if (!transacao) return true;
+
     // Se não tem status de agendado, considera como processada
     if (transacao.status !== 'Agendado') {
       return true;
@@ -724,20 +740,22 @@ static async getResumoMensalFinanceiro(userId: string): Promise<{ totalReceitas:
 
     // Se tem data de agendamento no passado ou hoje, considera processada
     try {
-      const dataAgendamento = parseISO(transacao.data_agendamento_pagamento);
+      const dp = transacao.data_agendamento_pagamento;
+      const dataAgendamento = typeof dp === 'string' ? parseISO(dp) : new Date(dp as Date);
       const hoje = startOfDay(new Date());
       const dataAgendamentoSemHora = startOfDay(dataAgendamento);
-      
+
       return dataAgendamentoSemHora <= hoje;
     } catch {
-      //return true; // Se não conseguir parsear a data, considera processada
+      // Se não conseguir parsear a data, considera processada por segurança
+      return true;
     }
   }
 
   /**
    * Verifica se uma transação é futura (agendada para o futuro)
    */
-  private static isTransacaoFutura(transacao: TransacaoFinanceira): boolean {
+  private static isTransacaoFutura(transacao: MaybeTransacao): boolean {
     return !this.isTransacaoProcessada(transacao);
   }
 
@@ -745,20 +763,21 @@ static async getResumoMensalFinanceiro(userId: string): Promise<{ totalReceitas:
    * Verifica se uma transação está dentro de um período específico
    */
   private static isTransacaoNoPeriodo(
-  transacao: TransacaoFinanceira,  
-  dataInicio: Date,  
-  dataFim: Date
-): boolean {
-  if (!transacao.data_agendamento_pagamento) return false;
+    transacao: MaybeTransacao,
+    dataInicio: Date,
+    dataFim: Date
+  ): boolean {
+    if (!transacao.data_agendamento_pagamento) return false;
 
-  try {
-    const dataTransacao = new Date(transacao.data_agendamento_pagamento);
-    // Verifica se a transação está dentro do período (inclusive)
-    return dataTransacao >= dataInicio && dataTransacao <= dataFim;
-  } catch {
-    return false;
+    try {
+      const dp = transacao.data_agendamento_pagamento;
+      const dataTransacao = typeof dp === 'string' ? parseISO(dp) : new Date(dp as Date);
+      // Verifica se a transação está dentro do período (inclusive)
+      return dataTransacao >= dataInicio && dataTransacao <= dataFim;
+    } catch {
+      return false;
+    }
   }
-}
 
   /**
    * Calcula o saldo de uma lista de transações
@@ -1010,11 +1029,12 @@ static async getTotalNegativeTransactions(userId: string): Promise<number> {
   /**
    * Obtém a data relevante de uma transação
    */
-  private static getTransactionDate(transacao: TransacaoFinanceira): Date | null {
+  private static getTransactionDate(transacao: MaybeTransacao): Date | null {
     // Para transações futuras, usa data de agendamento
     if (this.isTransacaoFutura(transacao) && transacao.data_agendamento_pagamento) {
       try {
-        return parseISO(transacao.data_agendamento_pagamento);
+        const dp = transacao.data_agendamento_pagamento;
+        return typeof dp === 'string' ? parseISO(dp) : new Date(dp as Date);
       } catch {
         return null;
       }
@@ -1025,7 +1045,7 @@ static async getTotalNegativeTransactions(userId: string): Promise<number> {
     if (!dataStr) return null;
 
     try {
-      return parseISO(dataStr);
+      return typeof dataStr === 'string' ? parseISO(dataStr) : new Date(dataStr as Date);
     } catch {
       return null;
     }
