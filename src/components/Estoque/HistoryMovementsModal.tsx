@@ -1,7 +1,7 @@
 // src/components/Estoque/HistoryMovementsModal.tsx
 import { useEffect, useState } from 'react';
 import { X, Paperclip } from 'lucide-react';
-import { MovimentacaoExpandida, EstoqueService } from '../../services/estoqueService';
+import { MovimentacaoExpandida, EstoqueService, LancamentoProdutoEntry } from '../../services/estoqueService';
 import { ProdutoAgrupado } from '../../services/agruparProdutosService';
 import AttachmentProductModal from './AttachmentProductModal';
 import Pagination from './Pagination';
@@ -14,9 +14,14 @@ interface Props {
 }
 
 export default function HistoryMovementsModal({ isOpen, product, onClose }: Props) {
-  const [items, setItems] = useState<MovimentacaoExpandida[]>([]);
+  // items pode conter movimentacoes (MovimentacaoExpandida) e lançamentos (normalizados)
+  const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [totais, setTotais] = useState({ entradas: 0, saidas: 0 });
+  // contadores de debug por fonte
+  const [movimentacoesCount, setMovimentacoesCount] = useState(0);
+  const [lancamentosCount, setLancamentosCount] = useState(0);
+  const [entradasIniciaisCount, setEntradasIniciaisCount] = useState(0);
   // ...existing code...
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -50,15 +55,32 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
       let allSaidas = 0;
 
       for (const p of product.produtos) {
-        const resp = await EstoqueService.getMovimentacoesExpandidas(p.id, 1, 1000);
-        const entradas = resp.data.filter(m => m.tipo === 'entrada').reduce((sum, m) => sum + m.quantidade, 0);
-        const saidas = resp.data.filter(m => m.tipo === 'saida').reduce((sum, m) => sum + m.quantidade, 0);
-        allEntradas += entradas;
-        allSaidas += saidas;
+        try {
+          const resp = await EstoqueService.getMovimentacoesExpandidas(p.id, 1, 1000);
+          const data = resp?.data || [];
+          const entradas = data.filter(m => m.tipo === 'entrada').reduce((sum, m) => sum + m.quantidade, 0);
+          const saidas = data.filter(m => m.tipo === 'saida').reduce((sum, m) => sum + m.quantidade, 0);
+          allEntradas += entradas;
+          allSaidas += saidas;
 
-        if (p.quantidade > 0) {
-          allEntradas += p.quantidade;
+          if (p.quantidade > 0) {
+            allEntradas += p.quantidade;
+          }
+        } catch (err) {
+          console.error(`Erro ao buscar movimentações para totais (produto ${p.id}):`, err);
         }
+      }
+
+      // também considerar lançamentos (aplicações) para totais — usamos quantidade_val
+      try {
+        const produtoIds = product.produtos.map(p => p.id);
+        const lancamentos = await EstoqueService.getLancamentosPorProdutos(produtoIds);
+        for (const l of lancamentos) {
+          const q = l.quantidade_val || 0;
+          allSaidas += q; // lançamentos são consumos (saídas)
+        }
+      } catch (err) {
+        console.error('Erro ao buscar lançamentos para totais:', err);
       }
 
       setTotalEntradas(allEntradas);
@@ -74,13 +96,23 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
     setLoading(true);
 
     try {
-      const allMovements: MovimentacaoExpandida[] = [];
-      let totalMovements = 0;
+  const allMovements: any[] = [];
+  let totalMovements = 0;
+  let _movimentacoesCount = 0;
+  let _lancamentosCount = 0;
+  let _entradasIniciaisCount = 0;
 
       for (const p of product.produtos) {
-        const resp = await EstoqueService.getMovimentacoesExpandidas(p.id, 1, 1000);
-        allMovements.push(...resp.data);
-        totalMovements += resp.totalCount;
+        try {
+          const resp = await EstoqueService.getMovimentacoesExpandidas(p.id, 1, 1000);
+          const data = resp?.data || [];
+          allMovements.push(...data);
+          totalMovements += data.length;
+          _movimentacoesCount += data.length;
+        } catch (err) {
+          console.error(`Erro ao buscar movimentações para produto ${p.id}:`, err);
+          // continuar para próximo produto
+        }
       }
 
       for (const p of product.produtos) {
@@ -106,8 +138,61 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
           };
           allMovements.push(entradaInicial);
           totalMovements += 1;
+          _entradasIniciaisCount += 1;
         }
       }
+
+      // Buscar lançamentos (aplicações) de produtos e normalizar
+      const produtoIds = product.produtos.map(p => p.id);
+      try {
+        const lancamentos: LancamentoProdutoEntry[] = await EstoqueService.getLancamentosPorProdutos(produtoIds);
+        for (const l of lancamentos) {
+        const produtoInfo = product.produtos.find(p => p.id === l.produto_id as any);
+        const quantidade_val = l.quantidade_val ?? 0;
+        const unidade_quant = l.quantidade_un || produtoInfo?.unidade || 'un';
+        const valorUnitario = produtoInfo?.valor ?? null;
+        const custoCalculado = valorUnitario != null ? Number(valorUnitario) * Number(quantidade_val) : null;
+
+        const mapped = {
+          id: l.id,
+          produto_id: l.produto_id,
+          user_id: produtoInfo?.user_id || null,
+          tipo: 'saida', // trata como saída para fins de exibição
+          quantidade: quantidade_val,
+          observacao: l.observacao || null,
+          created_at: l.atividade?.created_at || l.created_at || new Date().toISOString(),
+          nome_produto: produtoInfo?.nome_produto || product.nome,
+          marca: produtoInfo?.marca || null,
+          categoria: produtoInfo?.categoria || null,
+          unidade: unidade_quant,
+          valor: valorUnitario,
+          lote: produtoInfo?.lote || null,
+          validade: produtoInfo?.validade || null,
+          fornecedor: produtoInfo?.fornecedor || null,
+          registro_mapa: produtoInfo?.registro_mapa || null,
+          produto_created_at: produtoInfo?.created_at || null,
+          // campos específicos de lançamento
+          nome_atividade: l.atividade?.nome_atividade || 'Atividade',
+          atividade_id: l.atividade_id,
+          quantidade_val: quantidade_val,
+          quantidade_un: unidade_quant,
+          custo_calculado: custoCalculado,
+          _source: 'lancamento'
+        };
+
+          allMovements.push(mapped);
+          totalMovements += 1;
+          _lancamentosCount += 1;
+        }
+      } catch (err) {
+        console.error('Erro ao buscar lançamentos de produtos:', err);
+      }
+
+      // atualiza contadores de debug no state e loga
+      setMovimentacoesCount(_movimentacoesCount);
+      setLancamentosCount(_lancamentosCount);
+      setEntradasIniciaisCount(_entradasIniciaisCount);
+      console.info('HistoryMovementsModal counts', { movimentacoes: _movimentacoesCount, lancamentos: _lancamentosCount, entradasIniciais: _entradasIniciaisCount });
 
       allMovements.sort((a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -198,6 +283,12 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                 <span className="whitespace-nowrap"><strong>Total Saídas:</strong> {totalSaidas} {formatUnitAbbreviated(product?.produtos[0]?.unidade)}</span>
                 <span className="whitespace-nowrap"><strong>Em estoque:</strong> {product?.totalEstoque} {formatUnitAbbreviated(product?.produtos[0]?.unidade)}</span>
               </div>
+              {(movimentacoesCount || lancamentosCount || entradasIniciaisCount) && (
+                <div className="mt-2 text-xs text-gray-500">
+                  <strong>Debug:</strong>&nbsp;
+                  Movimentações: {movimentacoesCount} • Lançamentos: {lancamentosCount} • Entradas iniciais: {entradasIniciaisCount}
+                </div>
+              )}
             </div>
             <button
               onClick={onClose}
@@ -229,18 +320,30 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
 
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                                m.tipo === 'entrada'
-                                  ? 'bg-[#397738]/10 text-[#397738]'
-                                  : 'bg-red-100 text-red-700'
-                              }`}>
-                                {m.tipo === 'entrada' ? 'Entrada' : 'Saída'}
-                              </span>
-                              <span className="font-medium text-gray-900 whitespace-nowrap">
-                                {m.quantidade} {formatUnitAbbreviated(m.unidade)}
-                              </span>
-                            </div>
+                                <div className="flex items-center gap-3">
+                                  {(() => {
+                                    const isLanc = m._source === 'lancamento';
+                                    const badgeClass = isLanc
+                                      ? 'bg-red-100 text-red-700'
+                                      : (m.tipo === 'entrada'
+                                        ? 'bg-[#397738]/10 text-[#397738]'
+                                        : 'bg-red-100 text-red-700');
+                                    const badgeLabel = isLanc ? 'Aplicação' : (m.tipo === 'entrada' ? 'Entrada' : 'Saída');
+                                    const qty = isLanc ? (m.quantidade_val ?? 0) : (m.quantidade ?? 0);
+                                    const unit = isLanc ? (m.quantidade_un || m.unidade) : m.unidade;
+
+                                    return (
+                                      <>
+                                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${badgeClass}`}>
+                                          {badgeLabel}
+                                        </span>
+                                        <span className="font-medium text-gray-900 whitespace-nowrap">
+                                          {qty} {formatUnitAbbreviated(unit)}
+                                        </span>
+                                      </>
+                                    );
+                                  })()}
+                                </div>
                             <div className="text-gray-500 text-xs text-right">
                               <div>{formatDate(m.created_at)}</div>
                               <div>{formatTime(m.created_at)}</div>
@@ -249,6 +352,15 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
 
                           {m.observacao && (
                             <p className="text-sm text-gray-600 mt-2">{m.observacao}</p>
+                          )}
+
+                          {/* Se for lançamento (aplicação) mostramos atividade, quantidade usada/un e custo calculado */}
+                          {m._source === 'lancamento' && (
+                            <div className="text-sm text-gray-600 space-y-1 mt-2">
+                              <div><strong>Atividade:</strong> {m.nome_atividade || '—'}</div>
+                              <div><strong>Quantidade usada:</strong> {m.quantidade_val ?? 0} {m.quantidade_un || m.unidade}</div>
+                              <div><strong>Custo (calculado):</strong> {m.custo_calculado != null ? `R$ ${Number(m.custo_calculado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}</div>
+                            </div>
                           )}
 
                           {m.tipo === 'entrada' && (

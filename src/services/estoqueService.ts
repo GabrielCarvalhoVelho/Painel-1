@@ -1,6 +1,7 @@
 // src/services/estoqueService.ts
 import { supabase } from '../lib/supabase';
 import { AuthService } from './authService';
+import { ActivityService } from './activityService';
 
 export interface ProdutoEstoque {
   id: number;
@@ -39,6 +40,22 @@ export interface MovimentacaoExpandida extends MovimentacaoEstoque {
   fornecedor: string | null;
   registro_mapa: string | null;
   produto_created_at: string;
+}
+
+// Tipo para representar um registro de lancamento_produtos (com join em lancamentos_agricolas)
+export interface LancamentoProdutoEntry {
+  id: number;
+  atividade_id: string | null;
+  produto_id: number;
+  quantidade_val: number | null;
+  quantidade_un: string | null;
+  observacao?: string | null;
+  created_at?: string | null;
+  atividade?: {
+    atividade_id?: string | null;
+    nome_atividade?: string | null;
+    created_at?: string | null;
+  } | null;
 }
 
 export class EstoqueService {
@@ -393,5 +410,81 @@ export class EstoqueService {
     }
 
     return (data || []) as MovimentacaoEstoque[];
+  }
+
+  /**
+   * Busca lançamentos (aplicações) de produtos para um conjunto de produtos
+   * Faz join em `lancamentos_agricolas` para trazer nome_atividade e created_at da atividade
+   */
+  static async getLancamentosPorProdutos(produtoIds: (number | string)[]): Promise<LancamentoProdutoEntry[]> {
+    if (!produtoIds || produtoIds.length === 0) return [];
+
+    // Busca registros em lancamento_produtos primeiro
+    const { data: rows, error } = await supabase
+      .from('lancamento_produtos')
+      .select('id, atividade_id, produto_id, quantidade_val, quantidade_un, observacao, created_at')
+      .in('produto_id', produtoIds)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erro ao buscar registros de lancamento_produtos (query direta):', error);
+      // fallback: buscar lançamentos via ActivityService.getLancamentos e filtrar produtos
+      try {
+        const userId = await this.getCurrentUserId();
+        // traz lançamentos do usuário (limit razoável)
+        const activities = await ActivityService.getLancamentos(userId, 500);
+        const resultsFallback: LancamentoProdutoEntry[] = [];
+        for (const act of activities) {
+          const produtos = (act as any).produtos || [];
+          for (const p of produtos) {
+            if (produtoIds.includes(p.produto_id)) {
+              resultsFallback.push({
+                id: p.id,
+                atividade_id: act.atividade_id,
+                produto_id: p.produto_id,
+                quantidade_val: p.quantidade_val,
+                quantidade_un: p.quantidade_un,
+                observacao: p.observacao,
+                created_at: p.created_at || act.created_at || act.data_atividade,
+                atividade: { atividade_id: act.atividade_id, nome_atividade: act.nome_atividade, created_at: act.created_at || act.data_atividade }
+              });
+            }
+          }
+        }
+
+        return resultsFallback;
+      } catch (fbErr) {
+        console.error('❌ Fallback falhou ao buscar lançamentos via ActivityService:', fbErr);
+        throw error; // rethrow original
+      }
+    }
+
+    const results: LancamentoProdutoEntry[] = [];
+
+    // Para cada registro, busca a atividade completa para obter nome_atividade e created_at
+    for (const row of (rows || []) as any[]) {
+      const atividade_id = row.atividade_id as string | undefined;
+      let atividade: any = null;
+      if (atividade_id) {
+        try {
+          atividade = await ActivityService.getLancamentoById(atividade_id);
+        } catch (err) {
+          console.error(`Erro ao buscar atividade ${atividade_id}:`, err);
+        }
+      }
+
+      results.push({
+        id: row.id,
+        atividade_id: row.atividade_id,
+        produto_id: row.produto_id,
+        quantidade_val: row.quantidade_val,
+        quantidade_un: row.quantidade_un,
+        observacao: row.observacao,
+        created_at: row.created_at,
+        atividade: atividade ? { atividade_id: atividade.atividade_id, nome_atividade: atividade.nome_atividade, created_at: atividade.created_at || atividade.data_atividade } : null,
+      });
+    }
+
+    return results;
   }
 }
