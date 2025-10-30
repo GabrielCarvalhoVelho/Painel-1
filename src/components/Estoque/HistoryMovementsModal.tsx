@@ -18,10 +18,6 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [totais, setTotais] = useState({ entradas: 0, saidas: 0 });
-  // contadores de debug por fonte
-  const [movimentacoesCount, setMovimentacoesCount] = useState(0);
-  const [lancamentosCount, setLancamentosCount] = useState(0);
-  const [entradasIniciaisCount, setEntradasIniciaisCount] = useState(0);
   // ...existing code...
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -98,9 +94,6 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
     try {
   const allMovements: any[] = [];
   let totalMovements = 0;
-  let _movimentacoesCount = 0;
-  let _lancamentosCount = 0;
-  let _entradasIniciaisCount = 0;
 
       for (const p of product.produtos) {
         try {
@@ -108,7 +101,6 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
           const data = resp?.data || [];
           allMovements.push(...data);
           totalMovements += data.length;
-          _movimentacoesCount += data.length;
         } catch (err) {
           console.error(`Erro ao buscar movimentações para produto ${p.id}:`, err);
           // continuar para próximo produto
@@ -138,7 +130,6 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
           };
           allMovements.push(entradaInicial);
           totalMovements += 1;
-          _entradasIniciaisCount += 1;
         }
       }
 
@@ -182,17 +173,12 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
 
           allMovements.push(mapped);
           totalMovements += 1;
-          _lancamentosCount += 1;
         }
       } catch (err) {
         console.error('Erro ao buscar lançamentos de produtos:', err);
       }
 
-      // atualiza contadores de debug no state e loga
-      setMovimentacoesCount(_movimentacoesCount);
-      setLancamentosCount(_lancamentosCount);
-      setEntradasIniciaisCount(_entradasIniciaisCount);
-      console.info('HistoryMovementsModal counts', { movimentacoes: _movimentacoesCount, lancamentos: _lancamentosCount, entradasIniciais: _entradasIniciaisCount });
+  // (debug removed)
 
       allMovements.sort((a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -283,12 +269,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                 <span className="whitespace-nowrap"><strong>Total Saídas:</strong> {totalSaidas} {formatUnitAbbreviated(product?.produtos[0]?.unidade)}</span>
                 <span className="whitespace-nowrap"><strong>Em estoque:</strong> {product?.totalEstoque} {formatUnitAbbreviated(product?.produtos[0]?.unidade)}</span>
               </div>
-              {(movimentacoesCount || lancamentosCount || entradasIniciaisCount) && (
-                <div className="mt-2 text-xs text-gray-500">
-                  <strong>Debug:</strong>&nbsp;
-                  Movimentações: {movimentacoesCount} • Lançamentos: {lancamentosCount} • Entradas iniciais: {entradasIniciaisCount}
-                </div>
-              )}
+              
             </div>
             <button
               onClick={onClose}
