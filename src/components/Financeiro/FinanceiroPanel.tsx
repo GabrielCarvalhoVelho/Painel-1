@@ -300,7 +300,7 @@ const FinanceiroPanel: React.FC = () => {
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-[#bb9009] mb-1">Aviso Importante</h3>
             <p className="text-sm text-gray-700 leading-relaxed">
-              Este painel é apenas um registro de conferência. O Zé da Safra não executa pagamentos, transferências ou movimentações financeiras.
+              Este painel é apenas um registro de conferência. O Zé não executa pagamentos, transferências ou movimentações financeiras.
             </p>
           </div>
         </div>
