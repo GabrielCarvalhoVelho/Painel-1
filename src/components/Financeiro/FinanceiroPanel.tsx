@@ -625,7 +625,7 @@ const FinanceiroPanel: React.FC = () => {
             <h4 className="text-sm font-semibold text-[#bb9009] mb-1">Isenção de Responsabilidade</h4>
             <p className="text-sm text-gray-700 leading-relaxed">
               Os valores exibidos aqui são apenas um resumo dos lançamentos feitos pelo produtor via WhatsApp. 
-              O Zé da Safra não movimenta contas, não executa pagamentos nem garante recebimentos.
+              O Zé não movimenta contas, não executa pagamentos nem garante recebimentos.
             </p>
           </div>
         </div>
