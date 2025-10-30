@@ -1,9 +1,11 @@
 // src/components/Estoque/HistoryMovementsModal.tsx
 import { useEffect, useState } from 'react';
-import { X, Paperclip } from 'lucide-react';
+import { X, Paperclip, Plus } from 'lucide-react';
 import { EstoqueService, LancamentoProdutoEntry } from '../../services/estoqueService';
 import { ProdutoAgrupado } from '../../services/agruparProdutosService';
 import AttachmentProductModal from './AttachmentProductModal';
+import ActivityAttachmentModal from '../ManejoAgricola/ActivityAttachmentModal';
+import ActivityDetailModal from '../ManejoAgricola/ActivityDetailModal';
 import Pagination from './Pagination';
 import { formatUnitAbbreviated } from '../../lib/formatUnit';
 
@@ -29,6 +31,13 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
     productId: '',
     productName: ''
   });
+  const [activityAttachmentModal, setActivityAttachmentModal] = useState({
+    isOpen: false,
+    activityId: '',
+    activityDescription: ''
+  });
+  const [activityDetailModal, setActivityDetailModal] = useState({ isOpen: false, activityId: '' });
+  const [debugInfos, setDebugInfos] = useState<any[]>([]);
 
   useEffect(() => {
     if (!isOpen || !product) return;
@@ -98,7 +107,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
     try {
   const allMovements: any[] = [];
   let totalMovements = 0;
-  const debugInfos: any[] = [];
+  let localDebugInfos: any[] = [];
 
   for (const p of product.produtos) {
         try {
@@ -169,7 +178,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
 
         const hasEntradaRegistrada = allMovements.some(m => m.produto_id === p.id && m.tipo === 'entrada' && m._source !== 'entrada_inicial');
 
-        debugInfos.push({
+        localDebugInfos.push({
           produto_id: p.id,
           produto_nome: p.nome_produto,
           estoque_atual: Number(p.quantidade) || 0,
@@ -178,7 +187,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
         });
       }
 
-      // Agora que temos movimentações e lançamentos no `allMovements`, podemos
+  // Agora que temos movimentações e lançamentos no `allMovements`, podemos
       // reconstituir a entrada inicial original para cada produto que não tem
       // uma movimentação do tipo 'entrada' registrada. A quantidade original
       // é: estoque_atual (p.quantidade) + total_saidas_do_produto.
@@ -217,6 +226,9 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
             totalMovements += 1;
           }
         }
+
+        // salvar debug infos no estado para que o painel (VITE_DEBUG_HISTORY) possa renderizar
+        setDebugInfos(localDebugInfos);
       }
 
   // (debug removed)
@@ -388,7 +400,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                             <div className="text-sm text-gray-600 space-y-1 mt-2">
                               <div><strong>Atividade:</strong> {m.nome_atividade || '—'}</div>
                               <div><strong>Quantidade usada:</strong> {m.quantidade_val ?? 0} {m.quantidade_un || m.unidade}</div>
-                              <div><strong>Custo (calculado):</strong> {m.custo_calculado != null ? `R$ ${Number(m.custo_calculado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}</div>
+                              <div><strong>Custo do produto usado:</strong> {m.custo_calculado != null ? `R$ ${Number(m.custo_calculado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}</div>
                             </div>
                           )}
 
@@ -404,7 +416,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                             </div>
                           )}
 
-                          {m.tipo === 'saida' && m.valor && (
+                          {m.tipo === 'saida' && m.valor && m._source !== 'lancamento' && (
                             <div className="text-sm text-gray-600 space-y-1 mt-2">
                               <div><strong>Valor total da saída:</strong> R$ {(Number(m.valor) * m.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
                             </div>
@@ -424,6 +436,24 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                           <Paperclip className="w-5 h-5" />
                         </button>
                       )}
+                                          {m._source === 'lancamento' && m.atividade_id && (
+                                            <div className="absolute bottom-4 right-4 flex items-center gap-2">
+                                              <button
+                                                onClick={() => setActivityAttachmentModal({ isOpen: true, activityId: String(m.atividade_id), activityDescription: m.nome_atividade || 'Atividade' })}
+                                                className="p-2 text-gray-500 hover:text-[#397738] hover:bg-white rounded-lg transition-colors shadow-sm border border-gray-200"
+                                                title="Gerenciar anexo da atividade"
+                                              >
+                                                <Paperclip className="w-4 h-4" />
+                                              </button>
+                                              <button
+                                                onClick={() => setActivityDetailModal({ isOpen: true, activityId: String(m.atividade_id) })}
+                                                className="p-2 text-gray-500 hover:text-[#397738] hover:bg-white rounded-lg transition-colors shadow-sm border border-gray-200"
+                                                title="Abrir atividade"
+                                              >
+                                                <Plus className="w-4 h-4" />
+                                              </button>
+                                            </div>
+                                          )}
                     </div>
                   ))}
                 </div>
@@ -452,6 +482,18 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
         productId={attachmentModal.productId}
         productName={attachmentModal.productName}
       />
+        <ActivityAttachmentModal
+          isOpen={activityAttachmentModal.isOpen}
+          onClose={() => setActivityAttachmentModal({ isOpen: false, activityId: '', activityDescription: '' })}
+          activityId={activityAttachmentModal.activityId}
+          activityDescription={activityAttachmentModal.activityDescription}
+        />
+        <ActivityDetailModal
+          isOpen={activityDetailModal.isOpen}
+          onClose={() => setActivityDetailModal({ isOpen: false, activityId: '' })}
+          activityId={activityDetailModal.activityId}
+          activityDescription={''}
+        />
     </>
   );
 }

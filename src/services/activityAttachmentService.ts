@@ -141,11 +141,23 @@ export class ActivityAttachmentService {
         return null;
       }
 
+      // Verifica se o arquivo realmente existe fazendo um HEAD na URL pública.
       const cleanUrl = data.publicUrl.split('?')[0];
+      try {
+        const headResp = await fetch(cleanUrl, { method: 'HEAD', cache: 'no-cache' });
+        if (!headResp.ok) {
+          console.log('⚠️ HEAD retornou não-ok para imagem:', headResp.status, cleanUrl);
+          return null;
+        }
+      } catch (err) {
+        console.log('⚠️ Erro ao checar existência da imagem via HEAD:', err);
+        return null;
+      }
+
       const timestamp = Date.now();
       const random = Math.random().toString(36).substring(7);
       const urlWithTimestamp = `${cleanUrl}?v=${timestamp}&r=${random}`;
-      console.log('📎 URL gerada do storage:', urlWithTimestamp);
+      console.log('📎 URL gerada do storage (verificada):', urlWithTimestamp);
       return urlWithTimestamp;
     } catch (error) {
       console.error('💥 Erro ao obter URL da imagem:', error);
