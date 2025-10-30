@@ -604,7 +604,7 @@ export default function ManejoAgricolaPanel() {
                     </ul>
 
                     <div className="mt-2">
-                      <span className="text-gray-600">Responsáveis:</span>
+                      <span className="text-gray-600">Responsável:</span>
                       <p className="mt-1 text-sm text-[#092f20]">{atividade.responsaveis && atividade.responsaveis.length > 0 ? atividade.responsaveis.map(r => r.nome).join(', ') : 'Não informado'}</p>
                     </div>
                   </div>
@@ -725,7 +725,7 @@ export default function ManejoAgricolaPanel() {
                     </ul>
 
                     <div className="mt-2">
-                      <span className="text-gray-600">Responsáveis:</span>
+                      <span className="text-gray-600">Responsável:</span>
                       <p className="mt-1 text-sm text-[#092f20]">{atividade.responsaveis && atividade.responsaveis.length > 0 ? atividade.responsaveis.map(r => r.nome).join(', ') : 'Não informado'}</p>
                     </div>
                   </div>
