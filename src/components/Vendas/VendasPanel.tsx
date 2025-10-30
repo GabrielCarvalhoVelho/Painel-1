@@ -318,7 +318,7 @@ export default function VendasPanel() {
             </div>
             <div>
               <h3 className="text-lg font-semibold text-[#092f20]">Histórico de Simulações</h3>
-              <p className="text-sm text-gray-600">Simulações realizadas via WhatsApp do ZÉ DA SAFRA</p>
+              <p className="text-sm text-gray-600">Simulações realizadas via WhatsApp do Zé</p>
             </div>
           </div>
           <div className="text-right">
@@ -386,7 +386,7 @@ export default function VendasPanel() {
             <span className="text-sm font-medium text-[#092f20]">Como funciona</span>
           </div>
           <p className="text-sm text-[#397738] mt-1">
-            As simulações são realizadas diretamente no WhatsApp do ZÉ DA SAFRA. 
+            As simulações são realizadas diretamente no WhatsApp do Zé. 
             Aqui você visualiza o histórico de todas as simulações já feitas, organizadas por data.
           </p>
         </div>
