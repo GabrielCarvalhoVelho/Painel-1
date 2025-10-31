@@ -84,7 +84,10 @@ export class ActivityAttachmentService {
         return await this.checkFileExistsByUrl(activityId, true);
       }
 
-      const hasFile = data && data.some(file => file.name === `${activityId}.pdf` || file.name === `${activityId}.xml`);
+      const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
+      const hasFile = data && data.some(file =>
+        extensions.some(ext => file.name === `${activityId}.${ext}`)
+      );
 
       return hasFile || await this.checkFileExistsByUrl(activityId, true);
     } catch (error) {
@@ -95,7 +98,7 @@ export class ActivityAttachmentService {
 
   private static async checkFileExistsByUrl(activityId: string, isFile: boolean = false): Promise<boolean> {
     try {
-      const extensions = isFile ? ['pdf', 'xml'] : ['jpg'];
+  const extensions = isFile ? ['pdf','xml','xls','xlsx','doc','docx','csv','txt'] : ['jpg'];
 
       for (const ext of extensions) {
         const folder = isFile ? this.FILE_FOLDER : this.IMAGE_FOLDER;
@@ -169,7 +172,7 @@ export class ActivityAttachmentService {
     try {
       console.log('🔗 Obtendo URL do arquivo:', activityId, forceRefresh ? '(refresh forçado)' : '');
 
-      const extensions = ['pdf', 'xml'];
+  const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
 
       for (const ext of extensions) {
         const fileName = `${this.FILE_FOLDER}/${activityId}.${ext}`;
@@ -397,7 +400,8 @@ export class ActivityAttachmentService {
     try {
       console.log('🗑️ Excluindo arquivo:', activityId);
 
-      const filesToDelete = [`${this.FILE_FOLDER}/${activityId}.pdf`, `${this.FILE_FOLDER}/${activityId}.xml`];
+  const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
+  const filesToDelete = extensions.map(ext => `${this.FILE_FOLDER}/${activityId}.${ext}`);
 
       let { data, error } = await supabaseServiceRole.storage.from(this.BUCKET_NAME).remove(filesToDelete);
 
@@ -465,7 +469,7 @@ export class ActivityAttachmentService {
     try {
       console.log('⬇️ Fazendo download do arquivo:', activityId);
 
-      const extensions = ['pdf', 'xml'];
+  const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
       let downloaded = false;
 
       for (const ext of extensions) {

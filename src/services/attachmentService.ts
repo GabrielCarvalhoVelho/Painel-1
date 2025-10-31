@@ -8,34 +8,43 @@ const supabaseServiceRole = createClient(
   import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY
 );
 
-interface FileOperationResult {
+/**
+ * Resultado de operações de upload/delete de anexos financeiros
+ */
+export interface FileOperationResult {
   success: boolean;
   url?: string;
   error?: string;
   fileType?: string;
 }
 
-interface FileDownloadResult {
+/**
+ * Resultado de operações de download de anexos financeiros
+ */
+export interface FileDownloadResult {
   data: Blob | null;
   error: string | null;
   fileType: string | null;
 }
 
-interface AttachmentInfo {
+/**
+ * Informações resumidas sobre anexos financeiros
+ */
+export interface AttachmentInfo {
   id: string;
-  url_primeiro_envio: string | null;
-  url_segundo_envio: string | null;
-  hasPrimeiroEnvio: boolean;
-  hasSegundoEnvio: boolean;
-  hasAnyFiles: boolean;
-  fileCount: number;
-  primeiroEnvioType: string | null;
-  segundoEnvioType: string | null;
+  url_primeiro_envio?: string | null;
+  url_segundo_envio?: string | null;
+  hasPrimeiroEnvio?: boolean;
+  hasSegundoEnvio?: boolean;
+  hasAnyFiles?: boolean;
+  fileCount?: number;
+  primeiroEnvioType?: string | null;
+  segundoEnvioType?: string | null;
 }
 
 export class AttachmentService {
   private static readonly BUCKET_NAME = 'notas_fiscais';
-  private static readonly IMAGE_FOLDER = 'imagens';
+  // private static readonly IMAGE_FOLDER = 'imagens'; // Não utilizada
   private static readonly FILE_FOLDER = 'arquivos';
 
   /**
@@ -589,20 +598,20 @@ export class AttachmentService {
       console.log('🧪 Testando conexão com Supabase Storage...');
       
       // Testar com ambos os clientes
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from(this.BUCKET_NAME)
         .list('', { limit: 1 });
 
-      const { data: serviceData, error: serviceError } = await supabaseServiceRole.storage
+      const { error: serviceError } = await supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
         .list('', { limit: 1 });
 
       const normalSuccess = !error;
       const serviceSuccess = !serviceError;
-      
+
       console.log('🔗 Conexão com Storage (normal):', normalSuccess ? '✅ OK' : '❌ FALHOU');
       console.log('🔗 Conexão com Storage (service):', serviceSuccess ? '✅ OK' : '❌ FALHOU');
-      
+
       if (error) {
         console.error('Erro na conexão normal:', error);
       }
@@ -611,7 +620,7 @@ export class AttachmentService {
       } else {
         console.log('📋 Teste bem-sucedido, bucket acessível');
       }
-      
+
       return normalSuccess || serviceSuccess;
     } catch (error) {
       console.error('💥 Erro no teste de conexão:', error);
@@ -708,59 +717,44 @@ export class AttachmentService {
   }
 
   /**
-   * Valida se o arquivo é uma imagem válida
+   * Valida se o arquivo é uma imagem válida para anexos financeiros
+   * @param file Arquivo a ser validado
+   * @throws Error se tipo ou tamanho inválido
    */
   static validateImageFile(file: File): boolean {
     const validTypes = [
-      'image/jpeg',
-      'image/jpg',
-      'image/png',
-      'image/gif',
-      'image/webp',
-      'image/bmp',
-      'image/svg+xml',
-      'image/avif',
-      'image/heic',
-      'image/heif'
+      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+      'image/bmp', 'image/svg+xml', 'image/avif', 'image/heic', 'image/heif'
     ];
     const maxSize = 10 * 1024 * 1024; // 10MB
-
     if (!validTypes.includes(file.type)) {
       throw new Error('Tipo de arquivo não suportado. Use JPG, PNG, GIF, WebP, BMP, SVG, AVIF ou HEIC.');
     }
-
     if (file.size > maxSize) {
       throw new Error('Arquivo muito grande. Tamanho máximo: 10MB.');
     }
-
     return true;
   }
 
   /**
-   * Valida se o arquivo é um tipo aceito (PDF, XML, DOC, DOCX, XLS, XLSX, CSV, TXT)
+   * Valida se o arquivo é um documento aceito (PDF, XML, DOC, DOCX, XLS, XLSX, CSV, TXT) para anexos financeiros
+   * @param file Arquivo a ser validado
+   * @throws Error se tipo ou tamanho inválido
    */
   static validateFile(file: File): boolean {
     const validTypes = [
-      'application/pdf',
-      'application/xml',
-      'text/xml',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/csv',
-      'text/plain'
+      'application/pdf', 'application/xml', 'text/xml',
+      'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv', 'text/plain'
     ];
     const maxSize = 10 * 1024 * 1024; // 10MB
-
     if (!validTypes.includes(file.type)) {
       throw new Error('Tipo de arquivo não suportado. Use PDF, XML, DOC, DOCX, XLS, XLSX, CSV ou TXT.');
     }
-
     if (file.size > maxSize) {
       throw new Error('Arquivo muito grande. Tamanho máximo: 10MB.');
     }
-
     return true;
   }
 
@@ -768,22 +762,19 @@ export class AttachmentService {
    * Retorna o ID usado para nomear arquivos (PDF, XML) no storage
    */
   private static async getStorageFileIdForFile(transactionId: string): Promise<string> {
-    const groupInfo = await this.getTransactionAttachmentGroup(transactionId);
-
-    if (groupInfo?.anexo_arquivo_url) {
-      const fileId = this.extractFileIdFromUrl(groupInfo.anexo_arquivo_url);
-      if (fileId) {
-        console.log('🔗 Usando ID extraído da URL de arquivo compartilhada:', fileId);
-        return fileId;
+    // Usar somente storage direto: preferir id_grupo_anexo quando disponível,
+    // caso contrário usar o próprio id da transação.
+    try {
+      const groupInfo = await this.getTransactionAttachmentGroup(transactionId);
+      if (groupInfo?.id_grupo_anexo) {
+        console.log('� Usando ID do grupo de anexo para arquivo (storage direto):', groupInfo.id_grupo_anexo);
+        return groupInfo.id_grupo_anexo;
       }
+    } catch (err) {
+      console.warn('⚠️ Falha ao obter grupo de anexo, fallback para transactionId:', transactionId, err);
     }
 
-    if (groupInfo?.id_grupo_anexo) {
-      console.log('📦 Usando ID do grupo de anexo para arquivo:', groupInfo.id_grupo_anexo);
-      return groupInfo.id_grupo_anexo;
-    }
-
-    console.log('📄 Usando ID da transação individual para arquivo:', transactionId);
+    console.log('📄 Usando ID da transação individual para arquivo (storage direto):', transactionId);
     return transactionId;
   }
 
@@ -822,17 +813,10 @@ export class AttachmentService {
   static async hasFileAttachment(transactionId: string): Promise<boolean> {
     try {
       console.log('🔍 Verificando arquivo para transação:', transactionId);
-
-      const groupInfo = await this.getTransactionAttachmentGroup(transactionId);
-      if (groupInfo?.anexo_arquivo_url) {
-        console.log('✅ Arquivo compartilhado encontrado no banco de dados');
-        return true;
-      }
-
       const fileId = await this.getStorageFileIdForFile(transactionId);
+  const extensionsList = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
 
-      const pdfFileName = `${this.FILE_FOLDER}/${fileId}.pdf`;
-      const xmlFileName = `${this.FILE_FOLDER}/${fileId}.xml`;
+  // Procurar diretamente no storage (pasta 'arquivos') por fileId e extensões suportadas
 
       let { data, error } = await supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
@@ -859,12 +843,12 @@ export class AttachmentService {
       }
 
       const hasFile = data && data.some(file =>
-        file.name === `${fileId}.pdf` || file.name === `${fileId}.xml`
+        extensionsList.some(ext => file.name === `${fileId}.${ext}`)
       );
 
       console.log('📁 Resultado da busca de arquivo:', {
         encontrado: hasFile,
-        arquivosProcurados: [pdfFileName, xmlFileName],
+  arquivosProcurados: extensionsList.map(ext => `${this.FILE_FOLDER}/${fileId}.${ext}`),
         arquivosEncontrados: data?.map(f => f.name).join(', ') || 'nenhum'
       });
 
@@ -891,9 +875,9 @@ export class AttachmentService {
         ? await this.getStorageFileIdForFile(transactionId)
         : await this.getStorageFileId(transactionId);
 
-      const extensions = isFile ? ['pdf', 'xml'] : ['jpg'];
+  const extensionsList = isFile ? ['pdf','xml','xls','xlsx','doc','docx','csv','txt'] : ['jpg'];
 
-      for (const ext of extensions) {
+    for (const ext of extensionsList) {
         const folder = isFile ? this.FILE_FOLDER : '';
         const fileName = folder ? `${folder}/${fileId}.${ext}` : `${fileId}.${ext}`;
 
@@ -971,12 +955,8 @@ export class AttachmentService {
         throw new Error(`Erro ao fazer upload: ${error.message}`);
       }
 
-      console.log('✅ Upload concluído:', data);
-
-      const publicUrl = await this.getFileAttachmentUrl(transactionId);
-      if (publicUrl) {
-        await this.updateFileAttachmentUrl(transactionId, publicUrl);
-      }
+      console.log('✅ Upload concluído (storage direto):', data);
+      // Não atualizamos campo no banco para arquivos — usamos storage direto.
 
       return true;
     } catch (error) {
@@ -1027,13 +1007,8 @@ export class AttachmentService {
         throw new Error(`Erro ao substituir arquivo: ${error.message}`);
       }
 
-      console.log('✅ Substituição concluída:', data);
-
-      const publicUrl = await this.getFileAttachmentUrl(transactionId, true);
-      if (publicUrl) {
-        await this.updateFileAttachmentUrl(transactionId, publicUrl);
-        console.log('🔄 URL de arquivo compartilhada atualizada no banco de dados');
-      }
+      console.log('✅ Substituição concluída (storage direto):', data);
+      // Não atualizamos campo no banco para arquivos — usamos storage direto.
 
       return true;
     } catch (error) {
@@ -1050,10 +1025,8 @@ export class AttachmentService {
       console.log('🗑️ Excluindo arquivo:', transactionId);
       const fileId = await this.getStorageFileIdForFile(transactionId);
 
-      const filesToDelete = [
-        `${this.FILE_FOLDER}/${fileId}.pdf`,
-        `${this.FILE_FOLDER}/${fileId}.xml`
-      ];
+      const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
+      const filesToDelete = extensions.map(ext => `${this.FILE_FOLDER}/${fileId}.${ext}`);
 
       let { data, error } = await supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
@@ -1078,9 +1051,8 @@ export class AttachmentService {
         throw new Error(`Erro ao excluir arquivo: ${error.message}`);
       }
 
-      console.log('✅ Exclusão concluída:', data);
-
-      await this.updateFileAttachmentUrl(transactionId, null);
+  console.log('✅ Exclusão concluída (storage direto):', data);
+  // Não limpamos campo anexo_arquivo_url no banco para arquivos — não mais usado para arquivos.
 
       return true;
     } catch (error) {
@@ -1097,7 +1069,7 @@ export class AttachmentService {
       console.log('⬇️ Fazendo download do arquivo:', transactionId);
       const fileId = await this.getStorageFileIdForFile(transactionId);
 
-      const extensions = ['pdf', 'xml'];
+      const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
       let downloaded = false;
 
       for (const ext of extensions) {
@@ -1152,7 +1124,7 @@ export class AttachmentService {
       console.log('🔗 Tentando download de arquivo via URL pública...');
       const fileId = await this.getStorageFileIdForFile(transactionId);
 
-      const extensions = ['pdf', 'xml'];
+  const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
 
       for (const ext of extensions) {
         const fileName = `${this.FILE_FOLDER}/${fileId}.${ext}`;
@@ -1196,19 +1168,10 @@ export class AttachmentService {
     try {
       console.log('🔗 Obtendo URL do arquivo:', transactionId, forceRefresh ? '(forçando refresh)' : '');
 
-      if (!forceRefresh) {
-        const groupInfo = await this.getTransactionAttachmentGroup(transactionId);
-        if (groupInfo?.anexo_arquivo_url) {
-          console.log('✅ URL obtida do banco de dados (arquivo compartilhado)');
-          const urlBase = groupInfo.anexo_arquivo_url.split('?')[0];
-          const timestamp = Date.now();
-          const random = Math.random().toString(36).substring(7);
-          return `${urlBase}?v=${timestamp}&r=${random}&nocache=true`;
-        }
-      }
+      // Sempre buscar diretamente no storage (sem usar campo anexo_arquivo_url no banco)
 
       const fileId = await this.getStorageFileIdForFile(transactionId);
-      const extensions = ['pdf', 'xml'];
+  const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
 
       for (const ext of extensions) {
         const fileName = `${this.FILE_FOLDER}/${fileId}.${ext}`;
@@ -1250,85 +1213,63 @@ export class AttachmentService {
   /**
    * Atualiza a URL do arquivo compartilhado no banco de dados
    */
-  private static async updateFileAttachmentUrl(
-    transactionId: string,
-    url: string | null
-  ): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('transacoes_financeiras')
-        .update({
-          anexo_arquivo_url: url
-        })
-        .eq('id_transacao', transactionId);
-
-      if (error) {
-        console.error('Erro ao atualizar URL do arquivo compartilhado:', error);
-        return false;
-      }
-
-      console.log('✅ URL do arquivo compartilhado atualizada (trigger propagará para parcelas)');
-      return true;
-    } catch (error) {
-      console.error('Erro ao atualizar arquivo compartilhado:', error);
-      return false;
-    }
-  }
+  // private static async updateFileAttachmentUrl(...) { ... } // Não utilizado
 
   //parte diferente adicionar só apartir daqui no bolt adicionar as interfaces também file opperation result, filedownloadresult e attachmentserviceinterface
 
 
+
+  // --- MÉTODOS E PROPRIEDADES PARA DOCUMENTOS DE MÁQUINAS ---
   private bucketName = 'Documento_Maquina';
   private tableName = 'maquinas_equipamentos';
 
-/**
- * Valida se o arquivo tem tipo e tamanho adequados
- */
-validateFile(file: File): string | null {
-  const maxFileSize = 10 * 1024 * 1024; // 10MB
-  const allowedTypes = [
-    'application/pdf',
-    'image/jpeg',
-    'image/jpg',
-    'image/png',
-    'image/webp',
-    'image/gif',
-    'image/bmp',
-    'image/svg+xml',
-    'image/avif',
-    'application/xml',
-    'text/xml',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'text/csv',
-    'text/plain'
-  ];
+  /**
+   * Valida se o arquivo tem tipo e tamanho adequados (instância, documentos de máquina)
+   */
+  validateFile(file: File): string | null {
+    const maxFileSize = 10 * 1024 * 1024; // 10MB
+    const allowedTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+      'image/bmp',
+      'image/svg+xml',
+      'image/avif',
+      'application/xml',
+      'text/xml',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv',
+      'text/plain'
+    ];
 
-  if (!file || !file.name) {
-    return 'Arquivo inválido ou sem nome.';
+    if (!file || !file.name) {
+      return 'Arquivo inválido ou sem nome.';
+    }
+    if (file.size === 0) {
+      return 'Arquivo está vazio.';
+    }
+    if (file.size > maxFileSize) {
+      return 'Arquivo muito grande. Limite de 10MB.';
+    }
+    if (!allowedTypes.includes(file.type)) {
+      return 'Tipo de arquivo não permitido. Suportados: imagens (JPG, PNG, WebP, GIF, BMP, SVG, AVIF), documentos (PDF, XML, DOC, DOCX, XLS, XLSX, CSV, TXT).';
+    }
+    return null;
   }
-
-  if (file.size === 0) {
-    return 'Arquivo está vazio.';
-  }
-
-  if (file.size > maxFileSize) {
-    return 'Arquivo muito grande. Limite de 10MB.';
-  }
-
-  if (!allowedTypes.includes(file.type)) {
-    return 'Tipo de arquivo não permitido. Suportados: imagens (JPG, PNG, WebP, GIF, BMP, SVG, AVIF), documentos (PDF, XML, DOC, DOCX, XLS, XLSX, CSV, TXT).';
-  }
-
-  return null;
-}
-async uploadFile(
-  maquinaId: string,
-  file: File, 
-  uploadType: 'primeiro_envio' | 'segundo_envio'
-): Promise<FileOperationResult> {
+  /**
+   * Faz upload de arquivo/documento para máquina
+   */
+  async uploadFile(
+    maquinaId: string,
+    file: File, 
+    uploadType: 'primeiro_envio' | 'segundo_envio'
+  ): Promise<FileOperationResult> {
   try {
     if (!file || !file.name) {
       console.error('❌ Invalid file or missing name');
@@ -1439,7 +1380,10 @@ async uploadFile(
   }
 }
 
- async downloadFile(url: string): Promise<FileDownloadResult> {
+  /**
+   * Faz download de arquivo/documento de máquina
+   */
+  async downloadFile(url: string): Promise<FileDownloadResult> {
     try {
       if (!url) {
         console.error('❌ No URL provided for download');
@@ -1482,7 +1426,10 @@ async uploadFile(
   }
 
 
-async clearFileUrl(maquinaId: string, uploadType: 'primeiro_envio' | 'segundo_envio'): Promise<{ success: boolean; error?: string }> {
+  /**
+   * Limpa a URL do arquivo/documento no banco (máquina)
+   */
+  async clearFileUrl(maquinaId: string, uploadType: 'primeiro_envio' | 'segundo_envio'): Promise<{ success: boolean; error?: string }> {
   try {
     const field = uploadType === 'primeiro_envio' ? 'url_primeiro_envio' : 'url_segundo_envio';
 
@@ -1500,11 +1447,14 @@ async clearFileUrl(maquinaId: string, uploadType: 'primeiro_envio' | 'segundo_en
   }
 }
 
-async deleteFile(
-  url: string,
-  maquinaId: string,
-  uploadType: 'primeiro_envio' | 'segundo_envio'
-): Promise<{ success: boolean; error?: string }> {
+  /**
+   * Exclui arquivo/documento de máquina
+   */
+  async deleteFile(
+    url: string,
+    maquinaId: string,
+    uploadType: 'primeiro_envio' | 'segundo_envio'
+  ): Promise<{ success: boolean; error?: string }> {
   try {
     if (!url) {
       return { success: false, error: 'No URL provided' };
@@ -1537,7 +1487,10 @@ async deleteFile(
   }
 }
 
-async getAttachmentInfo(maquinaId: string): Promise<AttachmentInfo | null> {
+  /**
+   * Busca informações resumidas dos anexos de uma máquina
+   */
+  async getAttachmentInfo(maquinaId: string): Promise<AttachmentInfo | null> {
   try {
     const { data, error } = await supabase
       .from(this.tableName)
@@ -1569,7 +1522,10 @@ async getAttachmentInfo(maquinaId: string): Promise<AttachmentInfo | null> {
   }
 }
 
-async getMultipleAttachmentInfo(maquinaIds: string[]): Promise<AttachmentInfo[]> {
+  /**
+   * Busca informações resumidas dos anexos de múltiplas máquinas
+   */
+  async getMultipleAttachmentInfo(maquinaIds: string[]): Promise<AttachmentInfo[]> {
   try {
     if (maquinaIds.length === 0) return [];
 
@@ -1600,10 +1556,13 @@ async getMultipleAttachmentInfo(maquinaIds: string[]): Promise<AttachmentInfo[]>
   }
 }
 
-async bulkDeleteAttachments(
-  maquinaIds: string[], 
-  uploadType?: 'primeiro_envio' | 'segundo_envio'
-): Promise<{ success: number; failed: number; errors: string[] }> {
+  /**
+   * Deleta em lote anexos de máquinas
+   */
+  async bulkDeleteAttachments(
+    maquinaIds: string[], 
+    uploadType?: 'primeiro_envio' | 'segundo_envio'
+  ): Promise<{ success: number; failed: number; errors: string[] }> {
   const results = { success: 0, failed: 0, errors: [] as string[] };
 
   for (const maquinaId of maquinaIds) {
@@ -1654,22 +1613,31 @@ async bulkDeleteAttachments(
   return results;
 }
 
-private async getFileUrl(maquinaId: string, uploadType: 'primeiro_envio' | 'segundo_envio'): Promise<string | null> {
+  /**
+   * Busca a URL do arquivo/documento de máquina
+   */
+  private async getFileUrl(maquinaId: string, uploadType: 'primeiro_envio' | 'segundo_envio'): Promise<string | null> {
   try {
-    const { data, error } = await supabase
-      .from(this.tableName)
-      .select(uploadType === 'primeiro_envio' ? 'url_primeiro_envio' : 'url_segundo_envio')
-      .eq('id_maquina', maquinaId)
-      .single();
+      const result = await supabase
+        .from(this.tableName)
+        .select(uploadType === 'primeiro_envio' ? 'url_primeiro_envio' : 'url_segundo_envio')
+        .eq('id_maquina', maquinaId)
+        .single();
 
-    if (error) return null;
-    return uploadType === 'primeiro_envio' ? data.url_primeiro_envio : data.url_segundo_envio;
+      if (result.error || !result.data) return null;
+
+      // Tipagem explícita: o resultado pode ter uma das duas propriedades
+      const data = result.data as { url_primeiro_envio?: string; url_segundo_envio?: string };
+      return uploadType === 'primeiro_envio' ? (data.url_primeiro_envio ?? null) : (data.url_segundo_envio ?? null);
   } catch {
     return null;
   }
 }
 
-private extractFilePathFromUrl(url: string): string {
+  /**
+   * Extrai o caminho do arquivo a partir da URL pública (máquina)
+   */
+  private extractFilePathFromUrl(url: string): string {
   if (!url) {
     console.log('❌ Empty URL provided');
     return '';
@@ -1707,7 +1675,10 @@ private extractFilePathFromUrl(url: string): string {
   return '';
 }
 
-private getFileTypeFromUrl(url: string): string {
+  /**
+   * Detecta o tipo do arquivo a partir da URL (máquina)
+   */
+  private getFileTypeFromUrl(url: string): string {
   if (!url) return 'unknown';
 
   const pathExtensions = ['/xml/', '/jpg/', '/pdf/', '/png/', '/webp/', '/gif/', '/bmp/', '/svg/', '/avif/', '/doc/', '/docx/', '/xls/', '/xlsx/', '/csv/', '/txt/'];
@@ -1727,7 +1698,10 @@ private getFileTypeFromUrl(url: string): string {
   return validExts.includes(ext) ? (ext === 'jpeg' ? 'jpg' : ext) : 'unknown';
 }
 
-private getContentType(fileExtension: string): string {
+  /**
+   * Retorna o content-type correto para a extensão
+   */
+  private getContentType(fileExtension: string): string {
   const contentTypes: Record<string, string> = {
     'xml': 'application/xml',
     'jpg': 'image/jpeg',

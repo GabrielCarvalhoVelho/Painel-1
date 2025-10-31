@@ -123,8 +123,11 @@ export default function AttachmentModal({
         const fileUrl = await AttachmentService.getFileAttachmentUrl(transactionId, forceRefresh);
         console.log('🔗 URL do arquivo obtida:', fileUrl);
         if (fileUrl) {
-          const fileType = fileUrl.includes('.pdf') ? 'pdf' : fileUrl.includes('.xml') ? 'xml' : 'file';
-          const extension = fileType === 'pdf' ? 'pdf' : fileType === 'xml' ? 'xml' : 'file';
+          // Extrair extensão do arquivo a partir da URL (antes dos query params)
+          const cleanUrl = fileUrl.split('?')[0];
+          const ext = cleanUrl.includes('.') ? cleanUrl.split('.').pop()?.toLowerCase() : undefined;
+          const fileType = ext === 'pdf' ? 'pdf' : ext === 'xml' ? 'xml' : 'file';
+          const extension = ext || 'file';
           files.push({
             url: fileUrl,
             type: fileType as 'pdf' | 'xml' | 'file',
