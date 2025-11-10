@@ -25,6 +25,10 @@ export default function EstoquePanel() {
   const [showModal, setShowModal] = useState(false);
   const [produtos, setProdutos] = useState<ProdutoEstoque[]>([]);
   const [produtosAgrupados, setProdutosAgrupados] = useState<ProdutoAgrupado[]>([]);
+  const [resumoEstoque, setResumoEstoque] = useState({
+    total: 0,
+    valorTotal: 0
+  });
 
   // 📌 Estados dos filtros
   const [search, setSearch] = useState("");
@@ -68,6 +72,9 @@ export default function EstoquePanel() {
         const dados = await EstoqueService.getProdutos();
         setProdutos(dados);
         setProdutosAgrupados(agruparProdutos(dados));
+
+        const valorTotal = await EstoqueService.calcularValorTotalEstoque();
+        setResumoEstoque(prev => ({ ...prev, valorTotal }));
       } catch (error) {
         console.error("❌ Erro ao carregar estoque:", error);
       }
@@ -79,6 +86,7 @@ export default function EstoquePanel() {
   useEffect(() => {
     try {
       setProdutosAgrupados(agruparProdutos(produtos));
+      setResumoEstoque(prev => ({ ...prev, total: produtos.length }));
     } catch (err) {
       console.error('Erro ao reagrupar produtos:', err);
     }
@@ -97,12 +105,6 @@ export default function EstoquePanel() {
     if (c.includes('foliar') || c.includes('nutricional')) return <Droplets className="w-6 h-6 text-[#397738]" />;
     if (c.includes('adjuvante') || c.includes('óleo')) return <Droplets className="w-6 h-6 text-[#86b646]" />;
     return <Package className="w-6 h-6 text-[#397738]" />;
-  };
-
-  // 📊 Resumo estoque
-  const resumoEstoque = {
-    total: produtos.length,
-    valorTotal: produtos.reduce((acc, item) => acc + (item.quantidade * (item.valor || 0)), 0)
   };
 
   // 🔎 Aplicação dos filtros e ordenação nos grupos (useMemo para evitar loops)
@@ -228,7 +230,11 @@ export default function EstoquePanel() {
             <FormProdutoModal
               isOpen={showModal}
               onClose={() => setShowModal(false)}
-              onCreated={(produto) => setProdutos((prev) => [produto, ...prev])}
+              onCreated={async (produto) => {
+                setProdutos((prev) => [produto, ...prev]);
+                const valorTotal = await EstoqueService.calcularValorTotalEstoque();
+                setResumoEstoque(prev => ({ ...prev, valorTotal }));
+              }}
             />
           </div>
         </div>
@@ -268,6 +274,11 @@ export default function EstoquePanel() {
             const produtosAtualizados = await EstoqueService.getProdutos();
             setProdutos(produtosAtualizados);
             setProdutosAgrupados(agruparProdutos(produtosAtualizados));
+
+            // Recalcula valor total
+            const valorTotal = await EstoqueService.calcularValorTotalEstoque();
+            setResumoEstoque(prev => ({ ...prev, valorTotal }));
+
             setRemoveModal({ isOpen: false, productGroup: null, selectedProduto: null, quantidade: 1, observacao: '' });
             alert('✅ Quantidade removida e movimentação registrada!');
           } catch (err: any) {

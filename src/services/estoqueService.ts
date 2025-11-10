@@ -135,6 +135,37 @@ export class EstoqueService {
     return produtosMapeados;
   }
 
+  static async calcularValorTotalEstoque(): Promise<number> {
+    const userId = await this.getCurrentUserId();
+
+    const { data, error } = await supabase
+      .from('estoque_de_produtos')
+      .select('id, quantidade_em_estoque, valor_unitario')
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('❌ Erro ao calcular valor total do estoque:', error);
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      return 0;
+    }
+
+    let valorTotal = 0;
+
+    for (const produto of data) {
+      const quantidade = Number(produto.quantidade_em_estoque) || 0;
+      const valorUnitario = Number(produto.valor_unitario) || 0;
+
+      if (quantidade > 0 && valorUnitario > 0) {
+        valorTotal += quantidade * valorUnitario;
+      }
+    }
+
+    return valorTotal;
+  }
+
   static async adicionarProduto(
     nome: string,
     marca: string,
