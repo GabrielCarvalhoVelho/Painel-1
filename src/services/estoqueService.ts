@@ -138,32 +138,51 @@ export class EstoqueService {
   static async calcularValorTotalEstoque(): Promise<number> {
     const userId = await this.getCurrentUserId();
 
-    const { data, error } = await supabase
+    const { data: produtos, error: produtosError } = await supabase
       .from('estoque_de_produtos')
-      .select('id, quantidade_em_estoque, valor_unitario')
+      .select('id, valor_total, valor_unitario')
       .eq('user_id', userId);
 
-    if (error) {
-      console.error('❌ Erro ao calcular valor total do estoque:', error);
-      throw error;
+    if (produtosError) {
+      console.error('❌ Erro ao buscar produtos para cálculo:', produtosError);
+      throw produtosError;
     }
 
-    if (!data || data.length === 0) {
+    if (!produtos || produtos.length === 0) {
       return 0;
     }
 
-    let valorTotal = 0;
+    let valorTotalProdutos = 0;
+    for (const produto of produtos) {
+      valorTotalProdutos += Number(produto.valor_total) || 0;
+    }
 
-    for (const produto of data) {
-      const quantidade = Number(produto.quantidade_em_estoque) || 0;
-      const valorUnitario = Number(produto.valor_unitario) || 0;
+    const { data: movimentacoes, error: movimentacoesError } = await supabase
+      .from('movimentacoes_estoque')
+      .select('produto_id, tipo, quantidade')
+      .eq('user_id', userId);
 
-      if (quantidade > 0 && valorUnitario > 0) {
-        valorTotal += quantidade * valorUnitario;
+    if (movimentacoesError) {
+      console.error('❌ Erro ao buscar movimentações:', movimentacoesError);
+      throw movimentacoesError;
+    }
+
+    let valorSaidas = 0;
+    if (movimentacoes && movimentacoes.length > 0) {
+      for (const mov of movimentacoes) {
+        if (mov.tipo === 'saida') {
+          const produto = produtos.find(p => p.id === mov.produto_id);
+          if (produto && produto.valor_unitario) {
+            const quantidadeSaida = Number(mov.quantidade) || 0;
+            const valorUnitario = Number(produto.valor_unitario) || 0;
+            valorSaidas += quantidadeSaida * valorUnitario;
+          }
+        }
       }
     }
 
-    return valorTotal;
+    const valorTotalEstoque = valorTotalProdutos - valorSaidas;
+    return Math.max(0, valorTotalEstoque);
   }
 
   static async adicionarProduto(
@@ -181,6 +200,7 @@ export class EstoqueService {
     const userId = await this.getCurrentUserId();
 
     const converted = convertToStandardUnit(quantidade, unidade);
+    const valorTotal = converted.quantidade * valor;
 
     const { error } = await supabase
       .from('estoque_de_produtos')
@@ -193,6 +213,7 @@ export class EstoqueService {
           unidade_de_medida: converted.unidade,
           quantidade_em_estoque: converted.quantidade,
           valor_unitario: valor,
+          valor_total: valorTotal,
           unidade_valor_original: unidade,
           lote: lote || null,
           validade: validade || null,
@@ -222,6 +243,7 @@ export class EstoqueService {
     const userId = await this.getCurrentUserId();
 
     const converted = convertToStandardUnit(produto.quantidade, produto.unidade);
+    const valorTotal = converted.quantidade * (produto.valor || 0);
 
     const { data, error } = await supabase
       .from('estoque_de_produtos')
@@ -234,6 +256,7 @@ export class EstoqueService {
           unidade_de_medida: converted.unidade,
           quantidade_em_estoque: converted.quantidade,
           valor_unitario: produto.valor,
+          valor_total: valorTotal,
           unidade_valor_original: produto.unidade,
           lote: produto.lote,
           validade: produto.validade || '1999-12-31', // Data padrão se vazio
