@@ -211,7 +211,7 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
               className="w-full px-3 py-2 border rounded-lg border-gray-300 font-medium"
               placeholder="R$ 0,00"
             />
-            <p className="text-xs text-gray-500 mt-1">💰 Informe o total pago por este produto — o Zé calcula por R$/L, R$/kg, etc.</p>
+            <p className="text-xs text-gray-500 mt-1">Informe o total pago por este produto — o Zé calcula por R$/L, R$/kg, etc.</p>
           </div>
 
           {/* Lote e Validade */}
