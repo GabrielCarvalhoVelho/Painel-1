@@ -2,7 +2,7 @@
 import { X } from "lucide-react";
 import { ProdutoEstoque } from "../../services/estoqueService";
 import { ProdutoAgrupado } from "../../services/agruparProdutosService";
-import { autoScaleQuantity } from "../../lib/unitConverter";
+import { autoScaleQuantity, convertValueToDisplayUnit } from "../../lib/unitConverter";
 
 interface RemoveQuantityModalProps {
   isOpen: boolean;
@@ -98,13 +98,28 @@ export default function RemoveQuantityModal({
         </div>
         {selectedProduto && (() => {
           const scaled = autoScaleQuantity(estoqueAtual, selectedProduto.unidade);
+          const valorConvertido = convertValueToDisplayUnit(
+            selectedProduto.valor,
+            selectedProduto.unidade_valor_original || selectedProduto.unidade,
+            scaled.unidade
+          );
           return (
-            <p className="text-sm text-gray-600 mb-4">
-              Quantidade disponível:{" "}
-              <strong>
-                {scaled.quantidade} {scaled.unidade}
-              </strong>
-            </p>
+            <div className="mb-4 space-y-1">
+              <p className="text-sm text-gray-600">
+                Quantidade disponível:{" "}
+                <strong>
+                  {scaled.quantidade} {scaled.unidade}
+                </strong>
+              </p>
+              {valorConvertido !== null && (
+                <p className="text-sm text-gray-600">
+                  Valor unitário:{" "}
+                  <strong className="text-[#397738]">
+                    R$ {Number(valorConvertido).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / {scaled.unidade}
+                  </strong>
+                </p>
+              )}
+            </div>
           );
         })()}
 

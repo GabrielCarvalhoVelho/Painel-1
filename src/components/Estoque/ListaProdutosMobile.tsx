@@ -56,13 +56,18 @@ export default function ListaProdutosMobile({
                   {item.totalEstoqueDisplay} {formatUnitFull(item.unidadeDisplay)}
                 </p>
               </div>
-              <div>
+              <div className="text-right">
                 <p className="text-gray-500">Valor Méd.</p>
                 <p className="font-bold text-[#397738]">
-                  {item.mediaPreco != null
-                    ? `R$ ${Number(item.mediaPreco).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                  {item.mediaPrecoDisplay != null
+                    ? `R$ ${Number(item.mediaPrecoDisplay).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                     : "—"}
                 </p>
+                {item.mediaPrecoDisplay != null && (
+                  <p className="text-[10px] text-gray-500">
+                    por {formatUnitFull(item.unidadeDisplay)}
+                  </p>
+                )}
               </div>
             </div>
 

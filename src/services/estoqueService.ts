@@ -8,7 +8,7 @@ export interface ProdutoEstoque {
   id: number;
   user_id: string;
   nome_produto: string; // mapeado de nome_do_produto
-  marca: string; // mapeado de marca_ou_fabricante  
+  marca: string; // mapeado de marca_ou_fabricante
   categoria: string;
   unidade: string; // mapeado de unidade_de_medida
   quantidade: number; // mapeado de quantidade_em_estoque
@@ -18,6 +18,7 @@ export interface ProdutoEstoque {
   created_at?: string;
   fornecedor?: string | null;
   registro_mapa?: string | null;
+  unidade_valor_original?: string | null; // unidade que o valor foi originalmente inserido
 }
 
 export interface MovimentacaoEstoque {
@@ -102,7 +103,8 @@ export class EstoqueService {
         lote,
         validade,
         fornecedor,
-        registro_mapa
+        registro_mapa,
+        unidade_valor_original
       `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
@@ -127,6 +129,7 @@ export class EstoqueService {
       created_at: produto.created_at,
       fornecedor: produto.fornecedor,
       registro_mapa: produto.registro_mapa,
+      unidade_valor_original: produto.unidade_valor_original,
     }));
 
     return produtosMapeados;
@@ -159,6 +162,7 @@ export class EstoqueService {
           unidade_de_medida: converted.unidade,
           quantidade_em_estoque: converted.quantidade,
           valor_unitario: valor,
+          unidade_valor_original: unidade,
           lote: lote || null,
           validade: validade || null,
           fornecedor: fornecedor || null,
@@ -199,6 +203,7 @@ export class EstoqueService {
           unidade_de_medida: converted.unidade,
           quantidade_em_estoque: converted.quantidade,
           valor_unitario: produto.valor,
+          unidade_valor_original: produto.unidade,
           lote: produto.lote,
           validade: produto.validade || '1999-12-31', // Data padrão se vazio
           fornecedor: produto.fornecedor,
@@ -228,6 +233,7 @@ export class EstoqueService {
       created_at: data.created_at,
       fornecedor: data.fornecedor,
       registro_mapa: data.registro_mapa,
+      unidade_valor_original: data.unidade_valor_original,
     };
   }
 

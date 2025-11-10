@@ -1,6 +1,6 @@
 // src/services/agruparProdutosService.ts
 import { ProdutoEstoque } from "./estoqueService";
-import { convertToStandardUnit, getBestDisplayUnit, isMassUnit, isVolumeUnit } from '../lib/unitConverter';
+import { convertToStandardUnit, getBestDisplayUnit, isMassUnit, isVolumeUnit, convertValueToDisplayUnit } from '../lib/unitConverter';
 
 function normalizeName(name: string | null | undefined): string {
   if (!name || typeof name !== 'string') {
@@ -63,6 +63,7 @@ export interface ProdutoAgrupado {
   nome: string;
   produtos: ProdutoEstoque[];
   mediaPreco: number;
+  mediaPrecoDisplay: number;
   totalEstoque: number;
   totalEstoqueDisplay: number;
   unidadeDisplay: string;
@@ -121,6 +122,8 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
     const totalPreco = produtosEmEstoque.reduce((sum, p) => sum + (p.valor ?? 0), 0);
     const media = produtosEmEstoque.length > 0 ? totalPreco / produtosEmEstoque.length : 0;
 
+    let mediaPrecoConvertido = media;
+
     const primeiraUnidade = grupo[0].unidade;
     let totalEstoqueEmUnidadePadrao = 0;
     let unidadePadrao: 'mg' | 'mL' | null = null;
@@ -148,6 +151,17 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
       const displayResult = getBestDisplayUnit(totalEstoqueEmUnidadePadrao, unidadePadrao);
       totalEstoqueDisplay = displayResult.quantidade;
       unidadeDisplay = displayResult.unidade;
+
+      const precosConvertidos = produtosEmEstoque
+        .map(p => {
+          const unidadeValorOriginal = p.unidade_valor_original || p.unidade;
+          return convertValueToDisplayUnit(p.valor, unidadeValorOriginal, unidadeDisplay);
+        })
+        .filter(v => v !== null) as number[];
+
+      mediaPrecoConvertido = precosConvertidos.length > 0
+        ? precosConvertidos.reduce((sum, v) => sum + v, 0) / precosConvertidos.length
+        : media;
     }
 
     const totalEstoque = totalEstoqueEmUnidadePadrao;
@@ -178,6 +192,7 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
       nome: nomeMaisComum,
       produtos: grupo,
       mediaPreco: media,
+      mediaPrecoDisplay: mediaPrecoConvertido,
       totalEstoque,
       totalEstoqueDisplay,
       unidadeDisplay,

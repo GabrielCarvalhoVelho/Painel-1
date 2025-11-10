@@ -143,3 +143,38 @@ export function formatQuantityAutoScaled(quantidade: number, unidade: string): s
   const scaled = autoScaleQuantity(quantidade, unidade);
   return formatQuantityWithUnit(scaled.quantidade, scaled.unidade);
 }
+
+export function convertValueBetweenUnits(
+  valor: number,
+  unidadeOriginal: string,
+  unidadeDestino: string
+): number {
+  if (unidadeOriginal === unidadeDestino) {
+    return valor;
+  }
+
+  if (isMassUnit(unidadeOriginal) && isMassUnit(unidadeDestino)) {
+    const quantidadeEmMg = convertToStandardUnit(1, unidadeOriginal).quantidade;
+    const quantidadeDestinoEmMg = convertToStandardUnit(1, unidadeDestino).quantidade;
+    return (valor * quantidadeEmMg) / quantidadeDestinoEmMg;
+  }
+
+  if (isVolumeUnit(unidadeOriginal) && isVolumeUnit(unidadeDestino)) {
+    const quantidadeEmMl = convertToStandardUnit(1, unidadeOriginal).quantidade;
+    const quantidadeDestinoEmMl = convertToStandardUnit(1, unidadeDestino).quantidade;
+    return (valor * quantidadeEmMl) / quantidadeDestinoEmMl;
+  }
+
+  return valor;
+}
+
+export function convertValueToDisplayUnit(
+  valor: number | null,
+  unidadeValorOriginal: string | null | undefined,
+  unidadeDisplay: string
+): number | null {
+  if (valor === null || valor === undefined) return null;
+  if (!unidadeValorOriginal) return valor;
+
+  return convertValueBetweenUnits(valor, unidadeValorOriginal, unidadeDisplay);
+}
