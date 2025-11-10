@@ -2,6 +2,7 @@
 import { supabase } from '../lib/supabase';
 import { AuthService } from './authService';
 import { ActivityService } from './activityService';
+import { convertToStandardUnit } from '../lib/unitConverter';
 
 export interface ProdutoEstoque {
   id: number;
@@ -145,6 +146,8 @@ export class EstoqueService {
   ): Promise<void> {
     const userId = await this.getCurrentUserId();
 
+    const converted = convertToStandardUnit(quantidade, unidade);
+
     const { error } = await supabase
       .from('estoque_de_produtos')
       .insert([
@@ -153,8 +156,8 @@ export class EstoqueService {
           nome_do_produto: nome,
           marca_ou_fabricante: marca,
           categoria,
-          unidade_de_medida: unidade,
-          quantidade_em_estoque: quantidade,
+          unidade_de_medida: converted.unidade,
+          quantidade_em_estoque: converted.quantidade,
           valor_unitario: valor,
           lote: lote || null,
           validade: validade || null,
@@ -183,6 +186,8 @@ export class EstoqueService {
   }): Promise<ProdutoEstoque> {
     const userId = await this.getCurrentUserId();
 
+    const converted = convertToStandardUnit(produto.quantidade, produto.unidade);
+
     const { data, error } = await supabase
       .from('estoque_de_produtos')
       .insert([
@@ -191,8 +196,8 @@ export class EstoqueService {
           nome_do_produto: produto.nome_produto,
           marca_ou_fabricante: produto.marca,
           categoria: produto.categoria,
-          unidade_de_medida: produto.unidade,
-          quantidade_em_estoque: produto.quantidade,
+          unidade_de_medida: converted.unidade,
+          quantidade_em_estoque: converted.quantidade,
           valor_unitario: produto.valor,
           lote: produto.lote,
           validade: produto.validade || '1999-12-31', // Data padrão se vazio
