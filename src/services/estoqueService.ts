@@ -140,7 +140,7 @@ export class EstoqueService {
 
     const { data: produtos, error: produtosError } = await supabase
       .from('estoque_de_produtos')
-      .select('id, valor_total, valor_unitario')
+      .select('id, valor_total, valor_unitario, quantidade_em_estoque')
       .eq('user_id', userId);
 
     if (produtosError) {
@@ -149,13 +149,17 @@ export class EstoqueService {
     }
 
     if (!produtos || produtos.length === 0) {
+      console.log('📦 Nenhum produto encontrado no estoque');
       return 0;
     }
 
     let valorTotalProdutos = 0;
     for (const produto of produtos) {
-      valorTotalProdutos += Number(produto.valor_total) || 0;
+      const valorTotalProduto = Number(produto.valor_total) || 0;
+      valorTotalProdutos += valorTotalProduto;
     }
+
+    console.log(`💰 Valor total inicial dos produtos: R$ ${valorTotalProdutos.toFixed(2)}`);
 
     const { data: movimentacoes, error: movimentacoesError } = await supabase
       .from('movimentacoes_estoque')
@@ -168,20 +172,41 @@ export class EstoqueService {
     }
 
     let valorSaidas = 0;
+    let valorEntradas = 0;
+
     if (movimentacoes && movimentacoes.length > 0) {
+      console.log(`📊 Processando ${movimentacoes.length} movimentações`);
+
       for (const mov of movimentacoes) {
-        if (mov.tipo === 'saida') {
-          const produto = produtos.find(p => p.id === mov.produto_id);
-          if (produto && produto.valor_unitario) {
-            const quantidadeSaida = Number(mov.quantidade) || 0;
-            const valorUnitario = Number(produto.valor_unitario) || 0;
-            valorSaidas += quantidadeSaida * valorUnitario;
+        const produto = produtos.find(p => p.id === mov.produto_id);
+
+        if (produto && produto.valor_unitario) {
+          const quantidade = Number(mov.quantidade) || 0;
+          const valorUnitario = Number(produto.valor_unitario) || 0;
+          const valorMovimento = quantidade * valorUnitario;
+
+          if (mov.tipo === 'saida') {
+            valorSaidas += valorMovimento;
+            console.log(`  ➖ Saída: ${quantidade} × R$ ${valorUnitario.toFixed(2)} = R$ ${valorMovimento.toFixed(2)}`);
+          } else if (mov.tipo === 'entrada') {
+            valorEntradas += valorMovimento;
+            console.log(`  ➕ Entrada: ${quantidade} × R$ ${valorUnitario.toFixed(2)} = R$ ${valorMovimento.toFixed(2)}`);
           }
+        } else {
+          console.warn(`⚠️ Produto ${mov.produto_id} não encontrado ou sem valor unitário`);
         }
       }
+    } else {
+      console.log('📊 Nenhuma movimentação encontrada');
     }
 
-    const valorTotalEstoque = valorTotalProdutos - valorSaidas;
+    console.log(`💸 Total de saídas: R$ ${valorSaidas.toFixed(2)}`);
+    console.log(`💵 Total de entradas adicionais: R$ ${valorEntradas.toFixed(2)}`);
+
+    const valorTotalEstoque = valorTotalProdutos + valorEntradas - valorSaidas;
+
+    console.log(`🏦 Valor total em estoque: R$ ${Math.max(0, valorTotalEstoque).toFixed(2)}`);
+
     return Math.max(0, valorTotalEstoque);
   }
 
