@@ -152,16 +152,8 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
       totalEstoqueDisplay = displayResult.quantidade;
       unidadeDisplay = displayResult.unidade;
 
-      const precosConvertidos = produtosEmEstoque
-        .map(p => {
-          const unidadeValorOriginal = p.unidade_valor_original || p.unidade;
-          return convertValueToDisplayUnit(p.valor, unidadeValorOriginal, unidadeDisplay);
-        })
-        .filter(v => v !== null) as number[];
-
-      mediaPrecoConvertido = precosConvertidos.length > 0
-        ? precosConvertidos.reduce((sum, v) => sum + v, 0) / precosConvertidos.length
-        : media;
+      // Usa o valor original sem conversão
+      mediaPrecoConvertido = media;
     }
 
     const totalEstoque = totalEstoqueEmUnidadePadrao;
