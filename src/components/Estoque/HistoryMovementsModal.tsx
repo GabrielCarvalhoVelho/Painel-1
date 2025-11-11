@@ -8,7 +8,7 @@ import ActivityAttachmentModal from '../ManejoAgricola/ActivityAttachmentModal';
 import ActivityDetailModal from '../ManejoAgricola/ActivityDetailModal';
 import Pagination from './Pagination';
 import { formatUnitAbbreviated } from '../../lib/formatUnit';
-import { autoScaleQuantity, convertFromStandardUnit, isMassUnit, isVolumeUnit } from '../../lib/unitConverter';
+import { autoScaleQuantity, convertFromStandardUnit, convertToStandardUnit, isMassUnit, isVolumeUnit } from '../../lib/unitConverter';
 import { formatSmartCurrency } from '../../lib/currencyFormatter';
 
 interface Props {
@@ -143,27 +143,47 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
 
           let quantidadeParaCalculo = quantidade_val;
 
+          console.log('🔍 Calculando custo do produto usado:', {
+            produto_id: l.produto_id,
+            quantidade_val,
+            unidade_quant,
+            valorUnitario,
+            unidadeValorOriginal,
+            produtoInfo_unidade: produtoInfo?.unidade
+          });
+
           // Se as unidades são diferentes, precisamos converter
           if (unidade_quant !== unidadeValorOriginal) {
+            console.log('  → Unidades diferentes, convertendo...');
             // Caso 1: ambas são unidades de massa
             if (isMassUnit(unidade_quant) && isMassUnit(unidadeValorOriginal)) {
               // Converter quantidade_val de unidade_quant para mg (padrão)
               const quantidadeEmMg = convertToStandardUnit(quantidade_val, unidade_quant).quantidade;
+              console.log(`  → Convertido para mg: ${quantidadeEmMg}`);
               // Converter de mg para unidadeValorOriginal
               quantidadeParaCalculo = convertFromStandardUnit(quantidadeEmMg, 'mg', unidadeValorOriginal);
+              console.log(`  → Convertido de mg para ${unidadeValorOriginal}: ${quantidadeParaCalculo}`);
             }
             // Caso 2: ambas são unidades de volume
             else if (isVolumeUnit(unidade_quant) && isVolumeUnit(unidadeValorOriginal)) {
               // Converter quantidade_val de unidade_quant para mL (padrão)
               const quantidadeEmMl = convertToStandardUnit(quantidade_val, unidade_quant).quantidade;
+              console.log(`  → Convertido para mL: ${quantidadeEmMl}`);
               // Converter de mL para unidadeValorOriginal
               quantidadeParaCalculo = convertFromStandardUnit(quantidadeEmMl, 'mL', unidadeValorOriginal);
+              console.log(`  → Convertido de mL para ${unidadeValorOriginal}: ${quantidadeParaCalculo}`);
             }
             // Caso 3: tipos incompatíveis (massa vs volume ou vs 'un') - manter quantidade original
             // Isso evita conversões incorretas quando as unidades não são compatíveis
+            else {
+              console.log('  → Tipos incompatíveis, mantendo quantidade original');
+            }
+          } else {
+            console.log('  → Unidades iguais, sem conversão necessária');
           }
 
           custoCalculado = Number(valorUnitario) * quantidadeParaCalculo;
+          console.log(`  → Custo calculado: R$ ${custoCalculado.toFixed(2)} (${valorUnitario} × ${quantidadeParaCalculo})`);
         }
 
         const mapped = {
