@@ -4,7 +4,7 @@ import { X, Save, Upload } from 'lucide-react';
 import { EstoqueService } from '../../services/estoqueService';
 import { AuthService } from '../../services/authService';
 import { AttachmentProductService } from '../../services/attachmentProductService';
-import { formatDecimalCurrencyInput } from '../../lib/currencyFormatter';
+import { formatCurrencyInput } from '../../lib/currencyFormatter';
 
 interface Props {
   isOpen: boolean;
@@ -19,7 +19,7 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
     categoria: '',
     unidade: '',
     quantidade: '',
-    valor: 0,
+    valor: '',
     valorDisplay: 'R$ 0,00',
     lote: '',
     validade: '',
@@ -34,10 +34,10 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
 
   const handleInputChange = (field: string, value: string) => {
     if (field === 'valor') {
-      const result = formatDecimalCurrencyInput(value);
+      const result = formatCurrencyInput(value);
       setFormData((prev) => ({
         ...prev,
-        valor: result.numeric,
+        valor: result.numeric.toString(),
         valorDisplay: result.formatted
       }));
     } else {
@@ -49,7 +49,7 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
   const handleClearValue = () => {
     setFormData((prev) => ({
       ...prev,
-      valor: 0,
+      valor: '0',
       valorDisplay: ''
     }));
   };
@@ -83,7 +83,7 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
         categoria: formData.categoria,
         unidade: formData.unidade,
         quantidade: Number(formData.quantidade),
-        valor: formData.valor > 0 ? formData.valor : null,
+        valor: formData.valor ? Number(formData.valor) : null,
         lote: formData.lote || null,
         validade: formData.validade || null,
         fornecedor: formData.fornecedor || null,
@@ -207,7 +207,7 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
             <label className="block text-sm font-medium mb-1">Valor total da compra (opcional)</label>
             <input
               type="text"
-              inputMode="decimal"
+              inputMode="numeric"
               value={formData.valorDisplay}
               onChange={(e) => handleInputChange('valor', e.target.value)}
               onFocus={(e) => {
@@ -217,19 +217,19 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
               }}
               onBlur={(e) => {
                 if (!e.target.value || e.target.value.trim() === '') {
-                  const result = formatDecimalCurrencyInput('0');
+                  const result = formatCurrencyInput('0');
                   setFormData((prev) => ({
                     ...prev,
-                    valor: 0,
+                    valor: '0',
                     valorDisplay: result.formatted
                   }));
                 }
               }}
               className="w-full px-3 py-2 border rounded-lg border-gray-300 font-medium text-lg"
-              placeholder="Ex: 450 ou 450,00"
+              placeholder="R$ 0,00"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Digite o valor total da compra. Ex: 450 ou 450,00 = R$ 450,00. O sistema calculará o valor unitário automaticamente.
+              Digite apenas números: 450 = R$ 4,50 | 45000 = R$ 450,00 | 2500 = R$ 25,00
             </p>
           </div>
 
