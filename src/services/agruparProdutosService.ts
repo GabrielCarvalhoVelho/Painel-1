@@ -87,10 +87,13 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
     ).pop() || grupo[0].nome_produto;
 
     const produtosEmEstoque = grupo.filter(p => (p.quantidade ?? 0) > 0 && p.valor !== null);
+    const totalPreco = produtosEmEstoque.reduce((sum, p) => sum + (p.valor ?? 0), 0);
+    const media = produtosEmEstoque.length > 0 ? totalPreco / produtosEmEstoque.length : 0;
+
+    let mediaPrecoConvertido = media;
 
     const primeiraUnidade = grupo[0].unidade;
     let totalEstoqueEmUnidadePadrao = 0;
-    let totalValorMonetario = 0;
     let unidadePadrao: 'mg' | 'mL' | null = null;
 
     if (isMassUnit(primeiraUnidade)) {
@@ -98,57 +101,30 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
       produtosEmEstoque.forEach(p => {
         const converted = convertToStandardUnit(p.quantidade ?? 0, p.unidade);
         totalEstoqueEmUnidadePadrao += converted.quantidade;
-
-        const unidadeValorOriginal = p.unidade_valor_original || p.unidade;
-        const quantidadeNaUnidadeOriginal = convertFromStandardUnit(
-          converted.quantidade,
-          'mg',
-          unidadeValorOriginal
-        );
-        totalValorMonetario += quantidadeNaUnidadeOriginal * (p.valor ?? 0);
       });
     } else if (isVolumeUnit(primeiraUnidade)) {
       unidadePadrao = 'mL';
       produtosEmEstoque.forEach(p => {
         const converted = convertToStandardUnit(p.quantidade ?? 0, p.unidade);
         totalEstoqueEmUnidadePadrao += converted.quantidade;
-
-        const unidadeValorOriginal = p.unidade_valor_original || p.unidade;
-        const quantidadeNaUnidadeOriginal = convertFromStandardUnit(
-          converted.quantidade,
-          'mL',
-          unidadeValorOriginal
-        );
-        totalValorMonetario += quantidadeNaUnidadeOriginal * (p.valor ?? 0);
       });
     } else {
-      produtosEmEstoque.forEach(p => {
-        totalEstoqueEmUnidadePadrao += (p.quantidade ?? 0);
-        totalValorMonetario += (p.quantidade ?? 0) * (p.valor ?? 0);
-      });
+      totalEstoqueEmUnidadePadrao = produtosEmEstoque.reduce((sum, p) => sum + (p.quantidade ?? 0), 0);
     }
 
     let totalEstoqueDisplay = totalEstoqueEmUnidadePadrao;
     let unidadeDisplay = primeiraUnidade;
-    let mediaPrecoConvertido = 0;
 
     if (unidadePadrao) {
       const displayResult = getBestDisplayUnit(totalEstoqueEmUnidadePadrao, unidadePadrao);
       totalEstoqueDisplay = displayResult.quantidade;
       unidadeDisplay = displayResult.unidade;
 
-      const quantidadeDisplayNaUnidadePadrao = convertToStandardUnit(totalEstoqueDisplay, unidadeDisplay).quantidade;
-      mediaPrecoConvertido = quantidadeDisplayNaUnidadePadrao > 0
-        ? totalValorMonetario / convertFromStandardUnit(quantidadeDisplayNaUnidadePadrao, unidadePadrao, unidadeDisplay)
-        : 0;
-    } else {
-      mediaPrecoConvertido = totalEstoqueDisplay > 0 ? totalValorMonetario / totalEstoqueDisplay : 0;
+      // Usa o valor original sem conversão
+      mediaPrecoConvertido = media;
     }
 
     const totalEstoque = totalEstoqueEmUnidadePadrao;
-    const media = totalEstoque > 0 && unidadePadrao
-      ? totalValorMonetario / convertFromStandardUnit(totalEstoque, unidadePadrao, primeiraUnidade)
-      : (totalEstoque > 0 ? totalValorMonetario / totalEstoque : 0);
 
     const marcas = Array.from(new Set(grupo.map(p => p.marca)));
     const categorias = Array.from(new Set(grupo.map(p => p.categoria)));
