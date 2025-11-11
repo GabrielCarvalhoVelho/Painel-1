@@ -310,15 +310,7 @@ export class EstoqueService {
     const userId = await this.getCurrentUserId();
 
     const converted = convertToStandardUnit(produto.quantidade, produto.unidade);
-
-    const valorTotal = produto.valor || 0;
-    const valorUnitarioPorUnidadeOriginal = produto.quantidade > 0 ? valorTotal / produto.quantidade : 0;
-
-    console.log('📊 Cálculo de valores do produto:');
-    console.log(`  - Quantidade original: ${produto.quantidade} ${produto.unidade}`);
-    console.log(`  - Quantidade convertida: ${converted.quantidade} ${converted.unidade}`);
-    console.log(`  - Valor total: R$ ${valorTotal.toFixed(2)}`);
-    console.log(`  - Valor unitário por ${produto.unidade}: R$ ${valorUnitarioPorUnidadeOriginal.toFixed(6)}`);
+    const valorTotal = converted.quantidade * (produto.valor || 0);
 
     const { data, error } = await supabase
       .from('estoque_de_produtos')
@@ -330,11 +322,11 @@ export class EstoqueService {
           categoria: produto.categoria,
           unidade_de_medida: converted.unidade,
           quantidade_em_estoque: converted.quantidade,
-          valor_unitario: valorUnitarioPorUnidadeOriginal,
+          valor_unitario: produto.valor,
           valor_total: valorTotal,
           unidade_valor_original: produto.unidade,
           lote: produto.lote,
-          validade: produto.validade || '1999-12-31',
+          validade: produto.validade || '1999-12-31', // Data padrão se vazio
           fornecedor: produto.fornecedor,
           registro_mapa: produto.registro_mapa,
         },
@@ -347,8 +339,7 @@ export class EstoqueService {
       throw error;
     }
 
-    console.log('✅ Produto cadastrado com sucesso no banco de dados');
-
+    // Mapear resposta para o formato esperado
     return {
       id: data.id,
       user_id: data.user_id,
