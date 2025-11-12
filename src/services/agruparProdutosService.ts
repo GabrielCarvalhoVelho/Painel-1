@@ -146,13 +146,24 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
       totalEstoqueEmUnidadePadrao = produtosEmEstoque.reduce((sum, p) => sum + (p.quantidade ?? 0), 0);
     }
 
+    // Find the most common unit used by products in this group
+    const unidadesUsadas = produtosEmEstoque.map(p => p.unidade);
+    const unidadeMaisComum = unidadesUsadas.sort((a, b) =>
+      unidadesUsadas.filter(u => u === a).length - unidadesUsadas.filter(u => u === b).length
+    ).pop() || primeiraUnidade;
+
+    // Convert total from standard unit to the most common original unit
     let totalEstoqueDisplay = totalEstoqueEmUnidadePadrao;
-    let unidadeDisplay = primeiraUnidade;
+    let unidadeDisplay = unidadeMaisComum;
 
     if (unidadePadrao) {
-      const displayResult = getBestDisplayUnit(totalEstoqueEmUnidadePadrao, unidadePadrao);
-      totalEstoqueDisplay = displayResult.quantidade;
-      unidadeDisplay = displayResult.unidade;
+      // Instead of using getBestDisplayUnit (which auto-scales),
+      // convert to the original unit that users actually use
+      totalEstoqueDisplay = convertFromStandardUnit(
+        totalEstoqueEmUnidadePadrao,
+        unidadePadrao,
+        unidadeMaisComum
+      );
 
       // Usa o valor original sem conversão
       mediaPrecoConvertido = media;
