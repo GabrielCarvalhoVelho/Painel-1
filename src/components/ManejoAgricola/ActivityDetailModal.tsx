@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { X, Paperclip } from 'lucide-react';
 import { ActivityService, LancamentoComData } from '../../services/activityService';
 import ActivityAttachmentModal from './ActivityAttachmentModal';
-import { autoScaleQuantity } from '../../lib/unitConverter';
 
 interface Props {
   isOpen: boolean;
@@ -74,29 +73,12 @@ export default function ActivityDetailModal({ isOpen, onClose, activityId, activ
                 <span className="text-gray-600">Produtos:</span>
                 <ul className="mt-2 space-y-1">
                   {activity.produtos && activity.produtos.length > 0 ? (
-                    activity.produtos.map((p: any, idx: number) => {
-                      let displayText = '-';
-
-                      if (p.quantidade_val != null && p.quantidade_un) {
-                        const quantidade = typeof p.quantidade_val === 'string'
-                          ? parseFloat(p.quantidade_val)
-                          : p.quantidade_val;
-
-                        if (!isNaN(quantidade) && quantidade > 0) {
-                          const scaled = autoScaleQuantity(quantidade, p.quantidade_un);
-                          displayText = `${scaled.quantidade} ${scaled.unidade}`;
-                        }
-                      }
-
-                      return (
-                        <li key={idx} className="flex justify-between">
-                          <span className="font-medium text-[#092f20]">{p.nome_produto}</span>
-                          <span className="text-gray-500">
-                            {displayText}
-                          </span>
-                        </li>
-                      );
-                    })
+                    activity.produtos.map((p: any, idx: number) => (
+                      <li key={idx} className="flex justify-between">
+                        <span className="font-medium text-[#092f20]">{p.nome_produto}</span>
+                        <span className="text-gray-500">{p.quantidade_val ?? '-'} {p.quantidade_un ?? ''}</span>
+                      </li>
+                    ))
                   ) : (
                     <li className="text-gray-500">Não informado</li>
                   )}

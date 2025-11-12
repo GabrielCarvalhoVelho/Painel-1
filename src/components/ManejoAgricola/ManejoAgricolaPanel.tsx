@@ -24,7 +24,6 @@ import LoadingSpinner from '../Dashboard/LoadingSpinner';
 import ErrorMessage from '../Dashboard/ErrorMessage';
 import ActivityAttachmentModal from './ActivityAttachmentModal';
 import type { Talhao } from '../../lib/supabase';
-import { autoScaleQuantity } from '../../lib/unitConverter';
 
 export default function ManejoAgricolaPanel() {
   const [filtroTalhao, setFiltroTalhao] = useState('todos');
@@ -575,41 +574,15 @@ export default function ManejoAgricolaPanel() {
                     <span className="text-gray-600">Produtos:</span>
                     <ul className="mt-1 space-y-1">
                       {atividade.produtos && atividade.produtos.length > 0 ? (
-                        atividade.produtos.map((p, idx) => {
-                          let qtyText = '-';
-                          let doseText = '';
-
-                          if (p.quantidade_val != null && p.quantidade_un) {
-                            const quantidade = typeof p.quantidade_val === 'string'
-                              ? parseFloat(p.quantidade_val)
-                              : p.quantidade_val;
-
-                            if (!isNaN(quantidade) && quantidade > 0) {
-                              const scaledQty = autoScaleQuantity(quantidade, p.quantidade_un);
-                              qtyText = `${scaledQty.quantidade} ${scaledQty.unidade}`;
-                            }
-                          }
-
-                          if (p.dose_val != null && p.dose_un) {
-                            const dose = typeof p.dose_val === 'string'
-                              ? parseFloat(p.dose_val)
-                              : p.dose_val;
-
-                            if (!isNaN(dose) && dose > 0) {
-                              const scaledDose = autoScaleQuantity(dose, p.dose_un);
-                              doseText = ` · ${scaledDose.quantidade} ${scaledDose.unidade}`;
-                            }
-                          }
-
-                          return (
-                            <li key={idx} className="flex justify-between">
-                              <span className="font-medium text-[#092f20]">{p.nome_produto}</span>
-                              <span className="text-gray-500 text-right">
-                                {qtyText}{doseText}
-                              </span>
-                            </li>
-                          );
-                        })
+                        atividade.produtos.map((p, idx) => (
+                          <li key={idx} className="flex justify-between">
+                            <span className="font-medium text-[#092f20]">{p.nome_produto}</span>
+                            <span className="text-gray-500 text-right">
+                              {p.quantidade_val ?? '-'} {p.quantidade_un ?? ''}
+                              {p.dose_val ? ` · ${p.dose_val} ${p.dose_un ?? ''}` : ''}
+                            </span>
+                          </li>
+                        ))
                       ) : (
                         <li className="text-gray-500">Não informado</li>
                       )}
@@ -722,41 +695,15 @@ export default function ManejoAgricolaPanel() {
                     <span className="text-gray-600">Produtos:</span>
                     <ul className="mt-1 space-y-1">
                       {atividade.produtos && atividade.produtos.length > 0 ? (
-                        atividade.produtos.map((p, idx) => {
-                          let qtyText = '-';
-                          let doseText = '';
-
-                          if (p.quantidade_val != null && p.quantidade_un) {
-                            const quantidade = typeof p.quantidade_val === 'string'
-                              ? parseFloat(p.quantidade_val)
-                              : p.quantidade_val;
-
-                            if (!isNaN(quantidade) && quantidade > 0) {
-                              const scaledQty = autoScaleQuantity(quantidade, p.quantidade_un);
-                              qtyText = `${scaledQty.quantidade} ${scaledQty.unidade}`;
-                            }
-                          }
-
-                          if (p.dose_val != null && p.dose_un) {
-                            const dose = typeof p.dose_val === 'string'
-                              ? parseFloat(p.dose_val)
-                              : p.dose_val;
-
-                            if (!isNaN(dose) && dose > 0) {
-                              const scaledDose = autoScaleQuantity(dose, p.dose_un);
-                              doseText = ` · ${scaledDose.quantidade} ${scaledDose.unidade}`;
-                            }
-                          }
-
-                          return (
-                            <li key={idx} className="flex justify-between">
-                              <span className="font-medium text-[#092f20]">{p.nome_produto}</span>
-                              <span className="text-gray-500 text-right">
-                                {qtyText}{doseText}
-                              </span>
-                            </li>
-                          );
-                        })
+                        atividade.produtos.map((p, idx) => (
+                          <li key={idx} className="flex justify-between">
+                            <span className="font-medium text-[#092f20]">{p.nome_produto}</span>
+                            <span className="text-gray-500 text-right">
+                              {p.quantidade_val ?? '-'} {p.quantidade_un ?? ''}
+                              {p.dose_val ? ` · ${p.dose_val} ${p.dose_un ?? ''}` : ''}
+                            </span>
+                          </li>
+                        ))
                       ) : (
                         <li className="text-gray-500">Não informado</li>
                       )}
