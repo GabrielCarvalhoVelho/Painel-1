@@ -4,10 +4,10 @@ const unitMap: Record<string, string> = {
   'mg': 'mg',
   'L': 'L',
   'mL': 'mL',
-  'ton': 'ton (tonelada)',
-  'ton (tonelada)': 'ton (tonelada)',
-  'un': 'un (unidade)',
-  'un (unidade)': 'un (unidade)',
+  'ton': 'ton',
+  'ton (tonelada)': 'ton',
+  'un': 'un',
+  'un (unidade)': 'un',
 };
 
 export function formatUnitFull(unit: string | null | undefined): string {
@@ -17,13 +17,5 @@ export function formatUnitFull(unit: string | null | undefined): string {
 
 export function formatUnitAbbreviated(unit: string | null | undefined): string {
   if (!unit) return '';
-
-  const abbreviated: Record<string, string> = {
-    'ton (tonelada)': 'ton',
-    'un (unidade)': 'un',
-    'mg': 'mg',
-    'mL': 'mL',
-  };
-
-  return abbreviated[unit] || unit;
+  return unitMap[unit] || unit;
 }
