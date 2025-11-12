@@ -2,7 +2,7 @@
 import { supabase } from '../lib/supabase';
 import { AuthService } from './authService';
 import { ActivityService } from './activityService';
-import { convertToStandardUnit, convertFromStandardUnit } from '../lib/unitConverter';
+import { convertToStandardUnit, convertFromStandardUnit, isMassUnit, isVolumeUnit } from '../lib/unitConverter';
 
 export interface ProdutoEstoque {
   id: number;
