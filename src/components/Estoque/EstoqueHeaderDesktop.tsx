@@ -1,6 +1,6 @@
 // src/components/Estoque/EstoqueHeaderDesktop.tsx
 import React from "react";
-import { formatSmartCurrency } from '../../lib/currencyFormatter';
+import { formatCurrencyWithUnit, formatCurrency } from '../../lib/currencyFormatter';
 
 interface Props {
   resumoEstoque: {
@@ -33,8 +33,11 @@ export default function EstoqueHeaderDesktop({ resumoEstoque, onOpenModal }: Pro
           {/* Valor total */}
           <div className="bg-[#8fa49d]/10 p-6 rounded-lg">
             <p>Valor Total</p>
-            <p className="text-3xl font-bold">
-              {formatSmartCurrency(resumoEstoque.valorTotal)}
+            <p
+              className="text-3xl font-bold"
+              title={formatCurrency(resumoEstoque.valorTotal)}
+            >
+              {formatCurrencyWithUnit(resumoEstoque.valorTotal)}
             </p>
           </div>
 

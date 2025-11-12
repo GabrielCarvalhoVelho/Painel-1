@@ -48,6 +48,52 @@ export const formatSmartCurrency = (value: number | string): string => {
 };
 
 /**
+ * Formata valores grandes com unidades de medida apropriadas
+ * Para valores até R$ 999.999: exibe valor completo (R$ 850.500,00)
+ * Para valores de R$ 1 milhão a R$ 999 milhões: exibe em milhões (R$ 1,5 mi)
+ * Para valores de R$ 1 bilhão em diante: exibe em bilhões (R$ 10 bi)
+ * @param value - Valor numérico
+ * @param options - Opções de formatação (showFullOnHover, decimals)
+ * @returns String formatada com unidade de medida apropriada
+ */
+export const formatCurrencyWithUnit = (
+  value: number | string,
+  options?: { decimals?: number }
+): string => {
+  const numValue = typeof value === 'string' ? parseFloat(value) : value;
+
+  if (isNaN(numValue)) return 'R$ 0,00';
+
+  const absValue = Math.abs(numValue);
+  const isNegative = numValue < 0;
+  const sign = isNegative ? '-' : '';
+
+  if (absValue < 1000) {
+    return formatCurrency(numValue);
+  }
+
+  if (absValue < 1_000_000) {
+    return formatCurrency(numValue);
+  }
+
+  if (absValue < 1_000_000_000) {
+    const millions = absValue / 1_000_000;
+    const decimals = options?.decimals ?? (millions < 10 ? 2 : 1);
+    return `${sign}R$ ${millions.toLocaleString('pt-BR', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    })} mi`;
+  }
+
+  const billions = absValue / 1_000_000_000;
+  const decimals = options?.decimals ?? (billions < 10 ? 2 : 1);
+  return `${sign}R$ ${billions.toLocaleString('pt-BR', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })} bi`;
+};
+
+/**
  * Formata um valor numérico para o formato de moeda brasileira (R$ 1.000,00)
  * @param value - Valor decimal (ex: 1234.56)
  * @returns String formatada no padrão brasileiro (ex: "R$ 1.234,56")
