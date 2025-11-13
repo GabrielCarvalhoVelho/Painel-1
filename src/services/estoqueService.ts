@@ -312,13 +312,15 @@ export class EstoqueService {
 
     const converted = convertToStandardUnit(produto.quantidade, produto.unidade);
     const valorTotal = produto.valor || 0;
+    // Calculate price per ORIGINAL unit (not per standard unit)
+    // Example: R$ 100 for 10 tons = R$ 10 per ton (NOT per mg)
     const valorUnitario = produto.quantidade > 0 ? valorTotal / produto.quantidade : 0;
 
     console.log('📊 Cálculo de valores do produto:');
     console.log(`  - Quantidade original: ${produto.quantidade} ${produto.unidade}`);
-    console.log(`  - Quantidade convertida: ${converted.quantidade} ${converted.unidade}`);
+    console.log(`  - Quantidade convertida para unidade padrão: ${converted.quantidade} ${converted.unidade}`);
     console.log(`  - Valor total informado: R$ ${valorTotal.toFixed(2)}`);
-    console.log(`  - Valor unitário calculado: R$ ${valorUnitario.toFixed(6)} por ${produto.unidade}`);
+    console.log(`  - Valor unitário calculado: R$ ${valorUnitario.toFixed(6)} por ${produto.unidade} (unidade original)`);
 
     const { data, error } = await supabase
       .from('estoque_de_produtos')

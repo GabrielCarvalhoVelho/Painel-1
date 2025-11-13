@@ -122,17 +122,32 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
 
     const produtosEmEstoque = grupo.filter(p => (p.quantidade ?? 0) > 0 && p.valor !== null);
 
-    // Calculate weighted average: (sum of value × quantity) / (sum of quantity)
+    // Calculate weighted average price per standard unit (mg or mL)
+    // NOTE: valor_unitario is stored as price per ORIGINAL unit (unidade_valor_original)
+    // We need to convert it to price per standard unit before calculating the weighted average
     let totalValorPonderado = 0;
     let totalQuantidadePonderada = 0;
 
     produtosEmEstoque.forEach(p => {
-      const quantidade = p.quantidade ?? 0;
-      const valor = p.valor ?? 0;
-      totalValorPonderado += valor * quantidade;
+      const quantidade = p.quantidade ?? 0; // quantity in standard units (mg or mL)
+      const valorPorUnidadeOriginal = p.valor ?? 0; // price per original unit
+      const unidadeOriginal = p.unidade_valor_original || p.unidade;
+
+      // Convert price from "per original unit" to "per standard unit"
+      // Example: R$ 10 per ton → R$ 0.00000001 per mg
+      let valorPorUnidadePadrao = valorPorUnidadeOriginal;
+
+      if (isMassUnit(unidadeOriginal) || isVolumeUnit(unidadeOriginal)) {
+        const standardUnitsPerOriginalUnit = convertToStandardUnit(1, unidadeOriginal).quantidade;
+        // If 1 ton = 1,000,000,000 mg, then R$ 10/ton = R$ 10/1,000,000,000 per mg
+        valorPorUnidadePadrao = valorPorUnidadeOriginal / standardUnitsPerOriginalUnit;
+      }
+
+      totalValorPonderado += valorPorUnidadePadrao * quantidade;
       totalQuantidadePonderada += quantidade;
     });
 
+    // media is now the weighted average price per standard unit (mg or mL)
     const media = totalQuantidadePonderada > 0 ? totalValorPonderado / totalQuantidadePonderada : 0;
 
     let mediaPrecoConvertido = media;
@@ -200,13 +215,14 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
         ).pop() || null
       : null;
 
-    // Convert media (price per mg/mL) to price per unidade_valor_original
-    // media is a weighted average of valor_unitario (stored as price per standard unit)
-    // We need to convert it to the original unit the user entered
+    // Convert media (price per mg/mL) to price per unidade_valor_original for display
+    // media is the weighted average price per standard unit (mg or mL)
+    // We need to convert it to the original unit the user entered for display purposes
     const mediaPrecoOriginal = unidadeValorOriginal ? media : null;
 
     if (unidadeValorOriginal && unidadePadrao) {
       // Convert from price per standard unit to price per original unit
+      // Example: R$ 0.00000001 per mg → R$ 10 per ton
       if (unidadePadrao === 'mg' && isMassUnit(unidadeValorOriginal)) {
         const mgPerOriginalUnit = convertToStandardUnit(1, unidadeValorOriginal).quantidade;
         mediaPrecoConvertido = media * mgPerOriginalUnit;
