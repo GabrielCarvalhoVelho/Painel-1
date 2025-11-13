@@ -37,6 +37,7 @@ export interface MovimentacaoExpandida extends MovimentacaoEstoque {
   categoria: string;
   unidade: string;
   valor: number | null;
+  unidade_valor_original: string | null;
   lote: string | null;
   validade: string | null;
   fornecedor: string | null;
@@ -473,6 +474,7 @@ export class EstoqueService {
           categoria,
           unidade_de_medida,
           valor_unitario,
+          unidade_valor_original,
           lote,
           validade,
           fornecedor,
@@ -503,6 +505,7 @@ export class EstoqueService {
       categoria: mov.produto.categoria,
       unidade: mov.produto.unidade_de_medida,
       valor: mov.produto.valor_unitario,
+      unidade_valor_original: mov.produto.unidade_valor_original,
       lote: mov.produto.lote,
       validade: mov.produto.validade,
       fornecedor: mov.produto.fornecedor,

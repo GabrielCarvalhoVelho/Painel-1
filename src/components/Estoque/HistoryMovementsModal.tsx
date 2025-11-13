@@ -265,6 +265,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
               categoria: p.categoria,
               unidade: p.unidade,
               valor: p.valor,
+              unidade_valor_original: p.unidade_valor_original,
               lote: p.lote,
               validade: p.validade,
               fornecedor: p.fornecedor || null,
@@ -466,12 +467,20 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                           })()}
 
                           {m.tipo === 'entrada' && (() => {
-                            const produtoInfo = product?.produtos.find(p => p.id === m.produto_id);
-                            const unidadeValorOriginal = produtoInfo?.unidade_valor_original || m.unidade;
+                            const unidadeValorOriginal = m.unidade_valor_original || m.unidade;
                             const scaled = autoScaleQuantity(m.quantidade, m.unidade);
-                            const valorConvertido = m.valor && unidadeValorOriginal
-                              ? convertValueToDisplayUnit(m.valor, unidadeValorOriginal, scaled.unidade)
-                              : m.valor;
+
+                            let valorDisplay = null;
+                            let unidadeValorDisplay = scaled.unidade;
+
+                            if (m.valor !== null && m.valor !== undefined) {
+                              if (scaled.unidade !== unidadeValorOriginal) {
+                                valorDisplay = convertValueToDisplayUnit(m.valor, unidadeValorOriginal, scaled.unidade);
+                              } else {
+                                valorDisplay = m.valor;
+                              }
+                              unidadeValorDisplay = scaled.unidade;
+                            }
 
                             return (
                               <div className="text-sm text-gray-600 space-y-1 mt-2">
@@ -481,8 +490,8 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                                 <div><strong>Lote:</strong> {m.lote || '—'}</div>
                                 <div><strong>Validade:</strong> {formatValidity(m.validade)}</div>
                                 <div><strong>Registro MAPA:</strong> {m.registro_mapa || '—'}</div>
-                                {valorConvertido && (
-                                  <div><strong>Valor unitário:</strong> {formatSmartCurrency(Number(valorConvertido))} / {scaled.unidade}</div>
+                                {valorDisplay !== null && valorDisplay !== undefined && (
+                                  <div><strong>Valor:</strong> {formatSmartCurrency(Number(valorDisplay))} / {unidadeValorDisplay}</div>
                                 )}
                               </div>
                             );
