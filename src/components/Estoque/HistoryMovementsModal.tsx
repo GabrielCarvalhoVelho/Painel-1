@@ -544,11 +544,53 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                             );
                           })()}
 
-                          {m.tipo === 'saida' && m.valor && m._source !== 'lancamento' && (
-                            <div className="text-sm text-gray-600 space-y-1 mt-2">
-                              <div><strong>Valor total da saída:</strong> {formatSmartCurrency(Number(m.valor) * m.quantidade)}</div>
-                            </div>
-                          )}
+                          {m.tipo === 'saida' && m.valor && m._source !== 'lancamento' && (() => {
+                            // m.valor está como valor por unidade padrão (mg/mL)
+                            // m.quantidade está na unidade padrão (mg/mL)
+                            // unidade_valor_original é a unidade em que o valor foi cadastrado
+                            
+                            const produtoOrigem = product?.produtos.find(p => p.id === m.produto_id);
+                            const unidadeValorOriginal = produtoOrigem?.unidade_valor_original || m.unidade;
+                            const valorTotal = produtoOrigem?.valor_total || null;
+                            const quantidadeInicial = produtoOrigem?.quantidade_inicial || 0;
+                            
+                            let valorTotalSaida = 0;
+                            
+                            if (valorTotal && quantidadeInicial > 0) {
+                              // Usar valor_total e quantidade_inicial para calcular
+                              // valor_total / quantidade_inicial = valor por unidade padrão
+                              // Converter quantidade da saída para unidade original
+                              const unidadePadrao = produtoOrigem?.unidade || m.unidade;
+                              let quantidadeSaidaConvertida = m.quantidade;
+                              
+                              if (unidadePadrao !== unidadeValorOriginal) {
+                                if (isMassUnit(unidadePadrao) && isMassUnit(unidadeValorOriginal)) {
+                                  quantidadeSaidaConvertida = convertFromStandardUnit(m.quantidade, 'mg', unidadeValorOriginal);
+                                } else if (isVolumeUnit(unidadePadrao) && isVolumeUnit(unidadeValorOriginal)) {
+                                  quantidadeSaidaConvertida = convertFromStandardUnit(m.quantidade, 'mL', unidadeValorOriginal);
+                                }
+                              }
+                              
+                              // Calcular valor unitário na unidade original
+                              let quantidadeInicialConvertida = quantidadeInicial;
+                              if (unidadePadrao !== unidadeValorOriginal) {
+                                if (isMassUnit(unidadePadrao) && isMassUnit(unidadeValorOriginal)) {
+                                  quantidadeInicialConvertida = convertFromStandardUnit(quantidadeInicial, 'mg', unidadeValorOriginal);
+                                } else if (isVolumeUnit(unidadePadrao) && isVolumeUnit(unidadeValorOriginal)) {
+                                  quantidadeInicialConvertida = convertFromStandardUnit(quantidadeInicial, 'mL', unidadeValorOriginal);
+                                }
+                              }
+                              
+                              const valorUnitarioOriginal = valorTotal / quantidadeInicialConvertida;
+                              valorTotalSaida = valorUnitarioOriginal * quantidadeSaidaConvertida;
+                            }
+
+                            return valorTotalSaida > 0 ? (
+                              <div className="text-sm text-gray-600 space-y-1 mt-2">
+                                <div><strong>Valor total da saída:</strong> {formatSmartCurrency(valorTotalSaida)}</div>
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
                       </div>
 
