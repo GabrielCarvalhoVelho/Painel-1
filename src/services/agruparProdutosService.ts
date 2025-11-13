@@ -1,6 +1,6 @@
 // src/services/agruparProdutosService.ts
 import { ProdutoEstoque } from "./estoqueService";
-import { getBestDisplayUnit, isMassUnit, isVolumeUnit } from '../lib/unitConverter';
+import { convertToStandardUnit, getBestDisplayUnit, isMassUnit, isVolumeUnit, convertValueToDisplayUnit } from '../lib/unitConverter';
 
 function normalizeName(name: string | null | undefined): string {
   if (!name || typeof name !== 'string') {
@@ -121,18 +121,8 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
     ).pop() || grupo[0].nome_produto;
 
     const produtosEmEstoque = grupo.filter(p => (p.quantidade ?? 0) > 0 && p.valor !== null);
-
-    let totalValor = 0;
-    let totalQuantidade = 0;
-
-    produtosEmEstoque.forEach(p => {
-      const quantidade = p.quantidade ?? 0;
-      const valorUnitario = p.valor ?? 0;
-      totalValor += quantidade * valorUnitario;
-      totalQuantidade += quantidade;
-    });
-
-    const media = totalQuantidade > 0 ? totalValor / totalQuantidade : 0;
+    const totalPreco = produtosEmEstoque.reduce((sum, p) => sum + (p.valor ?? 0), 0);
+    const media = produtosEmEstoque.length > 0 ? totalPreco / produtosEmEstoque.length : 0;
 
     let mediaPrecoConvertido = media;
 
@@ -140,48 +130,32 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
     let totalEstoqueEmUnidadePadrao = 0;
     let unidadePadrao: 'mg' | 'mL' | null = null;
 
-    // Determinar unidade padrão e somar quantidades
     if (isMassUnit(primeiraUnidade)) {
       unidadePadrao = 'mg';
       produtosEmEstoque.forEach(p => {
-        totalEstoqueEmUnidadePadrao += p.quantidade;
+        const converted = convertToStandardUnit(p.quantidade ?? 0, p.unidade);
+        totalEstoqueEmUnidadePadrao += converted.quantidade;
       });
     } else if (isVolumeUnit(primeiraUnidade)) {
       unidadePadrao = 'mL';
       produtosEmEstoque.forEach(p => {
-        totalEstoqueEmUnidadePadrao += p.quantidade;
+        const converted = convertToStandardUnit(p.quantidade ?? 0, p.unidade);
+        totalEstoqueEmUnidadePadrao += converted.quantidade;
       });
     } else {
       totalEstoqueEmUnidadePadrao = produtosEmEstoque.reduce((sum, p) => sum + (p.quantidade ?? 0), 0);
     }
 
-    // 💰 Calcular MÉDIA ARITMÉTICA SIMPLES dos valores unitários
-    // Para cada produto: (valor_unitário já está calculado no banco)
-    // Média = soma dos valores_unitários / número de produtos
-    let somaValoresUnitarios = 0;
-    let contadorProdutos = 0;
-
-    produtosEmEstoque.forEach(p => {
-      const valorUnitarioPadrao = p.valor ?? 0; // Já está na unidade padrão (mg/mL)
-      somaValoresUnitarios += valorUnitarioPadrao;
-      contadorProdutos++;
-    });
-
-    const mediaPrecoUnidadePadrao = contadorProdutos > 0 
-      ? somaValoresUnitarios / contadorProdutos 
-      : 0;
-
     let totalEstoqueDisplay = totalEstoqueEmUnidadePadrao;
     let unidadeDisplay = primeiraUnidade;
-    let mediaPrecoDisplay = mediaPrecoUnidadePadrao;
 
     if (unidadePadrao) {
       const displayResult = getBestDisplayUnit(totalEstoqueEmUnidadePadrao, unidadePadrao);
       totalEstoqueDisplay = displayResult.quantidade;
       unidadeDisplay = displayResult.unidade;
 
-      const fatorConversao = totalEstoqueDisplay / totalEstoqueEmUnidadePadrao;
-      mediaPrecoConvertido = media * fatorConversao;
+      // Usa o valor original sem conversão
+      mediaPrecoConvertido = media;
     }
 
     const totalEstoque = totalEstoqueEmUnidadePadrao;
@@ -218,13 +192,13 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
         ).pop() || null
       : null;
 
-    const mediaPrecoOriginal = unidadeValorOriginal ? mediaPrecoUnidadePadrao : null;
+    const mediaPrecoOriginal = unidadeValorOriginal ? media : null;
 
     return {
       nome: nomeMaisComum,
       produtos: grupo,
-      mediaPreco: mediaPrecoUnidadePadrao,
-      mediaPrecoDisplay,
+      mediaPreco: media,
+      mediaPrecoDisplay: mediaPrecoConvertido,
       totalEstoque,
       totalEstoqueDisplay,
       unidadeDisplay,
