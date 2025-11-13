@@ -44,7 +44,6 @@ export default function EstoquePanel() {
   const [removeModal, setRemoveModal] = useState({
     isOpen: false,
     productGroup: null as ProdutoAgrupado | null,
-    selectedProduto: null as ProdutoEstoque | null,
     quantidade: 1,
     observacao: '',
   });
@@ -175,7 +174,6 @@ export default function EstoquePanel() {
             ...prev,
             isOpen,
             productGroup: product,
-            selectedProduto: product?.produtos[0] || null,
             quantidade: 1,
             observacao: '',
           }));
@@ -192,7 +190,6 @@ export default function EstoquePanel() {
             ...prev,
             isOpen,
             productGroup: product,
-            selectedProduto: product?.produtos[0] || null,
             quantidade: 1,
             observacao: '',
           }));
@@ -253,29 +250,18 @@ export default function EstoquePanel() {
       <RemoveQuantityModal
         isOpen={removeModal.isOpen}
         productGroup={removeModal.productGroup}
-        selectedProduto={removeModal.selectedProduto}
-        setSelectedProduto={(p) => setRemoveModal((prev) => ({ ...prev, selectedProduto: p }))}
         quantidade={removeModal.quantidade}
         setQuantidade={(q) => setRemoveModal((prev) => ({ ...prev, quantidade: q }))}
         observacao={removeModal.observacao}
         setObservacao={(obs) => setRemoveModal((prev) => ({ ...prev, observacao: obs }))}
-        onConfirm={async () => {
-          if (!removeModal.selectedProduto) return;
+        onConfirm={async (quantidadeConvertida: number) => {
+          if (!removeModal.productGroup) return;
           try {
-            // Calcula nova quantidade
-            const novaQuantidade = removeModal.selectedProduto.quantidade - removeModal.quantidade;
-            
-            // Atualiza quantidade no banco
-            await EstoqueService.atualizarQuantidade(
-              removeModal.selectedProduto.id,
-              novaQuantidade
-            );
-            
-            // Registra movimentação
-            await EstoqueService.registrarMovimentacao(
-              removeModal.selectedProduto.id,
-              'saida',
-              removeModal.quantidade,
+            // Remove quantidade usando FIFO (First In, First Out)
+            // quantidadeConvertida já vem na unidade padrão (mg ou mL)
+            await EstoqueService.removerQuantidadeFIFO(
+              removeModal.productGroup.nome,
+              quantidadeConvertida,
               removeModal.observacao
             );
             
@@ -288,15 +274,15 @@ export default function EstoquePanel() {
             const valorTotal = await EstoqueService.calcularValorTotalEstoque();
             setResumoEstoque(prev => ({ ...prev, valorTotal }));
 
-            setRemoveModal({ isOpen: false, productGroup: null, selectedProduto: null, quantidade: 1, observacao: '' });
-            setToastMessage('Quantidade removida e movimentação registrada!');
+            setRemoveModal({ isOpen: false, productGroup: null, quantidade: 1, observacao: '' });
+            setToastMessage('Quantidade removida com sucesso!');
             setShowToast(true);
           } catch (err: any) {
             console.error(err);
             alert(`❌ ${err.message || 'Erro ao remover quantidade.'}`);
           }
         }}
-        onClose={() => setRemoveModal({ isOpen: false, productGroup: null, selectedProduto: null, quantidade: 1, observacao: '' })}
+        onClose={() => setRemoveModal({ isOpen: false, productGroup: null, quantidade: 1, observacao: '' })}
       />
 
       {/* inline histórico modal removed; using HistoryMovementsModal component below */}

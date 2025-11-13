@@ -467,6 +467,93 @@ export class EstoqueService {
     }
   }
 
+  /**
+   * Remove quantidade de um produto agrupado seguindo FIFO (First In, First Out)
+   * @param nomeProduto Nome do produto para buscar todos os registros
+   * @param quantidadeRemover Quantidade a remover (na unidade padrão: mg ou mL)
+   * @param observacao Observação/motivo da saída
+   */
+  static async removerQuantidadeFIFO(
+    nomeProduto: string,
+    quantidadeRemover: number,
+    observacao?: string
+  ): Promise<void> {
+    const userId = await this.getCurrentUserId();
+
+    console.log('🔄 Iniciando remoção FIFO:', {
+      produto: nomeProduto,
+      quantidadeRemover,
+      observacao,
+    });
+
+    // Buscar todos os produtos com esse nome, ordenados por created_at (FIFO)
+    const { data: produtos, error: fetchError } = await supabase
+      .from('estoque_de_produtos')
+      .select('*')
+      .eq('user_id', userId)
+      .ilike('nome_do_produto', nomeProduto)
+      .gt('quantidade_em_estoque', 0)
+      .order('created_at', { ascending: true }); // Mais antigos primeiro (FIFO)
+
+    if (fetchError) {
+      console.error('❌ Erro ao buscar produtos para remoção FIFO:', fetchError);
+      throw fetchError;
+    }
+
+    if (!produtos || produtos.length === 0) {
+      throw new Error('Nenhum produto encontrado com estoque disponível.');
+    }
+
+    let quantidadeRestante = quantidadeRemover;
+
+    console.log(`📦 Encontrados ${produtos.length} registros de "${nomeProduto}"`);
+
+    for (const produto of produtos) {
+      if (quantidadeRestante <= 0) break;
+
+      const quantidadeDisponivel = produto.quantidade_em_estoque;
+      const quantidadeARemover = Math.min(quantidadeRestante, quantidadeDisponivel);
+      const novaQuantidade = quantidadeDisponivel - quantidadeARemover;
+
+      console.log(`  🔹 Processando produto ID ${produto.id}:`, {
+        disponivel: quantidadeDisponivel,
+        remover: quantidadeARemover,
+        novo: novaQuantidade,
+        created_at: produto.created_at,
+      });
+
+      // Atualizar a quantidade no banco
+      const { error: updateError } = await supabase
+        .from('estoque_de_produtos')
+        .update({ quantidade_em_estoque: novaQuantidade })
+        .eq('id', produto.id);
+
+      if (updateError) {
+        console.error(`❌ Erro ao atualizar produto ${produto.id}:`, updateError);
+        throw updateError;
+      }
+
+      // Registrar a movimentação
+      await this.registrarMovimentacao(
+        produto.id,
+        'saida',
+        quantidadeARemover,
+        observacao
+      );
+
+      quantidadeRestante -= quantidadeARemover;
+
+      console.log(`  ✅ Produto ${produto.id} atualizado. Restante a remover: ${quantidadeRestante}`);
+    }
+
+    if (quantidadeRestante > 0) {
+      console.warn('⚠️ Quantidade solicitada excede o estoque disponível.');
+      throw new Error('Quantidade solicitada excede o estoque disponível.');
+    }
+
+    console.log('✅ Remoção FIFO concluída com sucesso!');
+  }
+
   static async getMovimentacoesExpandidas(
     produtoId: number,
     page = 1,

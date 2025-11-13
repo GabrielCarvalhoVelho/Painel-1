@@ -1,28 +1,24 @@
 // src/components/Estoque/RemoveQuantityModal.tsx
 import { X } from "lucide-react";
-import { ProdutoEstoque } from "../../services/estoqueService";
 import { ProdutoAgrupado } from "../../services/agruparProdutosService";
-import { autoScaleQuantity, convertValueToDisplayUnit } from "../../lib/unitConverter";
+import { convertToStandardUnit, isMassUnit, isVolumeUnit } from "../../lib/unitConverter";
 import { formatSmartCurrency } from "../../lib/currencyFormatter";
+import { useState, useEffect } from "react";
 
 interface RemoveQuantityModalProps {
   isOpen: boolean;
   productGroup: ProdutoAgrupado | null;
-  selectedProduto: ProdutoEstoque | null;
-  setSelectedProduto: (p: ProdutoEstoque | null) => void;
   quantidade: number;
   setQuantidade: (q: number) => void;
   observacao: string;
   setObservacao: (o: string) => void;
-  onConfirm: () => void;
+  onConfirm: (quantidadeConvertida: number) => void;
   onClose: () => void;
 }
 
 export default function RemoveQuantityModal({
   isOpen,
   productGroup,
-  selectedProduto,
-  setSelectedProduto,
   quantidade,
   setQuantidade,
   observacao,
@@ -32,10 +28,27 @@ export default function RemoveQuantityModal({
 }: RemoveQuantityModalProps) {
   if (!isOpen || !productGroup) return null;
 
-  // Quando não há produto selecionado, seleciona o primeiro
-  if (!selectedProduto && productGroup.produtos.length > 0) {
-    setSelectedProduto(productGroup.produtos[0]);
-  }
+  // Determinar as unidades disponíveis baseado no tipo do produto
+  const primeiraUnidade = productGroup.produtos[0]?.unidade || 'un';
+  const ehMassa = isMassUnit(primeiraUnidade);
+  const ehVolume = isVolumeUnit(primeiraUnidade);
+  
+  const unidadesDisponiveis = ehMassa
+    ? ['mg', 'g', 'kg', 'ton']
+    : ehVolume
+    ? ['mL', 'L']
+    : ['un'];
+
+  const [unidadeSelecionada, setUnidadeSelecionada] = useState<string>(
+    productGroup.unidadeValorOriginal || productGroup.unidadeDisplay
+  );
+
+  // Atualizar unidade selecionada quando o produto mudar
+  useEffect(() => {
+    if (productGroup) {
+      setUnidadeSelecionada(productGroup.unidadeValorOriginal || productGroup.unidadeDisplay);
+    }
+  }, [productGroup]);
 
   const handleInputChange = (value: string) => {
     const num = parseFloat(value.replace(",", "."));
@@ -51,8 +64,11 @@ export default function RemoveQuantityModal({
     }
   };
 
-  const estoqueAtual = selectedProduto?.quantidade ?? 0;
-  const isInvalid = !selectedProduto || quantidade <= 0 || quantidade > estoqueAtual;
+  // Converter a quantidade informada pelo usuário para a unidade padrão (mg/mL)
+  const quantidadeEmUnidadePadrao = convertToStandardUnit(quantidade, unidadeSelecionada).quantidade;
+
+  // Validar se a quantidade é válida
+  const isInvalid = quantidade <= 0 || quantidadeEmUnidadePadrao > productGroup.totalEstoque;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -70,106 +86,80 @@ export default function RemoveQuantityModal({
           </button>
         </div>
 
-        {/* Produto e Fornecedor */}
-        <p className="text-sm text-gray-600 mb-2">
+        {/* Produto */}
+        <p className="text-sm text-gray-600 mb-4">
           Produto: <strong>{productGroup.nome}</strong>
         </p>
+
+        {/* Informações do Estoque */}
+        <div className="mb-4 p-3 bg-gray-50 rounded-lg space-y-2">
+          <p className="text-sm text-gray-600">
+            Quantidade disponível:{" "}
+            <strong>
+              {productGroup.totalEstoqueDisplay.toFixed(2)} {productGroup.unidadeDisplay}
+            </strong>
+          </p>
+          {productGroup.mediaPrecoOriginal !== null && productGroup.mediaPrecoOriginal > 0 && (
+            <p className="text-sm text-gray-600">
+              Valor médio:{" "}
+              <strong className="text-[#397738]">
+                {formatSmartCurrency(productGroup.mediaPrecoOriginal)} / {productGroup.unidadeValorOriginal}
+              </strong>
+            </p>
+          )}
+        </div>
+
+        {/* Seletor de Unidade */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-[#092f20] mb-1">
-            Selecione o Fornecedor
+            Unidade de Medida
           </label>
           <select
             className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#397738] focus:border-transparent"
-            value={selectedProduto?.id || ''}
-            onChange={(e) => {
-              const prod = productGroup.produtos.find(p => p.id === Number(e.target.value));
-              setSelectedProduto(prod || null);
-              setQuantidade(1);
-            }}
+            value={unidadeSelecionada}
+            onChange={(e) => setUnidadeSelecionada(e.target.value)}
           >
-            {productGroup.produtos.map(p => {
-              const scaledQty = autoScaleQuantity(p.quantidade, p.unidade);
-              return (
-                <option key={p.id} value={p.id}>
-                  {p.fornecedor || 'Fornecedor desconhecido'} • Marca: {p.marca || '—'} • Lote: {p.lote || '—'} • Disponível: {scaledQty.quantidade} {scaledQty.unidade}
-                </option>
-              );
-            })}
+            {unidadesDisponiveis.map(unidade => (
+              <option key={unidade} value={unidade}>
+                {unidade}
+              </option>
+            ))}
           </select>
         </div>
-        {selectedProduto && (() => {
-          const scaled = autoScaleQuantity(estoqueAtual, selectedProduto.unidade);
-          const unidadeOriginal = selectedProduto.unidade_valor_original || selectedProduto.unidade;
 
-          // selectedProduto.valor is stored as price per standard unit (mg or mL)
-          // We need to convert it to price per original unit
-          const valorPorUnidadePadrao = selectedProduto.valor;
-          let valorConvertido = valorPorUnidadePadrao;
-
-          if (valorPorUnidadePadrao) {
-            // Determine standard unit based on product unit type
-            const isVolume = ['L', 'mL'].includes(selectedProduto.unidade);
-            const isMass = ['ton', 'kg', 'g', 'mg'].includes(selectedProduto.unidade);
-
-            if (isMass && unidadeOriginal) {
-              // valor is price per mg, convert to price per original unit
-              // Example: if original is kg, we need to multiply by 1,000,000 (mg per kg)
-              valorConvertido = convertValueToDisplayUnit(valorPorUnidadePadrao, 'mg', unidadeOriginal);
-            } else if (isVolume && unidadeOriginal) {
-              // valor is price per mL, convert to price per original unit
-              valorConvertido = convertValueToDisplayUnit(valorPorUnidadePadrao, 'mL', unidadeOriginal);
-            }
-          }
-
-          return (
-            <div className="mb-4 space-y-1">
-              <p className="text-sm text-gray-600">
-                Quantidade disponível:{" "}
-                <strong>
-                  {scaled.quantidade} {scaled.unidade}
-                </strong>
-              </p>
-              {valorConvertido !== null && (
-                <p className="text-sm text-gray-600">
-                  Valor unitário:{" "}
-                  <strong className="text-[#397738]">
-                    {formatSmartCurrency(Number(valorConvertido))} / {unidadeOriginal}
-                  </strong>
-                </p>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* Input */}
-        <div className="flex items-center gap-2 mb-4">
-          <button
-            onClick={handleDecrement}
-            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
-          >
-            -
-          </button>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={quantidade}
-            onChange={(e) => handleInputChange(e.target.value)}
-            className="w-full px-3 py-2 border rounded-lg text-center"
-          />
-          <button
-            onClick={handleIncrement}
-            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
-          >
-            +
-          </button>
+        {/* Input de Quantidade */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-[#092f20] mb-1">
+            Quantidade a Remover
+          </label>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDecrement}
+              className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
+            >
+              -
+            </button>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={quantidade}
+              onChange={(e) => handleInputChange(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg text-center"
+            />
+            <button
+              onClick={handleIncrement}
+              className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
+            >
+              +
+            </button>
+          </div>
         </div>
 
         {/* Validação */}
         {isInvalid && (
           <p className="text-red-500 text-sm mb-3">
-            Valor inválido: deve ser maior que 0 e menor ou igual a{" "}
-            {estoqueAtual}.
+            Valor inválido: deve ser maior que 0 e não pode exceder o estoque disponível.
           </p>
         )}
 
@@ -196,7 +186,7 @@ export default function RemoveQuantityModal({
             Cancelar
           </button>
           <button
-            onClick={onConfirm}
+            onClick={() => onConfirm(quantidadeEmUnidadePadrao)}
             disabled={isInvalid}
             className={`px-4 py-2 rounded-lg text-white ${
               isInvalid
