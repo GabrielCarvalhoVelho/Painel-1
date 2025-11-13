@@ -1,6 +1,6 @@
 // src/services/agruparProdutosService.ts
 import { ProdutoEstoque } from "./estoqueService";
-import { convertToStandardUnit, getBestDisplayUnit, isMassUnit, isVolumeUnit, convertValueToDisplayUnit } from '../lib/unitConverter';
+import { getBestDisplayUnit, isMassUnit, isVolumeUnit } from '../lib/unitConverter';
 
 function normalizeName(name: string | null | undefined): string {
   if (!name || typeof name !== 'string') {
@@ -122,50 +122,60 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
 
     const produtosEmEstoque = grupo.filter(p => (p.quantidade ?? 0) > 0 && p.valor !== null);
 
-    let totalValor = 0;
-    let totalQuantidade = 0;
-
-    produtosEmEstoque.forEach(p => {
-      const quantidade = p.quantidade ?? 0;
-      const valorUnitario = p.valor ?? 0;
-      totalValor += quantidade * valorUnitario;
-      totalQuantidade += quantidade;
-    });
-
-    const media = totalQuantidade > 0 ? totalValor / totalQuantidade : 0;
-
-    let mediaPrecoConvertido = media;
-
     const primeiraUnidade = grupo[0].unidade;
     let totalEstoqueEmUnidadePadrao = 0;
     let unidadePadrao: 'mg' | 'mL' | null = null;
 
+    // Determinar unidade padrão e somar quantidades
     if (isMassUnit(primeiraUnidade)) {
       unidadePadrao = 'mg';
       produtosEmEstoque.forEach(p => {
-        const converted = convertToStandardUnit(p.quantidade ?? 0, p.unidade);
-        totalEstoqueEmUnidadePadrao += converted.quantidade;
+        totalEstoqueEmUnidadePadrao += p.quantidade;
       });
     } else if (isVolumeUnit(primeiraUnidade)) {
       unidadePadrao = 'mL';
       produtosEmEstoque.forEach(p => {
-        const converted = convertToStandardUnit(p.quantidade ?? 0, p.unidade);
-        totalEstoqueEmUnidadePadrao += converted.quantidade;
+        totalEstoqueEmUnidadePadrao += p.quantidade;
       });
     } else {
       totalEstoqueEmUnidadePadrao = produtosEmEstoque.reduce((sum, p) => sum + (p.quantidade ?? 0), 0);
     }
 
+    // 💰 Calcular MÉDIA ARITMÉTICA SIMPLES dos valores unitários
+    // Para cada produto: (valor_unitário já está calculado no banco)
+    // Média = soma dos valores_unitários / número de produtos
+    let somaValoresUnitarios = 0;
+    let contadorProdutos = 0;
+
+    produtosEmEstoque.forEach(p => {
+      const valorUnitarioPadrao = p.valor ?? 0; // Já está na unidade padrão (mg/mL)
+      somaValoresUnitarios += valorUnitarioPadrao;
+      contadorProdutos++;
+    });
+
+    const mediaPrecoUnidadePadrao = contadorProdutos > 0 
+      ? somaValoresUnitarios / contadorProdutos 
+      : 0;
+
     let totalEstoqueDisplay = totalEstoqueEmUnidadePadrao;
     let unidadeDisplay = primeiraUnidade;
+    let mediaPrecoDisplay = mediaPrecoUnidadePadrao;
 
     if (unidadePadrao) {
       const displayResult = getBestDisplayUnit(totalEstoqueEmUnidadePadrao, unidadePadrao);
       totalEstoqueDisplay = displayResult.quantidade;
       unidadeDisplay = displayResult.unidade;
 
-      const fatorConversao = totalEstoqueDisplay / totalEstoqueEmUnidadePadrao;
-      mediaPrecoConvertido = media * fatorConversao;
+      // 💰 Converter preço da unidade padrão para unidade de exibição
+      // Se quantidade foi dividida por 1000 (mg→kg), preço deve ser multiplicado por 1000
+      const fatorConversao = totalEstoqueEmUnidadePadrao / totalEstoqueDisplay;
+      mediaPrecoDisplay = mediaPrecoUnidadePadrao * fatorConversao;
+
+      console.log(`💰 Conversão de Preço para "${nomeMaisComum}":`);
+      console.log(`  - Preço na unidade padrão (${unidadePadrao}): R$ ${mediaPrecoUnidadePadrao.toFixed(6)}`);
+      console.log(`  - Quantidade: ${totalEstoqueEmUnidadePadrao} ${unidadePadrao} → ${totalEstoqueDisplay} ${unidadeDisplay}`);
+      console.log(`  - Fator conversão: ${fatorConversao}`);
+      console.log(`  - Preço convertido (${unidadeDisplay}): R$ ${mediaPrecoDisplay.toFixed(6)}`);
     }
 
     const totalEstoque = totalEstoqueEmUnidadePadrao;
@@ -202,13 +212,13 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
         ).pop() || null
       : null;
 
-    const mediaPrecoOriginal = unidadeValorOriginal ? media : null;
+    const mediaPrecoOriginal = unidadeValorOriginal ? mediaPrecoUnidadePadrao : null;
 
     return {
       nome: nomeMaisComum,
       produtos: grupo,
-      mediaPreco: media,
-      mediaPrecoDisplay: mediaPrecoConvertido,
+      mediaPreco: mediaPrecoUnidadePadrao,
+      mediaPrecoDisplay,
       totalEstoque,
       totalEstoqueDisplay,
       unidadeDisplay,

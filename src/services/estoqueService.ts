@@ -218,7 +218,7 @@ export class EstoqueService {
     categoria: string;
     unidade: string;
     quantidade: number;
-    valor: number | null;
+    valor: number | null; // VALOR TOTAL da compra (conforme formulário)
     lote: string | null;
     validade: string | null;
     fornecedor: string | null;
@@ -226,15 +226,23 @@ export class EstoqueService {
   }): Promise<ProdutoEstoque> {
     const userId = await this.getCurrentUserId();
 
+    // Converter quantidade para unidade padrão (mg/mL)
     const converted = convertToStandardUnit(produto.quantidade, produto.unidade);
+    
+    // 🔧 CORREÇÃO: valor informado é o VALOR TOTAL da compra
     const valorTotal = produto.valor || 0;
-    const valorUnitario = converted.quantidade > 0 ? valorTotal / converted.quantidade : 0;
+    
+    // Calcular valor unitário na unidade padrão
+    // Se comprou 1 kg por R$ 5,10 total, então:
+    // - 1 kg = 1.000 mg
+    // - R$ 5,10 / 1.000 mg = R$ 0,0051/mg
+    const valorUnitarioPadrao = converted.quantidade > 0 ? valorTotal / converted.quantidade : 0;
 
     console.log('📊 Cálculo de valores do produto:');
     console.log(`  - Quantidade original: ${produto.quantidade} ${produto.unidade}`);
     console.log(`  - Quantidade convertida: ${converted.quantidade} ${converted.unidade}`);
     console.log(`  - Valor total informado: R$ ${valorTotal.toFixed(2)}`);
-    console.log(`  - Valor unitário calculado: R$ ${valorUnitario.toFixed(10)} por ${converted.unidade}`);
+    console.log(`  - Valor unitário calculado: R$ ${valorUnitarioPadrao.toFixed(10)}/${converted.unidade}`);
 
     const { data, error } = await supabase
       .from('estoque_de_produtos')
@@ -246,7 +254,7 @@ export class EstoqueService {
           categoria: produto.categoria,
           unidade_de_medida: converted.unidade,
           quantidade_em_estoque: converted.quantidade,
-          valor_unitario: valorUnitario,
+          valor_unitario: valorUnitarioPadrao,
           valor_total: valorTotal,
           unidade_valor_original: produto.unidade,
           lote: produto.lote,
