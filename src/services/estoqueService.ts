@@ -320,16 +320,20 @@ export class EstoqueService {
     const converted = convertToStandardUnit(produto.quantidade, produto.unidade);
     const valorTotal = produto.valor || 0;
     
-    // ✅ MÉDIA PONDERADA: Salvar valor_total diretamente
-    // A média ponderada calculará: soma(valor_total) ÷ soma(quantidade_inicial)
-    // Exemplo: R$ 5000 para 1 ton → salva R$ 5000 no valor_unitario
-    const valorUnitario = valorTotal;
+    // ✅ Calcular valor por unidade original
+    // Exemplo: R$ 5.000 ÷ 1000 kg = R$ 5/kg
+    // Salvar R$ 5/kg em valor_unitario com unidade_valor_original = kg
+    const valorUnitario = produto.quantidade > 0 
+      ? valorTotal / produto.quantidade 
+      : 0;
 
-    console.log('📊 Cadastro de produto (Média Ponderada):');
+    console.log('📊 Cadastro de produto:');
     console.log(`  - Quantidade original: ${produto.quantidade} ${produto.unidade}`);
     console.log(`  - Quantidade convertida: ${converted.quantidade} ${converted.unidade}`);
     console.log(`  - Valor total informado: R$ ${valorTotal.toFixed(2)}`);
-    console.log(`  - Valor salvo em valor_unitario: R$ ${valorUnitario.toFixed(2)}`);
+    console.log(`  - Valor por ${produto.unidade}: R$ ${valorUnitario.toFixed(2)}/${produto.unidade}`);
+    console.log(`  - Salvo em valor_unitario: R$ ${valorUnitario.toFixed(2)}`);
+    console.log(`  - Salvo em unidade_valor_original: ${produto.unidade}`);
 
     const { data, error } = await supabase
       .from('estoque_de_produtos')
