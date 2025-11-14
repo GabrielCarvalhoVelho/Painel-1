@@ -129,22 +129,36 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
 
     const produtosEmEstoque = grupo.filter(p => (p.quantidade ?? 0) > 0);
 
-    // 2️⃣ USAR valor_medio do banco de dados (calculado automaticamente pela function)
+    // 2️⃣ CALCULAR MÉDIA PONDERADA de TODOS os produtos do grupo
+    // Isso garante que produtos agrupados tenham o valor médio correto do grupo inteiro
     const produtoMaisAntigo = grupo[0];
     const unidadeReferencia = produtoMaisAntigo.unidade_valor_original || produtoMaisAntigo.unidade;
     
-    // Buscar o valor_medio do primeiro produto com estoque (ou o mais antigo se nenhum tiver)
-    const produtoComValorMedio = produtosEmEstoque.find(p => p.valor_medio != null && p.valor_medio > 0) 
-      || grupo.find(p => p.valor_medio != null && p.valor_medio > 0)
-      || produtoMaisAntigo;
+    // Somar valor_total e quantidade_inicial de TODOS os produtos do grupo
+    let somaValorTotal = 0;
+    let somaQuantidadeInicial = 0;
     
-    const media = produtoComValorMedio?.valor_medio ?? 0;
+    grupo.forEach(p => {
+      const valorTotal = p.valor_total || 0;
+      const quantidadeInicial = p.quantidade_inicial || 0;
+      
+      somaValorTotal += valorTotal;
+      somaQuantidadeInicial += quantidadeInicial;
+    });
+    
+    // Média ponderada = soma_valor_total / soma_quantidade_inicial
+    // Isso dá o valor médio REAL do grupo considerando todos os produtos
+    const media = somaQuantidadeInicial > 0 
+      ? somaValorTotal / somaQuantidadeInicial 
+      : 0;
 
-    console.log('💰 Usando valor_medio do banco:', {
+    console.log('💰 Média ponderada do grupo calculada:', {
       grupo: grupo[0].nome_produto,
-      valor_medio: media,
-      unidadeReferencia,
-      produto_id: produtoComValorMedio?.id
+      total_produtos: grupo.length,
+      soma_valor_total: somaValorTotal,
+      soma_quantidade_inicial: somaQuantidadeInicial,
+      media_ponderada: media,
+      unidadeReferencia
     });
 
     const primeiraUnidade = grupo[0].unidade;
