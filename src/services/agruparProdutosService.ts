@@ -81,6 +81,7 @@ export interface ProdutoAgrupado {
   }[];
   unidadeValorOriginal: string | null;
   mediaPrecoOriginal: number | null;
+  valor_medio_grupo: number;
 }
 
 export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
@@ -144,8 +145,46 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
     // Somar valores e quantidades de TODOS os produtos do grupo
     // IMPORTANTE: Converter todas as quantidades para a UNIDADE DE REFERÊNCIA
     grupo.forEach(p => {
-      const valorTotal = p.valor_total || 0;
+      let valorTotal = p.valor_total || 0;
       const quantidadeInicial = p.quantidade_inicial || 0;
+      const valorMedio = p.valor_medio || 0;
+      
+      // Só processar se tiver quantidade_inicial > 0
+      if (quantidadeInicial <= 0) {
+        console.log(`  ⚠️ Produto ${p.id} ignorado (quantidade_inicial zerada)`);
+        return;
+      }
+      
+      // Se não tem valor_total mas tem valor_medio, calcular valor_total
+      if (valorTotal === 0 && valorMedio > 0) {
+        // quantidade_inicial está na mesma unidade que p.unidade
+        // valor_medio está referenciado em p.unidade_valor_original
+        const unidadeValor = p.unidade_valor_original || p.unidade;
+        let quantidadeNaUnidadeValor = quantidadeInicial;
+        
+        // Converter quantidade_inicial de p.unidade para unidade_valor_original
+        if (p.unidade !== unidadeValor) {
+          if (isMassUnit(p.unidade) && isMassUnit(unidadeValor)) {
+            // Converter de p.unidade para mg, depois para unidadeValor
+            const emMg = convertToStandardUnit(quantidadeInicial, p.unidade).quantidade;
+            quantidadeNaUnidadeValor = convertFromStandardUnit(emMg, 'mg', unidadeValor);
+          } else if (isVolumeUnit(p.unidade) && isVolumeUnit(unidadeValor)) {
+            // Converter de p.unidade para mL, depois para unidadeValor
+            const emML = convertToStandardUnit(quantidadeInicial, p.unidade).quantidade;
+            quantidadeNaUnidadeValor = convertFromStandardUnit(emML, 'mL', unidadeValor);
+          }
+        }
+        
+        valorTotal = valorMedio * quantidadeNaUnidadeValor;
+        console.log(`  📦 Produto ${p.id} (calculado via valor_medio):`, {
+          valor_medio: valorMedio,
+          unidade_produto: p.unidade,
+          unidade_valor_original: unidadeValor,
+          quantidade_inicial: quantidadeInicial,
+          quantidade_na_unidade_valor: quantidadeNaUnidadeValor,
+          valor_total_calculado: valorTotal
+        });
+      }
       
       // 1. Converter quantidade_inicial (que está em p.unidade) para unidade padrão (mg ou mL)
       let quantidadeEmUnidadePadrao = quantidadeInicial;
@@ -262,7 +301,8 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
       validades,
       fornecedores: Object.values(fornecedoresMap),
       unidadeValorOriginal: unidadeReferencia,
-      mediaPrecoOriginal: mediaPrecoFinal
+      mediaPrecoOriginal: mediaPrecoFinal,
+      valor_medio_grupo: mediaPrecoFinal
     };
   });
 }

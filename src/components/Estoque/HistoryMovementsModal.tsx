@@ -28,6 +28,8 @@ export default function HistoryMovementsModal({ isOpen, product, onClose, onProd
   const [totalCount, setTotalCount] = useState(0);
   const [totalEntradas, setTotalEntradas] = useState(0);
   const [totalSaidas, setTotalSaidas] = useState(0);
+  const [valorMedioConsolidado, setValorMedioConsolidado] = useState<number>(0);
+  const [unidadeExibicao, setUnidadeExibicao] = useState<string>('kg');
   const itemsPerPage = 10;
   const [attachmentModal, setAttachmentModal] = useState({
     isOpen: false,
@@ -59,43 +61,87 @@ export default function HistoryMovementsModal({ isOpen, product, onClose, onProd
     if (!product) return;
 
     try {
-      // ✅ CONVERTER todas as quantidades para unidade padrão (mg ou mL)
-      // pois o banco pode ter valores em diferentes unidades (ton, kg, g, mg)
-      let allSaidas = 0;
-      let allEntradas = 0;
-
       // Determinar a unidade padrão com base no primeiro produto
+      const primeiraUnidade = product.produtos[0]?.unidade || 'un';
+
+      // Determinar unidade de exibição (kg para massa, L para volume)
+      let unidadeExib = product.unidadeDisplay || primeiraUnidade;
+      
+      if (isMassUnit(primeiraUnidade)) {
+        unidadeExib = 'kg';
+      } else if (isVolumeUnit(primeiraUnidade)) {
+        unidadeExib = 'L';
+      }
+
+      // ✅ USAR O VALOR MÉDIO JÁ CALCULADO PELO AGRUPAMENTO
+      // O product.valor_medio_grupo já vem calculado corretamente do agruparProdutosService
+      const valorMedioNaUnidadeExibicao = Number(product.valor_medio_grupo) || 0;
+
+      console.log('💰 Usando valor médio do grupo (cache):', {
+        nome: product.nome,
+        valor_medio_grupo: valorMedioNaUnidadeExibicao,
+        unidadeDisplay: unidadeExib
+      });
+
+      setValorMedioConsolidado(valorMedioNaUnidadeExibicao);
+      setUnidadeExibicao(unidadeExib);
+
+      // Calcular totais de entrada/saída de forma ASSÍNCRONA (não bloqueia a exibição)
+      // Isso será calculado em segundo plano
+      calculateTotalsInBackground();
+    } catch (error) {
+      console.error('Erro ao carregar totais:', error);
+    }
+  };
+
+  const calculateTotalsInBackground = async () => {
+    if (!product) return;
+
+    try {
       const primeiraUnidade = product.produtos[0]?.unidade || 'un';
       const unidadePadrao = isMassUnit(primeiraUnidade) ? 'mg' : (isVolumeUnit(primeiraUnidade) ? 'mL' : null);
 
-      for (const p of product.produtos) {
-        try {
-          const resp = await EstoqueService.getMovimentacoesExpandidas(p.id, 1, 1000);
-          const data = resp?.data || [];
-          
-          // Converter cada movimentação para unidade padrão antes de somar
-          const saidas = data
-            .filter(m => m.tipo === 'saida')
-            .reduce((sum, m) => {
-              const converted = convertToStandardUnit(m.quantidade, m.unidade);
-              return sum + converted.quantidade;
-            }, 0);
-          
-          const entradas = data
-            .filter(m => m.tipo === 'entrada')
-            .reduce((sum, m) => {
-              const converted = convertToStandardUnit(m.quantidade, m.unidade);
-              return sum + converted.quantidade;
-            }, 0);
-          
-          allSaidas += saidas;
-          allEntradas += entradas;
-        } catch (err) {
-          console.error(`Erro ao buscar movimentações para totais (produto ${p.id}):`, err);
-        }
-      }
+      let allSaidas = 0;
+      let allEntradas = 0;
 
-      // Em seguida, adicionamos as saídas vindas de lançamentos (aplicações)
+      // Buscar movimentações em PARALELO para todos os produtos
+      const movimentacoesPromises = product.produtos.map(p => 
+        EstoqueService.getMovimentacoesExpandidas(p.id, 1, 1000).catch(() => ({ data: [] }))
+      );
+      const movimentacoesResults = await Promise.all(movimentacoesPromises);
+
+      // Processar resultados
+      movimentacoesResults.forEach((resp, index) => {
+        const data = resp?.data || [];
+        const p = product.produtos[index];
+
+        const saidas = data
+          .filter(m => m.tipo === 'saida')
+          .reduce((sum, m) => {
+            const converted = convertToStandardUnit(m.quantidade, m.unidade);
+            return sum + converted.quantidade;
+          }, 0);
+        
+        const entradas = data
+          .filter(m => m.tipo === 'entrada')
+          .reduce((sum, m) => {
+            const converted = convertToStandardUnit(m.quantidade, m.unidade);
+            return sum + converted.quantidade;
+          }, 0);
+        
+        allSaidas += saidas;
+        allEntradas += entradas;
+
+        // Se não tem entrada registrada, adicionar quantidade inicial
+        const hasEntrada = data.some(m => m.tipo === 'entrada');
+        if (!hasEntrada) {
+          const quantidadeInicial = Number(p.quantidade_inicial) || 0;
+          const converted = convertToStandardUnit(quantidadeInicial, p.unidade);
+          allEntradas += converted.quantidade;
+        }
+      });
+
+      // Buscar lançamentos
       try {
         const produtoIds = product.produtos.map(p => p.id);
         const lancamentos = await EstoqueService.getLancamentosPorProdutos(produtoIds);
@@ -106,38 +152,13 @@ export default function HistoryMovementsModal({ isOpen, product, onClose, onProd
           allSaidas += converted.quantidade;
         }
       } catch (err) {
-        console.error('Erro ao buscar lançamentos para totais:', err);
+        console.error('Erro ao buscar lançamentos:', err);
       }
-
-      // Adicionamos as quantidades iniciais dos produtos que não têm entradas registradas
-      for (const p of product.produtos) {
-        const hasEntradaRegistrada = await (async () => {
-          try {
-            const resp = await EstoqueService.getMovimentacoesExpandidas(p.id, 1, 1000);
-            const data = resp?.data || [];
-            return data.some(m => m.tipo === 'entrada');
-          } catch {
-            return false;
-          }
-        })();
-
-        if (!hasEntradaRegistrada) {
-          const quantidadeInicial = Number(p.quantidade_inicial) || 0;
-          const converted = convertToStandardUnit(quantidadeInicial, p.unidade);
-          allEntradas += converted.quantidade;
-        }
-      }
-
-      console.log('📊 Totais calculados (unidade padrão):', {
-        totalEntradas: allEntradas,
-        totalSaidas: allSaidas,
-        unidadePadrao
-      });
 
       setTotalEntradas(allEntradas);
       setTotalSaidas(allSaidas);
     } catch (error) {
-      console.error('Erro ao carregar totais:', error);
+      console.error('Erro ao calcular totais em background:', error);
     }
   };
 
@@ -560,10 +581,6 @@ export default function HistoryMovementsModal({ isOpen, product, onClose, onProd
                           })()}
 
                           {m.tipo === 'entrada' && (() => {
-                            // ✅ SIMPLIFICADO: usar valor_unitario diretamente (já contém valor_total)
-                            const valorUnitario = m.valor;
-                            const unidadeValorOriginal = m.unidade_valor_original || m.unidade;
-
                             return (
                               <div className="text-sm text-gray-600 space-y-1 mt-2">
                                 <div><strong>Marca:</strong> {m.marca || '—'}</div>
@@ -572,8 +589,8 @@ export default function HistoryMovementsModal({ isOpen, product, onClose, onProd
                                 <div><strong>Lote:</strong> {m.lote || '—'}</div>
                                 <div><strong>Validade:</strong> {formatValidity(m.validade)}</div>
                                 <div><strong>Registro MAPA:</strong> {m.registro_mapa || '—'}</div>
-                                {valorUnitario !== null && valorUnitario !== undefined && valorUnitario > 0 && (
-                                  <div><strong>Valor:</strong> {formatSmartCurrency(Number(valorUnitario))} / {unidadeValorOriginal}</div>
+                                {valorMedioConsolidado > 0 && (
+                                  <div><strong>Valor médio:</strong> {formatSmartCurrency(valorMedioConsolidado)} / {unidadeExibicao}</div>
                                 )}
                               </div>
                             );
