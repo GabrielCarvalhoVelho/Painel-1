@@ -198,51 +198,44 @@ const FinanceiroPanel: React.FC = () => {
     return (
       <div
         key={transaction.id_transacao}
-        className={`relative p-4 rounded-lg border-2 hover:shadow-sm transition-shadow ${
+        className={`relative rounded-xl p-[18px] transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] ${
           isIncome 
-            ? 'bg-green-50 border-green-200' 
-            : 'bg-red-50 border-red-200'
+            ? 'bg-[#00A651]/5' 
+            : 'bg-[#F7941F]/5'
         }`}
       >
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center space-x-3 pr-8">
-            {isIncome ? (
-              <TrendingUp className="w-5 h-5 text-green-600" />
-            ) : (
-              <TrendingDown className="w-5 h-5 text-red-600" />
-            )}
             <div>
-              <h4 className="font-medium text-gray-900">{transaction.descricao}</h4>
+              <h4 className="font-semibold text-[#004417]">{transaction.descricao}</h4>
               {transaction.pagador_recebedor && (
-                <p className="text-sm text-gray-600">{transaction.pagador_recebedor}</p>
+                <p className="text-sm text-[#004417]/65 mt-0.5">{transaction.pagador_recebedor}</p>
               )}
             </div>
           </div>
-          <span className={`text-xs px-2 py-1 rounded-full ${
+          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
             isFuture
-              ? (isIncome ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800')
-              : (isIncome ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800')
+              ? (isIncome ? 'bg-[#00A651]/15 text-[#004417]' : 'bg-[#F7941F]/20 text-[#004417]')
+              : (isIncome ? 'bg-[#00A651]/15 text-[#004417]' : 'bg-[#F7941F]/20 text-[#004417]')
           }`}>
             {isFuture ? 'Planejada' : (isIncome ? 'Entrada' : 'Saída')}
           </span>
         </div>
         
-        <div className="grid grid-cols-2 gap-3 text-sm">
+        <div className="grid grid-cols-2 gap-3 text-[13px]">
           <div>
-            <span className="text-gray-600">Valor:</span>
-            <p className={`font-medium ${
-              isIncome ? 'text-green-600' : 'text-red-600'
-            }`}>
+            <span className="text-[#004417]/65">Valor:</span>
+            <p className="font-bold text-[#004417]">
               {FinanceService.formatCurrency(Math.abs(Number(transaction.valor)))}
             </p>
           </div>
           <div>
-            <span className="text-gray-600">Categoria:</span>
-            <p className="font-medium text-gray-900">{transaction.categoria || 'Sem categoria'}</p>
+            <span className="text-[#004417]/65">Categoria:</span>
+            <p className="font-semibold text-[#004417]">{transaction.categoria || 'Sem categoria'}</p>
           </div>
           <div>
-            <span className="text-gray-600">Data de pagamento:</span>
-            <p className="font-medium text-gray-900">
+            <span className="text-[#004417]/65">Data de pagamento:</span>
+            <p className="font-semibold text-[#004417]">
               {isFuture 
                 ? FinanceService.formatDataPagamento(transaction.data_agendamento_pagamento || '')
                 : FinanceService.formatDataPagamento(transaction.data_agendamento_pagamento || transaction.data_agendamento_pagamento || '')
@@ -250,13 +243,13 @@ const FinanceiroPanel: React.FC = () => {
             </p>
           </div>
           <div>
-            <span className="text-gray-600">Forma de pagamento:</span>
-            <p className="font-medium text-gray-900">{transaction.forma_pagamento_recebimento || 'Não informado'}</p>
+            <span className="text-[#004417]/65">Forma de pagamento:</span>
+            <p className="font-semibold text-[#004417]">{transaction.forma_pagamento_recebimento || 'Não informado'}</p>
           </div>
           {/* Campo Parcela - só aparece se tiver valor */}
           {transaction.parcela && (
             <div>
-              <p className="font-medium text-gray-900"><span className="text-gray-600">Parcela: </span>{transaction.parcela}</p>
+              <p className="font-semibold text-[#004417]"><span className="text-[#004417]/65">Parcela: </span>{transaction.parcela}</p>
             </div>
           )}
         </div>
@@ -265,7 +258,7 @@ const FinanceiroPanel: React.FC = () => {
         <div className="flex justify-between items-center mt-3">
           {/* Informação de lançamento para transações futuras */}
           {transaction.data_registro && (
-            <div className="text-xs text-gray-500 flex-shrink-0">
+            <div className="text-xs text-[#004417]/65 flex-shrink-0">
               Lançado em {new Date(transaction.data_registro).toLocaleDateString('pt-BR')}
             </div>
           )}
@@ -277,7 +270,7 @@ const FinanceiroPanel: React.FC = () => {
               transaction.id_transacao || '',
               transaction.descricao || 'Transação'
             )}
-            className="p-2 text-gray-500 hover:text-[#397738] hover:bg-white rounded-lg transition-colors shadow-sm border border-gray-200 flex-shrink-0"
+            className="p-2 text-[#00A651] hover:bg-[#00A651]/10 rounded-lg transition-colors flex-shrink-0"
             title="Gerenciar anexo"
           >
             <Paperclip className="w-4 h-4" />
@@ -289,17 +282,13 @@ const FinanceiroPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Aviso de Isenção de Responsabilidade */}
-      <div className="bg-[#bb9009]/10 border border-[#bb9009]/30 rounded-xl p-4 md:p-6">
-        <div className="flex items-start space-x-3">
-          <div className="w-8 h-8 bg-[#bb9009] rounded-lg flex items-center justify-center flex-shrink-0">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
+      {/* Aviso Importante (topo) */}
+      <div className="bg-[#F7941F]/10 rounded-xl p-[14px_18px]">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-[#F7941F] flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <h3 className="text-sm font-semibold text-[#bb9009] mb-1">Aviso Importante</h3>
-            <p className="text-sm text-gray-700 leading-relaxed">
+            <h3 className="text-sm font-semibold text-[#004417] mb-1">Aviso Importante</h3>
+            <p className="text-sm text-[#004417]/80 leading-relaxed">
               Este painel é apenas um registro de conferência. O Zé não executa pagamentos, transferências ou movimentações financeiras.
             </p>
           </div>
@@ -307,17 +296,17 @@ const FinanceiroPanel: React.FC = () => {
       </div>
 
       {/* Filtros */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,68,23,0.08)] p-4 md:p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-[#86b646] to-[#397738] rounded-lg flex items-center justify-center">
-              <Filter className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 bg-[#00A651]/10 rounded-lg flex items-center justify-center">
+              <Filter className="w-5 h-5 text-[#00A651]" />
             </div>
-            <h3 className="text-lg font-semibold text-[#092f20]">Filtros por Período</h3>
+            <h3 className="text-lg font-semibold text-[#004417]">Filtros por Período</h3>
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center space-x-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            className="flex items-center space-x-2 px-3 py-2 bg-white border border-[rgba(0,68,23,0.15)] text-[#004417] font-medium hover:bg-[#CADB2A]/15 rounded-lg transition-colors"
           >
             <span className="text-sm font-medium">{getFilterLabel()}</span>
             <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
@@ -338,7 +327,7 @@ const FinanceiroPanel: React.FC = () => {
                   }}
                   className={`p-3 text-left rounded-lg border-2 transition-colors ${
                     filterPeriod === option.value
-                      ? 'bg-[#397738]/10 border-[#397738] text-[#397738]'
+                      ? 'bg-[#00A651]/10 border-[#00A651] text-[#004417]'
                       : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                   }`}
                 >
@@ -375,121 +364,99 @@ const FinanceiroPanel: React.FC = () => {
       </div>
 
       {/* Cards de Saldo */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">Fluxo de Caixa</h2>
-            </div>
-          </div>
-        </div>
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold text-[#004417]">Fluxo de Caixa</h2>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
           {/* Card 1: Entradas */}
-          <div className="p-4 rounded-lg border bg-emerald-50 border-emerald-100">
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="w-5 h-5 text-emerald-600" />
-              <span className="text-xs md:text-sm font-medium text-gray-900">
-                {/* ✅ ALTERAÇÃO AQUI */}
-                {isFuturePeriod() ? 'Entradas Planejadas' : 'Entradas (Período)'}
-              </span>
+          <div className="bg-[#00A651]/8 rounded-xl p-5 transition-transform duration-200 hover:scale-[1.01]">
+            <div className="flex items-center space-x-2 mb-3">
+              <div className="w-10 h-10 rounded-full bg-[#00A651]/20 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-[#00A651]" />
+              </div>
             </div>
-            <p className="text-sm md:text-2xl font-bold text-emerald-600 mt-2">
+            <p className="text-sm font-semibold text-[#004417] mb-1">
+              {isFuturePeriod() ? 'Entradas Planejadas' : 'Entradas (Período)'}
+            </p>
+            <p className="text-[22px] font-bold text-[#004417] mb-1">
               {FinanceService.formatCurrency(periodBalance.totalEntradas)}
             </p>
-            <p className="text-xs text-gray-500 mt-1">
-              {/* ✅ ALTERAÇÃO AQUI */}
+            <p className="text-[13px] text-[#004417]/65">
               {isFuturePeriod() ? 'Total de entradas planejadas' : 'Total de entradas registradas'}
             </p>
           </div>
             
           {/* Card 2: Saídas */}
-          <div className="p-4 rounded-lg border bg-red-50 border-red-100">
-            <div className="flex items-center space-x-2">
-              <TrendingDown className="w-5 h-5 text-red-600" />
-              <span className="text-xs md:text-sm font-medium text-gray-900">
-                {/* ✅ ALTERAÇÃO AQUI */}
-                {isFuturePeriod() ? 'Saídas Planejadas' : 'Saídas (Período)'}
-              </span>
+          <div className="bg-[#F7941F]/10 rounded-xl p-5 transition-transform duration-200 hover:scale-[1.01]">
+            <div className="flex items-center space-x-2 mb-3">
+              <div className="w-10 h-10 rounded-full bg-[#F7941F]/20 flex items-center justify-center">
+                <TrendingDown className="w-5 h-5 text-[#F7941F]" />
+              </div>
             </div>
-            <p className="text-sm md:text-2xl font-bold text-red-600 mt-2">
+            <p className="text-sm font-semibold text-[#004417] mb-1">
+              {isFuturePeriod() ? 'Saídas Planejadas' : 'Saídas (Período)'}
+            </p>
+            <p className="text-[22px] font-bold text-[#004417] mb-1">
               {FinanceService.formatCurrency(periodBalance.totalSaidas)}
             </p>
-            <p className="text-xs text-gray-500 mt-1">
-              {/* ✅ ALTERAÇÃO AQUI */}
+            <p className="text-[13px] text-[#004417]/65">
               {isFuturePeriod() ? 'Total de saídas planejadas' : 'Total de saídas registradas'}
             </p>
           </div>
           
           {/* Card 3: Saldo Real (agora condicional) */}
           {!isPastPeriod() && (
-            <div className={`p-4 rounded-lg border ${
-              periodBalance.saldoReal >= 0 
-                ? 'bg-blue-50 border-blue-100' 
-                : 'bg-orange-50 border-orange-100'
-            }`}>
-              <div className="flex items-center space-x-2">
-                <Wallet className={`w-5 h-5 ${
-                  periodBalance.saldoReal >= 0 ? 'text-blue-600' : 'text-orange-600'
-                }`} />
-                <span className="text-xs md:text-sm font-medium text-gray-900">
-                  {isFuturePeriod() ? 'Saldo Atual' : 'Saldo Atual (Hoje)'}
-                </span>
+            <div className="bg-white rounded-xl p-5 shadow-sm border border-[rgba(0,68,23,0.08)] transition-transform duration-200 hover:scale-[1.01]">
+              <div className="flex items-center space-x-2 mb-3">
+                <div className="w-10 h-10 rounded-full bg-[#00A651]/20 flex items-center justify-center">
+                  <Wallet className="w-5 h-5 text-[#00A651]" />
+                </div>
                 <button
                   onClick={() => toggleTooltip('saldo-real')}
-                  className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                  className="p-1 text-[#00A651] hover:bg-[#00A651]/10 rounded transition-colors"
                 >
                   <Info className="w-4 h-4" />
                 </button>
               </div>
-              <p className={`text-sm md:text-2xl font-bold mt-2 ${
-                periodBalance.saldoReal >= 0 ? 'text-blue-600' : 'text-orange-600'
-              }`}>
+              <p className="text-sm font-semibold text-[#004417] mb-1">
+                {isFuturePeriod() ? 'Saldo Atual' : 'Saldo Atual (Hoje)'}
+              </p>
+              <p className="text-[22px] font-bold text-[#004417] mb-1">
                 {FinanceService.formatCurrency(periodBalance.saldoReal)}
               </p>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-[13px] text-[#004417]/65">
                 Saldo até hoje (lançamentos feitos)
               </p>
             </div>
           )}
           
           {shouldShowProjected() && (
-            <div className={`p-4 rounded-lg border ${
-              (periodBalance.saldoProjetado || 0) >= 0 
-                ? 'bg-purple-50 border-purple-100' 
-                : 'bg-yellow-50 border-yellow-100'
-            }`}>
-              <div className="flex items-center space-x-2">
-                <Target className={`w-5 h-5 ${
-                  (periodBalance.saldoProjetado || 0) >= 0 ? 'text-purple-600' : 'text-yellow-600'
-                }`} />
-                <span className="text-xs md:text-sm font-medium text-gray-900">
-                  {filterPeriod === 'todos' ? 'Saldo Projetado (Geral)' : 'Saldo Projetado (Período)'}
-                </span>
+            <div className="bg-[#CADB2A]/12 rounded-xl p-5 transition-transform duration-200 hover:scale-[1.01]">
+              <div className="flex items-center space-x-2 mb-3">
+                <div className="w-10 h-10 rounded-full bg-[#CADB2A]/30 flex items-center justify-center">
+                  <Target className="w-5 h-5 text-[#004417]" />
+                </div>
                 <button
                   onClick={() => toggleTooltip('saldo-projetado')}
-                  className="p-1 text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                  className="p-1 text-[#004417] hover:bg-[#CADB2A]/20 rounded transition-colors"
                 >
                   <Info className="w-4 h-4" />
                 </button>
               </div>
-              <p className={`text-sm md:text-2xl font-bold mt-2 ${
-                (periodBalance.saldoProjetado || 0) >= 0 ? 'text-purple-600' : 'text-yellow-600'
-              }`}>
+              <p className="text-sm font-semibold text-[#004417] mb-1">
+                {filterPeriod === 'todos' ? 'Saldo Projetado (Geral)' : 'Saldo Projetado (Período)'}
+              </p>
+              <p className="text-[22px] font-bold text-[#004417] mb-1">
                 {FinanceService.formatCurrency(periodBalance.saldoProjetado || 0)}
               </p>
-              <div className="flex items-center justify-between mt-1">
-                <p className="text-xs text-gray-500">
+              <div className="flex items-center justify-between">
+                <p className="text-[13px] text-[#004417]/65">
                   {filterPeriod === 'todos' ? 'Saldo hoje + futuros (total)' : 'Saldo hoje + futuros do período'}
                 </p>
-                {/* Future impacts plus icon */}
                 {(periodBalance.impactoFuturo7Dias !== undefined || periodBalance.impactoFuturo30Dias !== undefined) && (
                   <button
                     onClick={() => toggleTooltip('impacto-futuro')}
-                    className="p-1 text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                    className="p-1 text-[#004417] hover:bg-[#CADB2A]/20 rounded transition-colors flex-shrink-0"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
@@ -501,23 +468,23 @@ const FinanceiroPanel: React.FC = () => {
       </div>
 
       {/* Colunas de Transações */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Coluna Esquerda - Transações Realizadas */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <div className="bg-white rounded-xl shadow-[0_4px_10px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] p-5 md:p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Transações Realizadas</h3>
-            <div className="flex items-center space-x-2 text-green-600">
+            <h3 className="text-lg font-bold text-[#004417]">Transações Realizadas</h3>
+            <div className="flex items-center space-x-2 text-[#00A651]">
               <CreditCard className="w-4 h-4" />
-              <span className="text-sm">({transacoesRealizadas.length})</span>
+              <span className="text-sm font-semibold">({transacoesRealizadas.length})</span>
             </div>
           </div>
           
           <div className="space-y-4">
             {transacoesRealizadas.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <PiggyBank className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>Nenhuma transação encontrada</p>
-                <p className="text-sm">
+              <div className="text-center py-8 text-[#004417]/65">
+                <PiggyBank className="w-12 h-12 mx-auto mb-3 opacity-50 text-[#00A651]" />
+                <p className="font-medium text-[#004417]">Nenhuma transação encontrada</p>
+                <p className="text-sm mt-1">
                   {filterPeriod === 'todos' 
                     ? 'Registre transações via WhatsApp do ZÉ'
                     : 'Nenhuma transação realizada neste período'
@@ -535,7 +502,7 @@ const FinanceiroPanel: React.FC = () => {
                   // Se a lista visível está RECOLHIDA, mostra o botão "Ver todas"
                   <button
                     onClick={() => setTransacoesRealizadas(todasTransacoesRealizadas)}
-                    className="w-full px-4 py-2 text-sm font-semibold text-[#397738] bg-white border-2 border-[#86b646] rounded-lg hover:bg-[#86b646]/10 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#397738]"
+                    className="w-full px-4 py-2.5 text-sm font-semibold text-[#00A651] bg-white border border-[#00A651] rounded-lg hover:bg-[#00A651]/10 transition-colors"
                   >
                     Ver todas ({todasTransacoesRealizadas.length})
                   </button>
@@ -543,7 +510,7 @@ const FinanceiroPanel: React.FC = () => {
                   // Se a lista visível está EXPANDIDA, mostra o botão "Ver menos"
                   <button
                     onClick={() => setTransacoesRealizadas(todasTransacoesRealizadas.slice(0, INITIAL_ITEM_COUNT))}
-                    className="w-full px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-50 border-2 border-gray-200 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"
+                    className="w-full px-4 py-2.5 text-sm font-semibold text-[#004417]/65 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
                   >
                     Ver menos
                   </button>
@@ -554,21 +521,21 @@ const FinanceiroPanel: React.FC = () => {
         </div>
 
         {/* Coluna Direita - Transações Futuras */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <div className="bg-white rounded-xl shadow-[0_4px_10px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] p-5 md:p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Transações Futuras</h3>
-            <div className="flex items-center space-x-2 text-blue-600">
+            <h3 className="text-lg font-bold text-[#004417]">Transações Futuras</h3>
+            <div className="flex items-center space-x-2 text-[#00A651]">
               <Clock className="w-4 h-4" />
-              <span className="text-sm">({transacoesFuturas.length})</span>
+              <span className="text-sm font-semibold">({transacoesFuturas.length})</span>
             </div>
           </div>
           
           <div className="space-y-4">
             {transacoesFuturas.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>Nenhum lançamento futuro neste período</p>
-                <p className="text-sm text-gray-600 mt-2 leading-relaxed">
+              <div className="text-center py-8 text-[#004417]/65">
+                <Clock className="w-12 h-12 mx-auto mb-3 opacity-50 text-[#00A651]" />
+                <p className="font-medium text-[#004417]">Nenhum lançamento futuro neste período</p>
+                <p className="text-sm mt-2 leading-relaxed">
                   Todos os valores dependem exclusivamente das informações lançadas pelo produtor.
                 </p>
               </div>
@@ -593,7 +560,7 @@ const FinanceiroPanel: React.FC = () => {
                       setTransacoesFuturas(todasTransacoesFuturas);
                       console.log('✅ Estado atualizado para mostrar todas as transações');
                     }}
-                    className="w-full px-4 py-2 text-sm font-semibold text-blue-600 bg-white border-2 border-blue-200 rounded-lg hover:bg-blue-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2.5 text-sm font-semibold text-[#00A651] bg-white border border-[#00A651] rounded-lg hover:bg-[#00A651]/10 transition-colors"
                   >
                     Ver todas ({todasTransacoesFuturas.length})
                   </button>
@@ -606,7 +573,7 @@ const FinanceiroPanel: React.FC = () => {
                       setTransacoesFuturas(todasTransacoesFuturas.slice(0, INITIAL_ITEM_COUNT));
                       console.log('✅ Estado atualizado para mostrar menos transações');
                     }}
-                    className="w-full px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-50 border-2 border-gray-200 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"
+                    className="w-full px-4 py-2.5 text-sm font-semibold text-[#004417]/65 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
                   >
                     Ver menos
                   </button>
@@ -618,12 +585,12 @@ const FinanceiroPanel: React.FC = () => {
       </div>
 
       {/* Rodapé de Compliance */}
-      <div className="bg-[#bb9009]/10 border border-[#bb9009]/30 rounded-xl p-4">
-        <div className="flex items-start space-x-3">
-          <AlertCircle className="w-5 h-5 text-[#bb9009] flex-shrink-0 mt-0.5" />
+      <div className="bg-[#00A651]/10 rounded-xl p-[14px_18px] mt-8">
+        <div className="flex items-start gap-3">
+          <Info className="w-5 h-5 text-[#00A651] flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <h4 className="text-sm font-semibold text-[#bb9009] mb-1">Isenção de Responsabilidade</h4>
-            <p className="text-sm text-gray-700 leading-relaxed">
+            <h4 className="text-sm font-semibold text-[#004417] mb-1">Isenção de Responsabilidade</h4>
+            <p className="text-sm text-[#004417]/80 leading-relaxed">
               Os valores exibidos aqui são apenas um resumo dos lançamentos feitos pelo produtor via WhatsApp. 
               O Zé não movimenta contas, não executa pagamentos nem garante recebimentos.
             </p>
@@ -633,17 +600,17 @@ const FinanceiroPanel: React.FC = () => {
 
       {/* Estado vazio geral */}
       {transacoesRealizadas.length === 0 && transacoesFuturas.length === 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
-          <div className="w-16 h-16 bg-[#86b646]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <PiggyBank className="w-8 h-8 text-[#86b646]" />
+        <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,68,23,0.08)] p-6 text-center">
+          <div className="w-16 h-16 bg-[#00A651]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <PiggyBank className="w-8 h-8 text-[#00A651]" />
           </div>
-          <h3 className="text-lg font-semibold text-[#092f20] mb-2">Sem lançamentos neste período</h3>
-          <p className="text-gray-600 mb-4">
+          <h3 className="text-lg font-bold text-[#004417] mb-2">Sem lançamentos neste período</h3>
+          <p className="text-[#004417]/65 mb-4">
             Para registrar, envie pelo WhatsApp do Zé.
           </p>
-          <div className="bg-[#bb9009]/10 p-4 rounded-lg">
-            <p className="text-sm text-[#bb9009]">
-              <strong>Atenção:</strong> este painel é apenas para controle; nenhuma transação financeira é realizada pelo sistema.
+          <div className="bg-[#F7941F]/10 p-4 rounded-lg">
+            <p className="text-sm text-[#004417]/80">
+              <strong className="text-[#004417]">Atenção:</strong> este painel é apenas para controle; nenhuma transação financeira é realizada pelo sistema.
             </p>
           </div>
         </div>
