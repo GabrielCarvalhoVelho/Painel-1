@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X, Save, Upload } from 'lucide-react';
 import { MaquinaService } from '../../services/maquinaService';
 import { AuthService } from '../../services/authService';
@@ -185,61 +185,75 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl my-auto">
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
-          <h2 className="text-lg sm:text-xl font-bold">Cadastrar Nova Máquina/Equipamento</h2>
-          <button onClick={onClose}><X className="w-5 h-5 text-gray-500" /></button>
+      <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(0,68,23,0.12)] w-full max-w-2xl my-auto">
+        <div className="flex items-center justify-between p-6 border-b border-[rgba(0,68,23,0.08)]">
+          <h2 className="text-[20px] font-bold text-[#004417]">Cadastrar Nova Máquina/Equipamento</h2>
+          <button onClick={onClose} className="text-[rgba(0,68,23,0.5)] hover:text-[#004417] transition-colors">
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {validationMessage && (
-            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+            <div className="bg-[#FEF2F2] border-l-4 border-[#DC2626] p-4 rounded-lg">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                  <svg className="h-5 w-5 text-[#DC2626]" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm text-red-700 font-medium">{validationMessage}</p>
-                  <p className="text-xs text-red-600 mt-1">Por favor, selecione um arquivo válido antes de continuar.</p>
+                  <p className="text-[14px] text-[#DC2626] font-semibold">{validationMessage}</p>
+                  <p className="text-[13px] text-[rgba(220,38,38,0.8)] mt-1">Por favor, selecione um arquivo válido antes de continuar.</p>
                 </div>
               </div>
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium mb-1">Nome da máquina</label>
+            <label className="block text-[14px] font-semibold text-[#004417] mb-2">Nome da máquina</label>
             <input
               type="text"
               value={formData.nome}
               onChange={(e) => handleInputChange('nome', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg ${errors.nome ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 border rounded-xl text-[14px] focus:outline-none focus:ring-2 transition-all ${
+                errors.nome 
+                  ? 'border-[#DC2626] focus:ring-[rgba(220,38,38,0.2)]' 
+                  : 'border-[rgba(0,68,23,0.2)] focus:ring-[rgba(0,166,81,0.2)] focus:border-[#00A651]'
+              }`}
               placeholder="Ex.: Trator John Deere 6110, Pulverizador Jacto"
               required
             />
-            {errors.nome && <p className="text-red-500 text-xs">{errors.nome}</p>}
+            {errors.nome && <p className="text-[#DC2626] text-[13px] mt-1">{errors.nome}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Marca/Modelo</label>
+            <label className="block text-[14px] font-semibold text-[#004417] mb-2">Marca/Modelo</label>
             <input
               type="text"
               value={formData.marca_modelo}
               onChange={(e) => handleInputChange('marca_modelo', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg ${errors.marca_modelo ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 border rounded-xl text-[14px] focus:outline-none focus:ring-2 transition-all ${
+                errors.marca_modelo 
+                  ? 'border-[#DC2626] focus:ring-[rgba(220,38,38,0.2)]' 
+                  : 'border-[rgba(0,68,23,0.2)] focus:ring-[rgba(0,166,81,0.2)] focus:border-[#00A651]'
+              }`}
               placeholder="Ex.: John Deere 6110D, Massey Ferguson 4283"
               required
             />
-            {errors.marca_modelo && <p className="text-red-500 text-xs">{errors.marca_modelo}</p>}
+            {errors.marca_modelo && <p className="text-[#DC2626] text-[13px] mt-1">{errors.marca_modelo}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Categoria</label>
+            <label className="block text-[14px] font-semibold text-[#004417] mb-2">Categoria</label>
             <select
               value={formData.categoria}
               onChange={(e) => handleInputChange('categoria', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg ${errors.categoria ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 border rounded-xl text-[14px] focus:outline-none focus:ring-2 transition-all ${
+                errors.categoria 
+                  ? 'border-[#DC2626] focus:ring-[rgba(220,38,38,0.2)]' 
+                  : 'border-[rgba(0,68,23,0.2)] focus:ring-[rgba(0,166,81,0.2)] focus:border-[#00A651]'
+              }`}
               required
             >
               <option value="">Selecione...</option>
@@ -258,25 +272,25 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Horímetro atual (opcional)</label>
+            <label className="block text-[14px] font-semibold text-[#004417] mb-2">Horímetro atual (opcional)</label>
             <input
               type="number"
               step="0.01"
               value={formData.horimetro_atual}
               onChange={(e) => handleInputChange('horimetro_atual', e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg border-gray-300"
+              className="w-full px-4 py-3 border border-[rgba(0,68,23,0.2)] rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-[rgba(0,166,81,0.2)] focus:border-[#00A651] transition-all"
               placeholder="Ex.: 1500 (horas)"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Valor de compra (opcional)</label>
+            <label className="block text-[14px] font-semibold text-[#004417] mb-2">Valor de compra (opcional)</label>
             <input
               type="text"
               inputMode="numeric"
               value={formData.valor_compra_display}
               onChange={(e) => handleInputChange('valor_compra', e.target.value)}
-              onFocus={(e) => {
+              onFocus={() => {
                 if (formData.valor_compra_display === 'R$ 0,00') {
                   handleClearValue();
                 }
@@ -291,53 +305,59 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
                   }));
                 }
               }}
-              className="w-full px-3 py-2 border rounded-lg border-gray-300 font-medium text-lg"
+              className="w-full px-4 py-3 border border-[rgba(0,68,23,0.2)] rounded-xl text-[16px] font-semibold text-[#00A651] focus:outline-none focus:ring-2 focus:ring-[rgba(0,166,81,0.2)] focus:border-[#00A651] transition-all"
               placeholder="R$ 0,00"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-[13px] text-[rgba(0,68,23,0.6)] mt-2">
               Digite apenas números. Ex: 25000000 = R$ 250.000,00 ou 12550 = R$ 125,50
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Data de compra (opcional)</label>
+              <label className="block text-[14px] font-semibold text-[#004417] mb-2">Data de compra (opcional)</label>
               <input
                 type="date"
                 value={formData.data_compra}
                 onChange={(e) => handleInputChange('data_compra', e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg border-gray-300"
+                className="w-full px-4 py-3 border border-[rgba(0,68,23,0.2)] rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-[rgba(0,166,81,0.2)] focus:border-[#00A651] transition-all"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Número de série (opcional)</label>
+              <label className="block text-[14px] font-semibold text-[#004417] mb-2">Número de série (opcional)</label>
               <input
                 type="text"
                 value={formData.numero_serie}
                 onChange={(e) => handleInputChange('numero_serie', e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg border-gray-300"
+                className="w-full px-4 py-3 border border-[rgba(0,68,23,0.2)] rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-[rgba(0,166,81,0.2)] focus:border-[#00A651] transition-all"
                 placeholder="Ex.: JD6110-2024-001"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Fornecedor</label>
+            <label className="block text-[14px] font-semibold text-[#004417] mb-2">Fornecedor</label>
             <input
               type="text"
               value={formData.fornecedor}
               onChange={(e) => handleInputChange('fornecedor', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg ${errors.fornecedor ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 border rounded-xl text-[14px] focus:outline-none focus:ring-2 transition-all ${
+                errors.fornecedor 
+                  ? 'border-[#DC2626] focus:ring-[rgba(220,38,38,0.2)]' 
+                  : 'border-[rgba(0,68,23,0.2)] focus:ring-[rgba(0,166,81,0.2)] focus:border-[#00A651]'
+              }`}
               placeholder="Ex.: Concessionária John Deere Sul de Minas"
               required
             />
-            {errors.fornecedor && <p className="text-red-500 text-xs">{errors.fornecedor}</p>}
+            {errors.fornecedor && <p className="text-[#DC2626] text-[13px] mt-1">{errors.fornecedor}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Foto da máquina (opcional)</label>
-            <div className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
-              errors.anexo ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-[#397738]'
+            <label className="block text-[14px] font-semibold text-[#004417] mb-2">Foto da máquina (opcional)</label>
+            <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
+              errors.anexo 
+                ? 'border-[#DC2626] bg-[#FEF2F2]' 
+                : 'border-[rgba(0,68,23,0.2)] hover:border-[#00A651] hover:bg-[rgba(0,166,81,0.02)]'
             }`}>
               <input
                 type="file"
@@ -347,24 +367,26 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
                 id="file-upload-maquina"
               />
               <label htmlFor="file-upload-maquina" className="cursor-pointer">
-                <Upload className={`w-8 h-8 mx-auto mb-2 ${
-                  errors.anexo ? 'text-red-500' : formData.anexo ? 'text-[#397738]' : 'text-gray-400'
+                <Upload className={`w-10 h-10 mx-auto mb-3 ${
+                  errors.anexo ? 'text-[#DC2626]' : formData.anexo ? 'text-[#00A651]' : 'text-[rgba(0,68,23,0.3)]'
                 }`} />
-                <p className={`text-sm ${
-                  errors.anexo ? 'text-red-700' : formData.anexo ? 'font-bold text-[#397738]' : 'text-gray-600'
+                <p className={`text-[14px] ${
+                  errors.anexo ? 'text-[#DC2626]' : formData.anexo ? 'font-bold text-[#00A651]' : 'text-[rgba(0,68,23,0.7)]'
                 }`}>
                   {formData.anexo ? formData.anexo.name : 'Clique para selecionar um arquivo'}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">PDF, JPG, PNG, WEBP (máx. 10MB)</p>
+                <p className="text-[13px] text-[rgba(0,68,23,0.5)] mt-2">PDF, JPG, PNG, WEBP (máx. 10MB)</p>
               </label>
             </div>
-            {errors.anexo && <p className="text-red-500 text-sm mt-2">⚠️ {errors.anexo}</p>}
+            {errors.anexo && <p className="text-[#DC2626] text-[13px] mt-2">⚠️ {errors.anexo}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Documento da máquina (opcional)</label>
-            <div className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
-              errors.documento_maquina ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-[#397738]'
+            <label className="block text-[14px] font-semibold text-[#004417] mb-2">Documento da máquina (opcional)</label>
+            <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
+              errors.documento_maquina 
+                ? 'border-[#DC2626] bg-[#FEF2F2]' 
+                : 'border-[rgba(0,68,23,0.2)] hover:border-[#00A651] hover:bg-[rgba(0,166,81,0.02)]'
             }`}>
               <input
                 type="file"
@@ -374,41 +396,41 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
                 id="file-upload-documento-maquina"
               />
               <label htmlFor="file-upload-documento-maquina" className="cursor-pointer">
-                <Upload className={`w-8 h-8 mx-auto mb-2 ${
-                  errors.documento_maquina ? 'text-red-500' : formData.documento_maquina ? 'text-[#397738]' : 'text-gray-400'
+                <Upload className={`w-10 h-10 mx-auto mb-3 ${
+                  errors.documento_maquina ? 'text-[#DC2626]' : formData.documento_maquina ? 'text-[#00A651]' : 'text-[rgba(0,68,23,0.3)]'
                 }`} />
-                <p className={`text-sm ${
-                  errors.documento_maquina ? 'text-red-700' : formData.documento_maquina ? 'font-bold text-[#397738]' : 'text-gray-600'
+                <p className={`text-[14px] ${
+                  errors.documento_maquina ? 'text-[#DC2626]' : formData.documento_maquina ? 'font-bold text-[#00A651]' : 'text-[rgba(0,68,23,0.7)]'
                 }`}>
                   {formData.documento_maquina ? formData.documento_maquina.name : 'Clique para selecionar um arquivo'}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">PDF, JPG, PNG, WEBP (máx. 10MB)</p>
+                <p className="text-[13px] text-[rgba(0,68,23,0.5)] mt-2">PDF, JPG, PNG, WEBP (máx. 10MB)</p>
               </label>
             </div>
-            {errors.documento_maquina && <p className="text-red-500 text-sm mt-2">⚠️ {errors.documento_maquina}</p>}
+            {errors.documento_maquina && <p className="text-[#DC2626] text-[13px] mt-2">⚠️ {errors.documento_maquina}</p>}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 pt-4">
+          <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-[rgba(0,68,23,0.08)]">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex-1 h-[48px] px-6 border-2 border-[rgba(0,68,23,0.2)] text-[#004417] rounded-xl font-semibold hover:bg-[rgba(0,68,23,0.03)] active:scale-[0.98] transition-all"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 px-4 py-2 bg-[#397738] text-white rounded-lg hover:bg-[#092f20] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              className="flex-1 h-[48px] px-6 bg-[#00A651] text-white rounded-xl font-bold hover:bg-[#004417] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   <span>Cadastrando...</span>
                 </>
               ) : (
                 <>
-                  <Save className="w-4 h-4" />
+                  <Save className="w-5 h-5" />
                   <span>Cadastrar Máquina</span>
                 </>
               )}
