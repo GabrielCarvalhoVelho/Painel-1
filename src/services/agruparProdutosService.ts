@@ -138,9 +138,12 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
     let somaValorTotal = 0;
     let somaQuantidadeNaUnidadeReferencia = 0;
     
-    // Somar valores e quantidades de TODOS os produtos do grupo
+    // Somar valores e quantidades APENAS dos produtos COM ESTOQUE (quantidade > 0)
     // IMPORTANTE: Converter todas as quantidades para a UNIDADE DE REFERÊNCIA usando convertBetweenUnits
     grupo.forEach(p => {
+      // Ignorar produtos com estoque zerado no cálculo da média
+      if ((p.quantidade ?? 0) <= 0) return;
+      
       const valorTotal = p.valor_total || 0;
       const quantidadeInicial = p.quantidade_inicial || 0;
       

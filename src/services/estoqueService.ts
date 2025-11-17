@@ -540,7 +540,9 @@ export class EstoqueService {
       console.log(`  ✅ Produto ${produto.id} atualizado. Restante a remover: ${quantidadeRestante}`);
     }
 
-    if (quantidadeRestante > 0) {
+    // Usar tolerância para evitar erros de precisão de ponto flutuante
+    const TOLERANCE = 0.0001;
+    if (quantidadeRestante > TOLERANCE) {
       console.warn('⚠️ Quantidade solicitada excede o estoque disponível.');
       throw new Error('Quantidade solicitada excede o estoque disponível.');
     }

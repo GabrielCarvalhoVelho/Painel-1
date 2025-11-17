@@ -67,6 +67,7 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
     if (!formData.categoria) newErrors.categoria = 'Categoria é obrigatória';
     if (!formData.unidade) newErrors.unidade = 'Unidade é obrigatória';
     if (!formData.quantidade.trim()) newErrors.quantidade = 'Quantidade é obrigatória';
+    if (!formData.valor || Number(formData.valor) <= 0) newErrors.valor = 'Valor total é obrigatório';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -86,7 +87,7 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
         categoria: formData.categoria,
         unidade: formData.unidade,
         quantidade: Number(formData.quantidade),
-        valor: formData.valor ? Number(formData.valor) : null,
+        valor: Number(formData.valor),
         lote: formData.lote || null,
         validade: formData.validade || null,
         fornecedor: formData.fornecedor || null,
@@ -217,7 +218,7 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
 
           {/* Valor */}
           <div>
-            <label className="block text-sm font-medium mb-1">Valor total da compra (opcional)</label>
+            <label className="block text-sm font-medium mb-1">Valor total da compra</label>
             <input
               type="text"
               inputMode="numeric"
@@ -238,9 +239,11 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
                   }));
                 }
               }}
-              className="w-full px-3 py-2 border rounded-lg border-gray-300 font-medium text-lg"
+              className={`w-full px-3 py-2 border rounded-lg ${errors.valor ? 'border-red-500' : 'border-gray-300'} font-medium text-lg`}
               placeholder="R$ 0,00"
+              required
             />
+            {errors.valor && <p className="text-red-500 text-xs">{errors.valor}</p>}
             <p className="text-xs text-gray-500 mt-1">
               Digite apenas números: 450 = R$ 4,50 | 45000 = R$ 450,00 | 2500 = R$ 25,00
             </p>

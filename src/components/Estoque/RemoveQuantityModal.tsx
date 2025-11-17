@@ -74,7 +74,56 @@ export default function RemoveQuantityModal({
   );
 
   // Validar se a quantidade é válida (comparando com totalEstoqueDisplay que está na unidade de referência)
-  const isInvalid = quantidade <= 0 || quantidadeConvertida > productGroup.totalEstoqueDisplay;
+  // Usar tolerância para evitar erros de precisão de ponto flutuante ao zerar estoque
+  const TOLERANCE = 0.0001;
+  const isInvalid = quantidade <= 0 || quantidadeConvertida > (productGroup.totalEstoqueDisplay + TOLERANCE);
+
+  // 🔍 Handler com logs detalhados
+  const handleConfirm = () => {
+    console.group('🚀 RemoveQuantityModal - Confirmação de Remoção');
+    
+    console.log('📦 Produto:', productGroup.nome);
+    console.log('📊 Dados do Grupo:', {
+      totalEstoqueDisplay: productGroup.totalEstoqueDisplay,
+      unidadeDisplay: productGroup.unidadeDisplay,
+      unidadeValorOriginal: productGroup.unidadeValorOriginal,
+      mediaPrecoOriginal: productGroup.mediaPrecoOriginal,
+      produtos: productGroup.produtos.map(p => ({
+        id: p.id,
+        quantidade: p.quantidade,
+        unidade: p.unidade,
+        valor: p.valor
+      }))
+    });
+    
+    console.log('👤 Entrada do Usuário:', {
+      quantidadeDigitada: quantidade,
+      unidadeSelecionada: unidadeSelecionada
+    });
+    
+    console.log('🔄 Conversão:', {
+      de: `${quantidade} ${unidadeSelecionada}`,
+      para: `${quantidadeConvertida} ${unidadeReferencia}`,
+      formula: `${quantidade} × (fator_${unidadeSelecionada} / fator_${unidadeReferencia})`
+    });
+    
+    console.log('✅ Validação:', {
+      isInvalid,
+      quantidadeValida: quantidade > 0,
+      naoExcedeEstoque: quantidadeConvertida <= productGroup.totalEstoqueDisplay,
+      estoqueDisponivel: productGroup.totalEstoqueDisplay,
+      quantidadeARemover: quantidadeConvertida,
+      diferenca: productGroup.totalEstoqueDisplay - quantidadeConvertida
+    });
+    
+    console.log('📝 Observação:', observacao || '(nenhuma)');
+    
+    console.log('➡️ Valor enviado para onConfirm():', quantidadeConvertida);
+    
+    console.groupEnd();
+    
+    onConfirm(quantidadeConvertida);
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -204,7 +253,7 @@ export default function RemoveQuantityModal({
             Cancelar
           </button>
           <button
-            onClick={() => onConfirm(quantidadeConvertida)}
+            onClick={handleConfirm}
             disabled={isInvalid}
             className={`px-8 py-2.5 rounded-xl font-semibold transition-all duration-200 ${
               isInvalid
