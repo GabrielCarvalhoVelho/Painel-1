@@ -2,7 +2,7 @@
 import { supabase } from '../lib/supabase';
 import { AuthService } from './authService';
 import { ActivityService } from './activityService';
-import { convertToStandardUnit } from '../lib/unitConverter';
+import { convertToStandardUnit, convertFromStandardUnit, isMassUnit, isVolumeUnit } from '../lib/unitConverter';
 
 export interface ProdutoEstoque {
   id: number;
@@ -32,6 +32,7 @@ export interface MovimentacaoEstoque {
   quantidade: number;
   observacao?: string | null;
   created_at: string;
+  unidade_momento?: string | null;
 }
 
 export interface MovimentacaoExpandida extends MovimentacaoEstoque {
@@ -315,17 +316,20 @@ export class EstoqueService {
 
     const valorTotal = produto.valor || 0;
     
+    // ✅ Converter quantidade para unidade padrão (mg para massa, mL para volume)
+    const converted = convertToStandardUnit(produto.quantidade, produto.unidade);
+    
     // ✅ Valor unitário REAL na unidade ORIGINAL (sem conversão)
     // Exemplo: R$ 5.000 ÷ 1000 kg = R$ 5/kg
     const valorUnitario = produto.quantidade > 0 
       ? valorTotal / produto.quantidade 
       : 0;
 
-    console.log('📊 Cadastro de produto (SEM CONVERSÃO):');
-    console.log(`  - Quantidade: ${produto.quantidade} ${produto.unidade}`);
+    console.log('📊 Cadastro de produto COM CONVERSÃO para unidade padrão:');
+    console.log(`  - Entrada usuário: ${produto.quantidade} ${produto.unidade}`);
+    console.log(`  - Conversão: ${converted.quantidade} ${converted.unidade}`);
     console.log(`  - Valor total: R$ ${valorTotal.toFixed(2)}`);
     console.log(`  - Valor unitário: R$ ${valorUnitario.toFixed(2)}/${produto.unidade}`);
-    console.log(`  - ✅ SQL fará toda a padronização de unidades`);
 
     const { data, error } = await supabase
       .from('estoque_de_produtos')
@@ -335,10 +339,10 @@ export class EstoqueService {
           nome_do_produto: produto.nome_produto,
           marca_ou_fabricante: produto.marca,
           categoria: produto.categoria,
-          // ✅ Salvar unidade e quantidade EXATAMENTE como o usuário digitou
-          unidade_de_medida: produto.unidade,
-          quantidade_em_estoque: produto.quantidade,
-          quantidade_inicial: produto.quantidade,
+          // ✅ Salvar em unidade PADRÃO (mg/mL)
+          unidade_de_medida: converted.unidade,
+          quantidade_em_estoque: converted.quantidade,
+          quantidade_inicial: converted.quantidade,
           // ✅ Valor unitário na unidade original
           valor_unitario: valorUnitario,
           valor_total: valorTotal,
@@ -439,9 +443,45 @@ export class EstoqueService {
     produtoId: number,
     tipo: 'entrada' | 'saida',
     quantidade: number,
-    observacao?: string
+    observacao?: string,
+    valorUnitarioMomento?: number | null,
+    unidadeValorMomento?: string | null,
+    unidadeMomento?: string | null
   ): Promise<void> {
     const userId = await this.getCurrentUserId();
+
+    // Calcular valor total da movimentação se houver valor unitário
+    // ⚠️ IMPORTANTE: quantidade está em unidade padrão (mg/mL)
+    // valorUnitarioMomento está em unidadeValorMomento (ton/kg/L)
+    // Precisamos converter a quantidade para a mesma unidade do valor antes de multiplicar
+    let valorTotalMovimentacao = null;
+    
+    if (valorUnitarioMomento != null && valorUnitarioMomento > 0 && unidadeValorMomento && unidadeMomento) {
+      // Converter quantidade de unidade padrão (mg/mL) para unidadeValorMomento
+      let quantidadeConvertida = quantidade;
+      
+      if (unidadeMomento !== unidadeValorMomento) {
+        if (isMassUnit(unidadeMomento) && isMassUnit(unidadeValorMomento)) {
+          // Converter de mg para unidadeValorMomento
+          quantidadeConvertida = convertFromStandardUnit(quantidade, 'mg', unidadeValorMomento);
+        } else if (isVolumeUnit(unidadeMomento) && isVolumeUnit(unidadeValorMomento)) {
+          // Converter de mL para unidadeValorMomento
+          quantidadeConvertida = convertFromStandardUnit(quantidade, 'mL', unidadeValorMomento);
+        }
+      }
+      
+      valorTotalMovimentacao = valorUnitarioMomento * quantidadeConvertida;
+      
+      console.log('💰 Cálculo valor_total_movimentacao:', {
+        produto_id: produtoId,
+        quantidade_padrao: quantidade,
+        unidade_padrao: unidadeMomento,
+        quantidade_convertida: quantidadeConvertida,
+        unidade_valor: unidadeValorMomento,
+        valor_unitario: valorUnitarioMomento,
+        valor_total: valorTotalMovimentacao
+      });
+    }
 
     const { error } = await supabase
       .from('movimentacoes_estoque')
@@ -452,6 +492,10 @@ export class EstoqueService {
           tipo,
           quantidade,
           observacao: observacao || null,
+          unidade_momento: unidadeMomento || null,
+          valor_unitario_momento: valorUnitarioMomento || null,
+          unidade_valor_momento: unidadeValorMomento || null,
+          valor_total_movimentacao: valorTotalMovimentacao,
         },
       ]);
 
@@ -470,7 +514,9 @@ export class EstoqueService {
   static async removerQuantidadeFIFO(
     nomeProduto: string,
     quantidadeRemover: number,
-    observacao?: string
+    observacao?: string,
+    mediaPrecoGrupo?: number | null,
+    unidadeValorGrupo?: string | null
   ): Promise<void> {
     const userId = await this.getCurrentUserId();
 
@@ -498,7 +544,23 @@ export class EstoqueService {
       throw new Error('Nenhum produto encontrado com estoque disponível.');
     }
 
-    let quantidadeRestante = quantidadeRemover;
+    // 🔄 CONVERSÃO CRÍTICA: quantidadeRemover vem na unidade de referência do GRUPO (ex: ton)
+    // mas o banco armazena em unidade padrão (mg para massa, mL para volume)
+    // Precisamos converter para a unidade padrão antes de comparar com quantidade_em_estoque
+    // ✅ USAR unidadeValorGrupo se fornecida, senão usa do produto individual
+    const primeiroProduto = produtos[0];
+    const unidadeReferencia = unidadeValorGrupo || primeiroProduto.unidade_valor_original || primeiroProduto.unidade_de_medida;
+    const converted = convertToStandardUnit(quantidadeRemover, unidadeReferencia);
+    const quantidadeRemoverPadrao = converted.quantidade;
+
+    console.log('🔄 Conversão para unidade padrão:', {
+      quantidadeOriginal: quantidadeRemover,
+      unidadeReferencia,
+      quantidadePadrao: quantidadeRemoverPadrao,
+      unidadePadrao: converted.unidade
+    });
+
+    let quantidadeRestante = quantidadeRemoverPadrao;
 
     console.log(`📦 Encontrados ${produtos.length} registros de "${nomeProduto}"`);
 
@@ -516,23 +578,35 @@ export class EstoqueService {
         created_at: produto.created_at,
       });
 
-      // Atualizar a quantidade no banco
-      const { error: updateError } = await supabase
-        .from('estoque_de_produtos')
-        .update({ quantidade_em_estoque: novaQuantidade })
-        .eq('id', produto.id);
+      // ⚠️ NÃO ATUALIZAMOS O ESTOQUE AQUI!
+      // O trigger trg_processar_movimentacao fará isso automaticamente quando inserirmos
+      // o registro em movimentacoes_estoque. Se atualizarmos aqui, a quantidade será
+      // subtraída em dobro (uma vez por nós, outra vez pelo trigger).
 
-      if (updateError) {
-        console.error(`❌ Erro ao atualizar produto ${produto.id}:`, updateError);
-        throw updateError;
-      }
+      // Buscar valor_medio para armazenar no histórico
+      // ✅ PRIORIZAR média ponderada do grupo se fornecida, caso contrário usar valor individual
+      const valorUnitarioMomento = mediaPrecoGrupo != null ? Number(mediaPrecoGrupo) : (produto.valor_medio != null ? Number(produto.valor_medio) : null);
+      const unidadeValorMomento = unidadeValorGrupo || produto.unidade_valor_original || produto.unidade_de_medida || null;
+      const unidadeMomento = produto.unidade_de_medida || null;
 
-      // Registrar a movimentação
+      console.log(`  💰 Armazenando valor histórico:`, {
+        produto_id: produto.id,
+        valor_medio: produto.valor_medio,
+        valorUnitarioMomento,
+        unidadeValorMomento,
+        unidadeMomento,
+        quantidadeARemover
+      });
+
+      // Registrar a movimentação com valores e unidade do momento
       await this.registrarMovimentacao(
         produto.id,
         'saida',
         quantidadeARemover,
-        observacao
+        observacao,
+        valorUnitarioMomento,
+        unidadeValorMomento,
+        unidadeMomento
       );
 
       quantidadeRestante -= quantidadeARemover;
@@ -541,7 +615,8 @@ export class EstoqueService {
     }
 
     // Usar tolerância para evitar erros de precisão de ponto flutuante
-    const TOLERANCE = 0.0001;
+    // Aumentado para 10mg/10mL (0.01g/0.01L) para permitir zerar estoque com variações de arredondamento
+    const TOLERANCE = 10000; // 10.000 mg ou 10 mL
     if (quantidadeRestante > TOLERANCE) {
       console.warn('⚠️ Quantidade solicitada excede o estoque disponível.');
       throw new Error('Quantidade solicitada excede o estoque disponível.');
@@ -603,7 +678,7 @@ export class EstoqueService {
       nome_produto: mov.produto.nome_do_produto,
       marca: mov.produto.marca_ou_fabricante,
       categoria: mov.produto.categoria,
-      unidade: mov.produto.unidade_de_medida,
+      unidade: mov.unidade_momento || mov.produto.unidade_de_medida,
       valor: mov.produto.valor_unitario,
       unidade_valor_original: mov.produto.unidade_valor_original,
       lote: mov.produto.lote,
@@ -611,6 +686,10 @@ export class EstoqueService {
       fornecedor: mov.produto.fornecedor,
       registro_mapa: mov.produto.registro_mapa,
       produto_created_at: mov.produto.created_at,
+      // ✅ Campos históricos salvos no momento da transação (imutáveis)
+      valor_unitario_momento: mov.valor_unitario_momento,
+      unidade_valor_momento: mov.unidade_valor_momento,
+      valor_total_movimentacao: mov.valor_total_movimentacao,
     }));
 
     const totalCount = count || 0;

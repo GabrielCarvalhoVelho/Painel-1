@@ -136,32 +136,62 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
     const primeiraUnidade = grupo[0].unidade;
     
     let somaValorTotal = 0;
-    let somaQuantidadeNaUnidadeReferencia = 0;
+    let somaQuantidadeEmEstoque = 0;
     
-    // Somar valores e quantidades APENAS dos produtos COM ESTOQUE (quantidade > 0)
-    // IMPORTANTE: Converter todas as quantidades para a UNIDADE DE REFERÊNCIA usando convertBetweenUnits
-    grupo.forEach(p => {
-      // Ignorar produtos com estoque zerado no cálculo da média
-      if ((p.quantidade ?? 0) <= 0) return;
+    // 💰 USAR VALOR_MEDIO DO BANCO (já calculado pelo trigger)
+    // O banco calcula automaticamente o valor_medio via trigger
+    // Calculamos a média ponderada do grupo baseada no valor_medio de cada produto
+    
+    console.log(`\n📊 Calculando média do grupo: ${nomeMaisComum}`);
+    console.log(`   Unidade de referência do grupo: ${unidadeReferencia}`);
+    
+    produtosEmEstoque.forEach(p => {
+      const valorMedio = p.valor_medio ?? 0;
+      const quantidadeAtual = p.quantidade ?? 0;
+      const unidadeValorProduto = p.unidade_valor_original || p.unidade;
       
-      const valorTotal = p.valor_total || 0;
-      const quantidadeInicial = p.quantidade_inicial || 0;
+      console.log(`\n   🔹 Produto ID ${p.id}:`, {
+        nome: p.nome_produto,
+        valor_medio_banco: valorMedio,
+        unidade_valor_original: unidadeValorProduto,
+        quantidade_atual: quantidadeAtual,
+        unidade_estoque: p.unidade
+      });
       
-      // Converter DIRETAMENTE da unidade do produto para a unidade de referência
+      // Converter quantidade atual para unidade de referência do grupo
       const quantidadeNaUnidadeRef = convertBetweenUnits(
-        quantidadeInicial,
+        quantidadeAtual,
         p.unidade,
         unidadeReferencia
       );
       
-      somaValorTotal += valorTotal;
-      somaQuantidadeNaUnidadeReferencia += quantidadeNaUnidadeRef;
+      console.log(`      Quantidade convertida: ${quantidadeAtual} ${p.unidade} → ${quantidadeNaUnidadeRef} ${unidadeReferencia}`);
+      
+      // O valor_medio está na unidade_valor_original do produto
+      // Precisamos converter para a unidade de referência do grupo
+      // Ex: produto A tem valor_medio em kg, grupo usa ton → converter preço de R$/kg para R$/ton
+      const fatorConversaoValor = convertBetweenUnits(1, unidadeReferencia, unidadeValorProduto);
+      const valorMedioNaUnidadeRef = valorMedio * fatorConversaoValor;
+      
+      console.log(`      Valor médio no banco: R$ ${valorMedio.toFixed(2)}/${unidadeValorProduto}`);
+      console.log(`      Fator conversão: 1 ${unidadeReferencia} = ${fatorConversaoValor} ${unidadeValorProduto}`);
+      console.log(`      Valor médio convertido: R$ ${valorMedioNaUnidadeRef.toFixed(2)}/${unidadeReferencia}`);
+      console.log(`      Contribuição total: R$ ${valorMedioNaUnidadeRef.toFixed(2)} × ${quantidadeNaUnidadeRef.toFixed(2)} = R$ ${(valorMedioNaUnidadeRef * quantidadeNaUnidadeRef).toFixed(2)}`);
+      
+      // Agora podemos calcular: valor_total = valor_medio_convertido * quantidade_convertida
+      somaValorTotal += valorMedioNaUnidadeRef * quantidadeNaUnidadeRef;
+      somaQuantidadeEmEstoque += quantidadeNaUnidadeRef;
     });
     
-    // Calcular média ponderada na unidade de referência
-    const mediaPrecoFinal = somaQuantidadeNaUnidadeReferencia > 0 
-      ? somaValorTotal / somaQuantidadeNaUnidadeReferencia 
+    // Calcular média ponderada do grupo na unidade de referência
+    const mediaPrecoFinal = somaQuantidadeEmEstoque > 0 
+      ? somaValorTotal / somaQuantidadeEmEstoque 
       : 0;
+    
+    console.log(`\n   💰 RESULTADO FINAL:`);
+    console.log(`      Total em valor: R$ ${somaValorTotal.toFixed(2)}`);
+    console.log(`      Total em quantidade: ${somaQuantidadeEmEstoque.toFixed(2)} ${unidadeReferencia}`);
+    console.log(`      Média ponderada: R$ ${mediaPrecoFinal.toFixed(2)}/${unidadeReferencia}\n`);
 
     // 3️⃣ CALCULAR totalEstoqueDisplay DIRETAMENTE na UNIDADE DE REFERÊNCIA
     // Usar a mesma lógica do convertBetweenUnits para garantir consistência

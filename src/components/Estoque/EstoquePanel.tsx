@@ -281,10 +281,13 @@ export default function EstoquePanel() {
           try {
             // Remove quantidade usando FIFO (First In, First Out)
             // quantidadeConvertida já vem na unidade de referência do produto (kg, L, un, etc.)
+            // ✅ Passar média ponderada do grupo para registrar valor histórico correto
             await EstoqueService.removerQuantidadeFIFO(
               removeModal.productGroup.nome,
               quantidadeConvertida,
-              removeModal.observacao
+              removeModal.observacao,
+              removeModal.productGroup.mediaPrecoDisplay,
+              removeModal.productGroup.unidadeValorOriginal
             );
             
             // Recarrega produtos

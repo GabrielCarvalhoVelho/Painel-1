@@ -57,7 +57,7 @@ export default function ListaProdutosDesktop({
               <div>
                 <p className="text-[13px] text-[rgba(0,68,23,0.6)] mb-0.5">Quantidade</p>
                 <p className="text-[15px] font-semibold text-[#004417]">
-                  {item.totalEstoqueDisplay} <span className="text-[13px] text-[rgba(0,68,23,0.7)]">{formatUnitFull(item.unidadeDisplay)}</span>
+                  {item.totalEstoqueDisplay.toFixed(2)} <span className="text-[13px] text-[rgba(0,68,23,0.7)]">{formatUnitFull(item.unidadeDisplay)}</span>
                 </p>
               </div>
               <div>

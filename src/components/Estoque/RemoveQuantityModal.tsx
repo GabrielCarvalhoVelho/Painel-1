@@ -74,8 +74,9 @@ export default function RemoveQuantityModal({
   );
 
   // Validar se a quantidade é válida (comparando com totalEstoqueDisplay que está na unidade de referência)
-  // Usar tolerância para evitar erros de precisão de ponto flutuante ao zerar estoque
-  const TOLERANCE = 0.0001;
+  // Usar tolerância maior para evitar erros de precisão de ponto flutuante ao zerar estoque
+  // Aumentado para 0.01 para permitir zerar estoque com variações de arredondamento
+  const TOLERANCE = 0.01;
   const isInvalid = quantidade <= 0 || quantidadeConvertida > (productGroup.totalEstoqueDisplay + TOLERANCE);
 
   // 🔍 Handler com logs detalhados
@@ -88,11 +89,16 @@ export default function RemoveQuantityModal({
       unidadeDisplay: productGroup.unidadeDisplay,
       unidadeValorOriginal: productGroup.unidadeValorOriginal,
       mediaPrecoOriginal: productGroup.mediaPrecoOriginal,
+      mediaPrecoDisplay: productGroup.mediaPrecoDisplay,
       produtos: productGroup.produtos.map(p => ({
         id: p.id,
+        nome: p.nome_produto,
         quantidade: p.quantidade,
+        quantidade_inicial: p.quantidade_inicial,
         unidade: p.unidade,
-        valor: p.valor
+        valor: p.valor,
+        valor_medio: p.valor_medio,
+        unidade_valor_original: p.unidade_valor_original
       }))
     });
     
@@ -104,21 +110,33 @@ export default function RemoveQuantityModal({
     console.log('🔄 Conversão:', {
       de: `${quantidade} ${unidadeSelecionada}`,
       para: `${quantidadeConvertida} ${unidadeReferencia}`,
-      formula: `${quantidade} × (fator_${unidadeSelecionada} / fator_${unidadeReferencia})`
+      formula: `${quantidade} × (fator_${unidadeSelecionada} / fator_${unidadeReferencia})`,
+      TOLERANCE: 0.0001
     });
     
     console.log('✅ Validação:', {
       isInvalid,
       quantidadeValida: quantidade > 0,
-      naoExcedeEstoque: quantidadeConvertida <= productGroup.totalEstoqueDisplay,
+      condicao1: quantidadeConvertida <= productGroup.totalEstoqueDisplay,
+      condicao2: quantidadeConvertida <= (productGroup.totalEstoqueDisplay + 0.0001),
       estoqueDisponivel: productGroup.totalEstoqueDisplay,
       quantidadeARemover: quantidadeConvertida,
-      diferenca: productGroup.totalEstoqueDisplay - quantidadeConvertida
+      diferenca: productGroup.totalEstoqueDisplay - quantidadeConvertida,
+      diferencaAbsoluta: Math.abs(productGroup.totalEstoqueDisplay - quantidadeConvertida),
+      podeZerar: Math.abs(productGroup.totalEstoqueDisplay - quantidadeConvertida) <= 0.0001
     });
     
     console.log('📝 Observação:', observacao || '(nenhuma)');
     
-    console.log('➡️ Valor enviado para onConfirm():', quantidadeConvertida);
+    console.log('🎯 Parâmetros enviados para EstoqueService.removerQuantidadeFIFO:', {
+      nome: productGroup.nome,
+      quantidadeConvertida: quantidadeConvertida,
+      observacao: observacao,
+      mediaPrecoGrupo: productGroup.mediaPrecoDisplay,
+      unidadeValorGrupo: productGroup.unidadeValorOriginal
+    });
+    
+    console.log('➡️ Chamando onConfirm() com quantidadeConvertida:', quantidadeConvertida);
     
     console.groupEnd();
     

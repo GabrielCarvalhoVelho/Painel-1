@@ -375,13 +375,47 @@ export default function HistoryMovementsModal({ isOpen, product, onClose, onProd
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
 
-      // No activity-aggregated entries: keep only original movimentações list
+      // ✅ AGRUPAR movimentações FIFO que ocorrem no mesmo segundo
+      const movimentacoesAgrupadas: any[] = [];
+      const grupos = new Map<string, any[]>();
 
-      setTotalCount(totalMovements);
+      allMovements.forEach(mov => {
+        // Chave: timestamp (sem milissegundos) + tipo + observação + source
+        const timestamp = new Date(mov.created_at).toISOString().split('.')[0]; // Remove milissegundos
+        const chave = `${timestamp}_${mov.tipo}_${mov.observacao || ''}_${mov._source || ''}`;
+        
+        if (!grupos.has(chave)) {
+          grupos.set(chave, []);
+        }
+        grupos.get(chave)!.push(mov);
+      });
+
+      // Consolidar grupos: se houver múltiplas movimentações, somar quantidades e valores
+      grupos.forEach(movs => {
+        if (movs.length === 1) {
+          // Apenas uma movimentação, adicionar diretamente
+          movimentacoesAgrupadas.push(movs[0]);
+        } else {
+          // Múltiplas movimentações FIFO: consolidar em uma única entrada
+          const primeiraMovimentacao = movs[0];
+          const quantidadeTotal = movs.reduce((sum, m) => sum + (Number(m.quantidade) || 0), 0);
+          const valorTotalMovimentacao = movs.reduce((sum, m) => sum + (Number(m.valor_total_movimentacao) || 0), 0);
+          
+          movimentacoesAgrupadas.push({
+            ...primeiraMovimentacao,
+            quantidade: quantidadeTotal,
+            valor_total_movimentacao: valorTotalMovimentacao,
+            _agrupado: true,
+            _quantidade_produtos: movs.length
+          });
+        }
+      });
+
+      setTotalCount(movimentacoesAgrupadas.length);
 
       const startIndex = (page - 1) * itemsPerPage;
       const endIndex = startIndex + itemsPerPage;
-      const paginatedItems = allMovements.slice(startIndex, endIndex);
+      const paginatedItems = movimentacoesAgrupadas.slice(startIndex, endIndex);
 
       setItems(paginatedItems);
 
@@ -471,7 +505,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose, onProd
                   const scaled = autoScaleQuantity(totalSaidas, unidadePadrao);
                   return `${scaled.quantidade} ${formatUnitAbbreviated(scaled.unidade)}`;
                 })()}</span></div>
-                <div className="whitespace-nowrap"><strong className="font-semibold">Em estoque:</strong> <span className="font-bold text-[#004417]">{product?.totalEstoqueDisplay} <span className="text-[rgba(0,68,23,0.7)] text-[13px]">{formatUnitAbbreviated(product?.unidadeDisplay || product?.produtos[0]?.unidade)}</span></span></div>
+                <div className="whitespace-nowrap"><strong className="font-semibold">Em estoque:</strong> <span className="font-bold text-[#004417]">{product?.totalEstoqueDisplay.toFixed(2)} <span className="text-[rgba(0,68,23,0.7)] text-[13px]">{formatUnitAbbreviated(product?.unidadeDisplay || product?.produtos[0]?.unidade)}</span></span></div>
               </div>
               
             </div>
@@ -580,35 +614,49 @@ export default function HistoryMovementsModal({ isOpen, product, onClose, onProd
                           })()}
 
                           {m.tipo === 'saida' && m._source !== 'lancamento' && (() => {
-                            const produtoOrigem = product?.produtos.find(p => p.id === m.produto_id);
+                            // ✅ USAR VALORES HISTÓRICOS salvos no momento da transação
+                            // Estes valores são imutáveis e representam o custo real no momento da saída
+                            const valorTotalMovimentacao = m.valor_total_movimentacao || 0;
+                            const valorUnitarioMomento = m.valor_unitario_momento || 0;
+                            const unidadeValorMomento = m.unidade_valor_momento;
                             
-                            // Usar valor_medio do banco de dados
-                            const valorMedio = produtoOrigem?.valor_medio || 0;
-                            const unidadeValorOriginal = produtoOrigem?.unidade_valor_original || produtoOrigem?.unidade || m.unidade;
-                            const unidadePadrao = produtoOrigem?.unidade || m.unidade; // mg ou mL
+                            console.log('🔍 DEBUG Saída - Dados da movimentação:', {
+                              id: m.id,
+                              quantidade: m.quantidade,
+                              unidade: m.unidade,
+                              valor_total_movimentacao: m.valor_total_movimentacao,
+                              valor_unitario_momento: m.valor_unitario_momento,
+                              unidade_valor_momento: m.unidade_valor_momento
+                            });
                             
-                            let valorTotalSaida = 0;
+                            // Se temos o valor total pré-calculado, usar diretamente
+                            // Caso contrário, calcular usando o valor unitário do momento
+                            let valorTotalSaida = valorTotalMovimentacao;
                             
-                            if (valorMedio > 0) {
-                              // m.quantidade está na unidade padrão (mg/mL)
-                              // Converter para unidade_valor_original onde o valor_medio está referenciado
+                            if (valorTotalSaida === 0 && valorUnitarioMomento > 0) {
+                              // Fallback: calcular manualmente se valor_total_movimentacao não foi salvo
+                              const unidadePadrao = m.unidade; // mg ou mL
                               let quantidadeSaidaConvertida = m.quantidade;
                               
-                              if (unidadePadrao !== unidadeValorOriginal) {
-                                if (isMassUnit(unidadePadrao) && isMassUnit(unidadeValorOriginal)) {
-                                  quantidadeSaidaConvertida = convertFromStandardUnit(m.quantidade, 'mg', unidadeValorOriginal);
-                                } else if (isVolumeUnit(unidadePadrao) && isVolumeUnit(unidadeValorOriginal)) {
-                                  quantidadeSaidaConvertida = convertFromStandardUnit(m.quantidade, 'mL', unidadeValorOriginal);
+                              if (unidadeValorMomento && unidadePadrao !== unidadeValorMomento) {
+                                if (isMassUnit(unidadePadrao) && isMassUnit(unidadeValorMomento)) {
+                                  quantidadeSaidaConvertida = convertFromStandardUnit(m.quantidade, 'mg', unidadeValorMomento);
+                                } else if (isVolumeUnit(unidadePadrao) && isVolumeUnit(unidadeValorMomento)) {
+                                  quantidadeSaidaConvertida = convertFromStandardUnit(m.quantidade, 'mL', unidadeValorMomento);
                                 }
                               }
                               
-                              // Custo da saída = valor_medio × quantidade convertida
-                              valorTotalSaida = valorMedio * quantidadeSaidaConvertida;
+                              valorTotalSaida = valorUnitarioMomento * quantidadeSaidaConvertida;
                             }
 
                             return valorTotalSaida > 0 ? (
                               <div className="text-[13px] text-[rgba(0,68,23,0.85)] space-y-2 mt-2">
                                 <div><strong className="font-semibold text-[#004417]">Valor total da saída:</strong> {formatSmartCurrency(valorTotalSaida)}</div>
+                                {valorUnitarioMomento > 0 && unidadeValorMomento && (
+                                  <div className="text-[12px] text-[rgba(0,68,23,0.65)]">
+                                    Valor unitário no momento: {formatSmartCurrency(valorUnitarioMomento)} / {unidadeValorMomento}
+                                  </div>
+                                )}
                               </div>
                             ) : null;
                           })()}
