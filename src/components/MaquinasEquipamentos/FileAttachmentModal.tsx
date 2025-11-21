@@ -145,16 +145,16 @@ export default function FileAttachmentModal({
   };
 
   const getFileIconColor = (fileType: string | null) => {
-    if (!fileType) return 'text-gray-600';
+    if (!fileType) return 'text-[#00A651]';
     const type = fileType.toLowerCase();
 
     if (type === 'pdf') return 'text-red-600';
     if (type === 'xml') return 'text-purple-600';
     if (['xls', 'xlsx', 'csv'].includes(type)) return 'text-green-600';
     if (['doc', 'docx'].includes(type)) return 'text-blue-600';
-    if (type === 'txt') return 'text-gray-600';
+    if (type === 'txt') return 'text-[#00A651]';
 
-    return 'text-gray-600';
+    return 'text-[#00A651]';
   };
 
   const handleDownload = async (slot: FileSlot) => {
@@ -341,21 +341,21 @@ export default function FileAttachmentModal({
           </div>
         </div>
       )}
-      <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(0,68,23,0.12)] max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(0,68,23,0.08)] max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-[rgba(0,68,23,0.08)]">
+        <div className="flex items-center justify-between mb-6 pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#00A651] to-[#004417] rounded-xl flex items-center justify-center">
-              <Paperclip className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 bg-[#F5FDF8] rounded-xl flex items-center justify-center">
+              <Paperclip className="w-5 h-5 text-[#00A651]" />
             </div>
             <div>
               <h3 className="text-[18px] font-bold text-[#004417]">Gerenciar Anexos</h3>
-              <p className="text-[13px] text-[rgba(0,68,23,0.7)] truncate max-w-64">{maquinaDescription}</p>
+              <p className="text-[13px] text-[#00441799] truncate max-w-64">{maquinaDescription}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-[rgba(0,68,23,0.5)] hover:text-[#004417] hover:bg-[rgba(0,68,23,0.05)] rounded-lg transition-all"
+            className="p-2 text-[#00441766] hover:text-[#004417] hover:bg-[rgba(0,166,81,0.04)] rounded-lg transition-all"
             disabled={loading || uploadingSlot !== null}
             aria-label="Fechar"
           >
@@ -386,13 +386,13 @@ export default function FileAttachmentModal({
         {/* Área de anexos */}
         <div className="space-y-4">
           {fileSlots.map((slot) => (
-            <div key={slot.id} className="bg-[rgba(0,68,23,0.02)] p-5 rounded-xl border border-[rgba(0,68,23,0.08)]">
+            <div key={slot.id} className="p-4 rounded-[14px] bg-white shadow-[0_1px_3px_rgba(0,68,23,0.04)]">
               <div className="flex items-center justify-between mb-4">
                 <h4 className="font-bold text-[15px] text-[#004417]">{slot.label}</h4>
                 <div className={`px-3 py-1.5 rounded-full text-[12px] font-semibold ${
                   slot.hasFile
-                    ? 'bg-[rgba(0,166,81,0.15)] text-[#00A651]'
-                    : 'bg-[rgba(0,68,23,0.08)] text-[rgba(0,68,23,0.6)]'
+                    ? 'bg-[rgba(205,219,42,0.12)] text-[#004417]'
+                    : 'bg-[#F5FDF8] text-[#00441799]'
                 }`}>
                   {slot.hasFile ? 'Arquivo anexado' : 'Nenhum arquivo'}
                 </div>
@@ -401,28 +401,28 @@ export default function FileAttachmentModal({
               {/* Botões de ação quando NÃO tem arquivo */}
               {!slot.hasFile && (
                 <div className="flex flex-col gap-2">
-                  <button
-                    onClick={() => handleFileSelect(slot.id)}
-                    className="flex items-center justify-center gap-2 h-[48px] bg-[#00A651] text-white rounded-xl font-bold hover:bg-[#004417] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={uploadingSlot !== null}
-                  >
-                    {uploadingSlot === slot.id ? (
-                      <>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-[#F5FDF8] rounded-[10px] flex items-center justify-center">
+                        <Upload className="w-5 h-5 text-[#00A651]" />
+                      </div>
+                      <div>
+                        <p className="text-[14px] font-semibold text-[#004417]">Nenhum arquivo</p>
+                        <p className="text-[13px] text-[#00441799]">Clique em anexar para enviar um arquivo</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleFileSelect(slot.id)}
+                      className="h-[40px] bg-[#00A651] text-white rounded-[10px] font-bold px-4 hover:bg-[#004417] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={uploadingSlot !== null}
+                    >
+                      {uploadingSlot === slot.id ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        <span>Enviando arquivo...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="w-5 h-5" />
-                        <span>Anexar Arquivo</span>
-                      </>
-                    )}
-                  </button>
-                  {uploadingSlot === slot.id && (
-                    <p className="text-[13px] text-center text-[rgba(0,68,23,0.6)] font-medium">
-                      Aguarde, processando seu arquivo
-                    </p>
-                  )}
+                      ) : (
+                        <span>Anexar</span>
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -438,7 +438,7 @@ export default function FileAttachmentModal({
                           <img
                             src={slot.url}
                             alt={slot.label}
-                            className="max-h-40 mx-auto rounded-xl border-2 border-[rgba(0,68,23,0.1)] shadow-sm"
+                            className="max-h-40 mx-auto rounded-xl shadow-[0_1px_3px_rgba(0,68,23,0.04)]"
                           />
                         );
                       }
@@ -448,9 +448,9 @@ export default function FileAttachmentModal({
                       const fileLabel = getFileTypeLabel(slot.fileType);
 
                       return (
-                        <div className="flex flex-col items-center justify-center gap-3 py-6 bg-white rounded-xl border border-[rgba(0,68,23,0.08)]">
+                        <div className="flex flex-col items-center justify-center gap-3 py-6 bg-white rounded-xl shadow-[0_1px_3px_rgba(0,68,23,0.04)]">
                           <div className={iconColor}>
-                            <FileIcon className="w-14 h-14" />
+                            <FileIcon className="w-14 h-14 text-[#00A651]" />
                           </div>
                           <div className="text-center">
                             <p className="text-[14px] font-bold text-[#004417]">
@@ -465,14 +465,14 @@ export default function FileAttachmentModal({
                   {/* Botão Download */}
                   <div className="flex gap-2 mb-1 w-full">
                     <button
-                      className="flex-1 h-[44px] bg-[rgba(0,68,23,0.05)] text-[#004417] px-4 rounded-xl font-semibold hover:bg-[rgba(0,68,23,0.1)] active:scale-[0.98] flex items-center justify-center gap-2 transition-all"
+                      className="flex-1 h-[44px] bg-white text-[#004417] px-4 rounded-[10px] font-semibold border border-[#00A65133] hover:bg-[rgba(0,166,81,0.04)] active:scale-[0.98] flex items-center justify-center gap-2 transition-all"
                       onClick={() => handleDownload(slot)}
                       disabled={loading}
                     >
                       {loading ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
                       ) : (
-                        <Download className="w-5 h-5" />
+                        <Download className="w-5 h-5 text-[#00A651]" />
                       )}
                       Download
                     </button>
@@ -481,19 +481,19 @@ export default function FileAttachmentModal({
                   {/* Botões Substituir e Excluir */}
                   <div className="flex gap-2 w-full">
                     <button
-                      className="flex-1 h-[44px] bg-[rgba(0,166,81,0.1)] text-[#004417] px-4 rounded-xl font-semibold hover:bg-[rgba(0,166,81,0.2)] active:scale-[0.98] flex items-center justify-center gap-2 transition-all"
+                      className="flex-1 h-[44px] bg-white text-[#004417] px-4 rounded-[10px] font-semibold border border-[#00A65133] hover:bg-[rgba(0,166,81,0.04)] active:scale-[0.98] flex items-center justify-center gap-2 transition-all"
                       onClick={() => handleFileSelect(slot.id, true)}
                       disabled={uploadingSlot !== null}
                     >
                       {uploadingSlot === slot.id ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
                       ) : (
-                        <Upload className="w-5 h-5" />
+                        <Upload className="w-5 h-5 text-[#00A651]" />
                       )}
                       Substituir
                     </button>
                     <button
-                      className="flex-1 h-[44px] bg-[#FEF2F2] text-[#DC2626] px-4 rounded-xl font-semibold hover:bg-[#FEE2E2] active:scale-[0.98] flex items-center justify-center gap-2 transition-all"
+                      className="flex-1 h-[44px] bg-white text-[#DC2626] px-4 rounded-[10px] font-semibold border border-[#FCA5A5] hover:bg-[#FEF2F2] active:scale-[0.98] flex items-center justify-center gap-2 transition-all"
                       onClick={() => handleDelete(slot)}
                       disabled={loading}
                     >

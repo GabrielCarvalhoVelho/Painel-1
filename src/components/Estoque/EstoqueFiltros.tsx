@@ -35,7 +35,7 @@ export default function EstoqueFiltros({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] p-5 md:p-6">
+    <div className="bg-white rounded-[12px] shadow-[0_1px_3px_rgba(0,68,23,0.10)] p-5 md:p-6">
       {/* Cabeçalho do filtro */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-3">
@@ -47,11 +47,11 @@ export default function EstoqueFiltros({
 
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center space-x-2 px-3 py-2 bg-[rgba(0,68,23,0.02)] hover:bg-[rgba(0,166,81,0.08)] border border-[rgba(0,68,23,0.1)] rounded-lg transition-all"
+          className="flex items-center space-x-2 px-3 py-2 bg-white hover:bg-[rgba(0,166,81,0.04)] rounded-[12px] transition-all"
         >
           <span className="text-sm font-medium text-[#004417]">{getFilterLabel()}</span>
           <ChevronDown
-            className={`w-4 h-4 text-[#004417] transition-transform ${
+            className={`w-4 h-4 text-[#00A651] transition-transform ${
               showFilters ? "rotate-180" : ""
             }`}
           />
@@ -63,13 +63,13 @@ export default function EstoqueFiltros({
         <div className="space-y-4">
           {/* 🔎 Filtro por nome */}
           <div className="flex items-center gap-2">
-            <SearchIcon className="w-4 h-4 text-[rgba(0,68,23,0.5)]" />
+            <SearchIcon className="w-4 h-4 text-[#00A651]" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nome..."
-              className="flex-1 px-3 py-2 border border-[rgba(0,68,23,0.1)] rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent text-[#004417]"
+              className="flex-1 px-4 py-2 rounded-[12px] bg-white shadow-[0_1px_3px_rgba(0,68,23,0.06)] appearance-none placeholder:text-[rgba(0,166,81,0.45)] text-[#004417]"
             />
           </div>
 
@@ -78,11 +78,12 @@ export default function EstoqueFiltros({
             <label className="block text-[13px] font-medium text-[#004417] mb-1">
               Categoria
             </label>
-            <select
-              value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
-              className="w-full px-3 py-2 border border-[rgba(0,68,23,0.1)] rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent bg-white text-[#004417]"
-            >
+            <div className="relative">
+              <select
+                value={categoria}
+                onChange={(e) => setCategoria(e.target.value)}
+                className="w-full px-4 py-2 rounded-[12px] bg-white text-[#004417] appearance-none shadow-[0_1px_3px_rgba(0,68,23,0.06)]"
+              >
               <option value="">Todas as categorias</option>
               <option value="Fertilizante">Fertilizante</option>
               <option value="Corretivo">Corretivo</option>
@@ -92,7 +93,9 @@ export default function EstoqueFiltros({
               <option value="Foliar/Nutricional">Foliar/Nutricional</option>
               <option value="Adjuvante/Óleo">Adjuvante/Óleo</option>
               <option value="Outro">Outro</option>
-            </select>
+              </select>
+              <ChevronDown className="w-4 h-4 text-[#00A651] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
           </div>
 
           {/* 📑 Ordenação */}
@@ -101,32 +104,38 @@ export default function EstoqueFiltros({
               <label className="block text-[13px] font-medium text-[#004417] mb-1">
                 Ordenar por
               </label>
-              <select
-                value={ordem}
-                onChange={(e) => setOrdem(e.target.value)}
-                className="w-full px-3 py-2 border border-[rgba(0,68,23,0.1)] rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent bg-white text-[#004417]"
-              >
+              <div className="relative">
+                <select
+                  value={ordem}
+                  onChange={(e) => setOrdem(e.target.value)}
+                  className="w-full px-4 py-2 rounded-[12px] bg-white text-[#004417] appearance-none shadow-[0_1px_3px_rgba(0,68,23,0.06)]"
+                >
                 <option value="">Sem ordenação</option>
                 <option value="alfabetica">Ordem Alfabética</option>
                 <option value="dataLancamento">Data de Lançamento</option>
                 <option value="validade">Validade</option>
-              </select>
+                </select>
+                <ChevronDown className="w-4 h-4 text-[#00A651] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
 
             <div>
               <label className="block text-[13px] font-medium text-[#004417] mb-1">
                 Direção
               </label>
-              <select
-                value={ordemDirecao}
-                onChange={(e) =>
-                  setOrdemDirecao(e.target.value as "asc" | "desc")
-                }
-                className="w-full px-3 py-2 border border-[rgba(0,68,23,0.1)] rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent bg-white text-[#004417]"
-              >
-                <option value="asc">Crescente</option>
-                <option value="desc">Decrescente</option>
-              </select>
+              <div className="relative">
+                <select
+                  value={ordemDirecao}
+                  onChange={(e) =>
+                    setOrdemDirecao(e.target.value as "asc" | "desc")
+                  }
+                  className="w-full px-4 py-2 rounded-[12px] bg-white text-[#004417] appearance-none shadow-[0_1px_3px_rgba(0,68,23,0.06)]"
+                >
+                  <option value="asc">Crescente</option>
+                  <option value="desc">Decrescente</option>
+                </select>
+                <ChevronDown className="w-4 h-4 text-[#00A651] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
           </div>
         </div>

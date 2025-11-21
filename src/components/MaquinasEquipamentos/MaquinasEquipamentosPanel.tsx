@@ -89,30 +89,30 @@ export default function MaquinasEquipamentosPanel() {
     d ? new Date(d).toLocaleDateString('pt-BR') : '-';
 
   return (
-    <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.04)] border border-[rgba(0,68,23,0.08)]">
-      <div className="px-6 py-5 border-b border-[rgba(0,68,23,0.08)]">
+    <div className="bg-[#F5FDF8] rounded-[16px] shadow-[0_4px_8px_rgba(0,68,23,0.06)] p-6">
+      <div className="px-0 py-0">
         <h3 className="text-[16px] font-bold text-[#004417]">{title}</h3>
       </div>
 
       {maquinas.length === 0 ? (
-        <div className="p-6 text-center">
-          <Truck className="w-12 h-12 text-[rgba(0,68,23,0.3)] mx-auto mb-4" />
+        <div className="p-6 text-center bg-white rounded-[12px] shadow-[0_1px_3px_rgba(0,68,23,0.04)] mt-4">
+          <Truck className="w-12 h-12 text-[#00A651] mx-auto mb-4" />
           <h3 className="text-[16px] font-semibold text-[#004417] mb-2">{emptyMessage}</h3>
         </div>
       ) : (
-        <div className="p-4 space-y-3">
+        <div className="grid grid-cols-1 gap-5 p-0 mt-4">
           {maquinas.map((maquina) => (
-            <div key={maquina.id_maquina} className="bg-white border border-[rgba(0,68,23,0.08)] rounded-xl p-5 hover:bg-[rgba(0,166,81,0.05)] transition-all relative">
+            <div key={maquina.id_maquina} className="relative bg-[#FFFFFF] rounded-[16px] p-6 shadow-[0_4px_8px_rgba(0,68,23,0.04)] transition-all">
               {/* Cabeçalho do card */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h4 className="text-[16px] font-bold text-[#004417] mb-1">
+                  <h4 className="text-[18px] font-bold text-[#004417] mb-1">
                     {maquina.nome}
                   </h4>
-                  <p className="text-[14px] text-[rgba(0,68,23,0.7)] mb-2">
+                  <p className="text-[14px] text-[#00441799] mb-2">
                     {maquina.marca_modelo || '-'}
                   </p>
-                  <span className="inline-block text-[12px] font-medium px-3 py-1 bg-[rgba(0,166,81,0.1)] text-[#00A651] rounded-xl">
+                  <span className="inline-block text-[12px] font-medium px-3 py-1 bg-[rgba(205,219,42,0.12)] text-[#004417] rounded-[20px]">
                     {maquina.categoria || '-'}
                   </span>
                 </div>
@@ -122,7 +122,7 @@ export default function MaquinasEquipamentosPanel() {
                   onClick={() => handleOpenAttachments(maquina)}
                   title="Gerenciar anexos"
                   aria-label={`Gerenciar anexos de ${maquina.nome}`}
-                  className="p-2 text-[#004417] hover:text-[#00A651] hover:bg-[rgba(0,166,81,0.08)] rounded-lg transition-colors"
+                  className="p-2 text-[#00A651] hover:text-[#004417] rounded-lg transition-colors"
                 >
                   <Paperclip className="w-[18px] h-[18px]" />
                 </button>
@@ -131,28 +131,28 @@ export default function MaquinasEquipamentosPanel() {
               {/* Grid de informações 2x3 */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
                 <div>
-                  <span className="text-[13px] font-semibold text-[rgba(0,68,23,0.6)] block mb-1">Horímetro Atual</span>
-                  <span className="text-[14px] font-semibold text-[#004417]">{formatHours(maquina.horimetro_atual)}</span>
+                  <span className="text-[13px] font-semibold text-[#004417B3] block mb-1">Horímetro Atual</span>
+                  <span className="text-[14px] font-bold text-[#00A651]">{formatHours(maquina.horimetro_atual)}</span>
                 </div>
 
                 <div>
-                  <span className="text-[13px] font-semibold text-[rgba(0,68,23,0.6)] block mb-1">Valor de Compra</span>
+                  <span className="text-[13px] font-semibold text-[#004417B3] block mb-1">Valor de Compra</span>
                   <span className="text-[15px] font-bold text-[#00A651]">{formatBRL(maquina.valor_compra)}</span>
                 </div>
 
                 <div>
-                  <span className="text-[13px] font-semibold text-[rgba(0,68,23,0.6)] block mb-1">Data de Compra</span>
-                  <span className="text-[13px] text-[rgba(0,68,23,0.7)]">{formatDate(maquina.data_compra)}</span>
+                  <span className="text-[13px] font-semibold text-[#004417B3] block mb-1">Data de Compra</span>
+                  <span className="text-[13px] text-[#00A651]">{formatDate(maquina.data_compra)}</span>
                 </div>
 
                 <div>
-                  <span className="text-[13px] font-semibold text-[rgba(0,68,23,0.6)] block mb-1">Fornecedor</span>
+                  <span className="text-[13px] font-semibold text-[#004417B3] block mb-1">Fornecedor</span>
                   <span className="text-[14px] text-[#004417] truncate block">{maquina.fornecedor || '-'}</span>
                 </div>
 
                 <div className="md:col-span-2">
-                  <span className="text-[13px] font-semibold text-[rgba(0,68,23,0.6)] block mb-1">Número de Série</span>
-                  <span className="text-[13px] text-[rgba(0,68,23,0.7)]">{maquina.numero_serie || '-'}</span>
+                  <span className="text-[13px] font-semibold text-[#004417B3] block mb-1">Número de Série</span>
+                  <span className="text-[13px] text-[#004417]">{maquina.numero_serie || '-'}</span>
                 </div>
               </div>
             </div>
@@ -175,26 +175,26 @@ export default function MaquinasEquipamentosPanel() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="hidden md:block bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.08)] border border-[rgba(0,68,23,0.08)] p-6">
+      <div className="hidden md:block bg-white rounded-[14px] shadow-[0_1px_4px_rgba(0,68,23,0.08)] p-6">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-[18px] font-bold text-[#004417]">Máquinas e Equipamentos</h2>
-          <p className="text-[14px] font-medium text-[rgba(0,68,23,0.7)]">
+          <p className="text-[14px] font-medium text-[#00441799]">
             Controle de máquinas e equipamentos da fazenda
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-[rgba(0,68,23,0.03)] p-6 rounded-xl transition-transform hover:scale-[1.005]">
-            <p className="text-[13px] text-[rgba(0,68,23,0.7)] mb-1">Total de Máquinas</p>
-            <p className="text-[22px] font-bold text-[#004417]">{numeroMaquinas}</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="bg-white p-6 rounded-[12px] transition-transform hover:scale-[1.005] shadow-[0_1px_3px_rgba(0,68,23,0.04)]">
+            <p className="text-[13px] text-[#00441799] mb-1">Total de Máquinas</p>
+            <p className="text-[22px] font-bold text-[#00A651]">{numeroMaquinas}</p>
           </div>
-          <div className="bg-[rgba(202,219,42,0.12)] p-6 rounded-xl transition-transform hover:scale-[1.005]">
-            <p className="text-[13px] text-[rgba(0,68,23,0.7)] mb-1">Valor Total</p>
-            <p className="text-[22px] font-bold text-[#004417]">
+          <div className="bg-white p-6 rounded-[12px] transition-transform hover:scale-[1.005] shadow-[0_1px_3px_rgba(0,68,23,0.04)]">
+            <p className="text-[13px] text-[#00441799] mb-1">Valor Total</p>
+            <p className="text-[22px] font-bold text-[#00A651]">
               {formatCurrency(custoTotal)}
             </p>
           </div>
-          <div className="bg-[rgba(0,68,23,0.03)] p-6 rounded-xl border-2 border-dashed border-[rgba(0,68,23,0.25)] hover:bg-[rgba(0,166,81,0.12)] transition-all duration-200">
+          <div className="bg-white p-6 rounded-[12px] border-2 border-dashed border-[rgba(0,68,23,0.08)] transition-all duration-200 shadow-[0_1px_3px_rgba(0,68,23,0.04)]">
             <button
               onClick={() => setShowAddForm(true)}
               className="w-full h-[60px] text-[#004417] font-bold flex items-center justify-center gap-2"

@@ -122,22 +122,22 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
         isVisible={showToast}
         onClose={() => setShowToast(false)}
       />
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold">Cadastrar Novo Produto</h2>
-          <button onClick={onClose}><X className="w-5 h-5 text-gray-500" /></button>
+      <div className="fixed inset-0 bg-[rgba(0,68,23,0.45)] flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-[18px] shadow-[0_1px_6px_rgba(0,68,23,0.12)] w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6">
+          <h2 className="text-xl font-bold text-[#004417]">Cadastrar Novo Produto</h2>
+          <button onClick={onClose}><X className="w-5 h-5 text-[#004417]" /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Nome */}
           <div>
-            <label className="block text-sm font-medium mb-1">Nome do produto</label>
+            <label className="block text-sm font-medium text-[#004417] mb-1">Nome do produto</label>
             <input
               type="text"
               value={formData.nome}
               onChange={(e) => handleInputChange('nome', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg ${errors.nome ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 rounded-[12px] bg-white shadow-[0_1px_3px_rgba(0,68,23,0.06)] ${errors.nome ? 'ring-2 ring-red-500' : ''} text-[#004417] placeholder:text-[rgba(0,166,81,0.45)]`}
               placeholder="Ex.: Opera Ultra, Roundup Original, YaraBela Nitromag"
               required
             />
@@ -146,12 +146,12 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
 
           {/* Marca */}
           <div>
-            <label className="block text-sm font-medium mb-1">Marca/Fabricante</label>
+            <label className="block text-sm font-medium text-[#004417] mb-1">Marca/Fabricante</label>
             <input
               type="text"
               value={formData.marca}
               onChange={(e) => handleInputChange('marca', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg ${errors.marca ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 rounded-[12px] bg-white shadow-[0_1px_3px_rgba(0,68,23,0.06)] ${errors.marca ? 'ring-2 ring-red-500' : ''} text-[#004417] placeholder:text-[rgba(0,166,81,0.45)]`}
               placeholder="Ex.: Bayer, BASF, Syngenta, Yara"
               required
             />
@@ -160,11 +160,11 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
 
           {/* Categoria */}
           <div>
-            <label className="block text-sm font-medium mb-1">Categoria</label>
+            <label className="block text-sm font-medium text-[#004417] mb-1">Categoria</label>
             <select
               value={formData.categoria}
               onChange={(e) => handleInputChange('categoria', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg ${errors.categoria ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 rounded-[12px] bg-white text-[#004417] appearance-none shadow-[0_1px_3px_rgba(0,68,23,0.06)] ${errors.categoria ? 'ring-2 ring-red-500' : ''}`}
               required
             >
               <option value="">Selecione...</option>
@@ -181,11 +181,11 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
 
           {/* Unidade */}
           <div>
-            <label className="block text-sm font-medium mb-1">Unidade de medida</label>
+            <label className="block text-sm font-medium text-[#004417] mb-1">Unidade de medida</label>
             <select
               value={formData.unidade}
               onChange={(e) => handleInputChange('unidade', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg ${errors.unidade ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 rounded-[12px] bg-white text-[#004417] appearance-none shadow-[0_1px_3px_rgba(0,68,23,0.06)] ${errors.unidade ? 'ring-2 ring-red-500' : ''}`}
               required
             >
               <option value="">Selecione...</option>
@@ -207,11 +207,11 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
               step="0.01"
               value={formData.quantidade}
               onChange={(e) => handleInputChange('quantidade', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg ${errors.quantidade ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 rounded-[12px] bg-white shadow-[0_1px_3px_rgba(0,68,23,0.06)] ${errors.quantidade ? 'ring-2 ring-red-500' : ''} text-[#004417] placeholder:text-[rgba(0,166,81,0.45)]`}
               placeholder="Ex.: 12,5 L ou 300 kg"
               required
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-[rgba(0,68,23,0.6)] mt-1">
               Dica: Quantidades serão automaticamente convertidas para exibição (ex.: 40000 mL = 40 L, 2000 g = 2 kg)
             </p>
           </div>
@@ -239,12 +239,12 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
                   }));
                 }
               }}
-              className={`w-full px-3 py-2 border rounded-lg ${errors.valor ? 'border-red-500' : 'border-gray-300'} font-medium text-lg`}
+              className={`w-full px-4 py-3 rounded-[12px] bg-white shadow-[0_1px_3px_rgba(0,68,23,0.06)] ${errors.valor ? 'ring-2 ring-red-500' : ''} font-medium text-lg text-[#004417] placeholder:text-[rgba(0,166,81,0.45)]`}
               placeholder="R$ 0,00"
               required
             />
             {errors.valor && <p className="text-red-500 text-xs">{errors.valor}</p>}
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-[rgba(0,68,23,0.6)] mt-1">
               Digite apenas números: 450 = R$ 4,50 | 45000 = R$ 450,00 | 2500 = R$ 25,00
             </p>
           </div>
@@ -252,54 +252,54 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
           {/* Lote e Validade */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Lote (opcional)</label>
+              <label className="block text-sm font-medium text-[#004417] mb-1">Lote (opcional)</label>
               <input
                 type="text"
                 value={formData.lote}
                 onChange={(e) => handleInputChange('lote', e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg border-gray-300"
+                className="w-full px-4 py-3 rounded-[12px] bg-white shadow-[0_1px_3px_rgba(0,68,23,0.06)] text-[#004417] placeholder:text-[rgba(0,166,81,0.45)]"
                 placeholder="Ex.: L001-2024"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Validade (opcional)</label>
+              <label className="block text-sm font-medium text-[#004417] mb-1">Validade (opcional)</label>
               <input
                 type="date"
                 value={formData.validade}
                 onChange={(e) => handleInputChange('validade', e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg border-gray-300"
+                className="w-full px-4 py-3 rounded-[12px] bg-white shadow-[0_1px_3px_rgba(0,68,23,0.06)] text-[#004417]"
               />
             </div>
           </div>
 
           {/* Fornecedor */}
           <div>
-            <label className="block text-sm font-medium mb-1">Fornecedor</label>
+            <label className="block text-sm font-medium text-[#004417] mb-1">Fornecedor</label>
             <input
               type="text"
               value={formData.fornecedor}
               onChange={(e) => handleInputChange('fornecedor', e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg border-gray-300"
+              className="w-full px-4 py-3 rounded-[12px] bg-white shadow-[0_1px_3px_rgba(0,68,23,0.06)] text-[#004417] placeholder:text-[rgba(0,166,81,0.45)]"
               placeholder="Ex.: Cooxupé, Agropecuária Silva"
             />
           </div>
 
           {/* Registro MAPA */}
           <div>
-            <label className="block text-sm font-medium mb-1">Registro no MAPA (opcional)</label>
+            <label className="block text-sm font-medium text-[#004417] mb-1">Registro no MAPA (opcional)</label>
             <input
               type="text"
               value={formData.registro_mapa}
               onChange={(e) => handleInputChange('registro_mapa', e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg border-gray-300"
+              className="w-full px-4 py-3 rounded-[12px] bg-white shadow-[0_1px_3px_rgba(0,68,23,0.06)] text-[#004417] placeholder:text-[rgba(0,166,81,0.45)]"
               placeholder="Ex.: 12345/2025"
             />
           </div>
 
           {/* Upload bonito (igual antes) */}
           <div>
-            <label className="block text-sm font-medium mb-1">Anexar arquivo (opcional)</label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-[#397738] transition-colors">
+            <label className="block text-sm font-medium text-[#004417] mb-1">Anexar arquivo (opcional)</label>
+            <div className="border-2 border-dashed border-[rgba(0,68,23,0.12)] rounded-[12px] p-4 text-center hover:border-[rgba(0,166,81,0.18)] transition-colors">
               <input
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png,.webp"
@@ -309,14 +309,14 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
               />
               <label htmlFor="file-upload" className="cursor-pointer">
                 <Upload className={`w-8 h-8 mx-auto mb-2 ${
-                  formData.anexo ? 'text-[#397738]' : 'text-gray-400'
+                  formData.anexo ? 'text-[#00A651]' : 'text-[rgba(0,68,23,0.35)]'
                 }`} />
                 <p className={`text-sm ${
-                  formData.anexo ? 'font-bold text-[#397738]' : 'text-gray-600'
+                  formData.anexo ? 'font-bold text-[#004417]' : 'text-[rgba(0,68,23,0.6)]'
                 }`}>
                   {formData.anexo ? formData.anexo.name : 'Clique para selecionar um arquivo'}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">PDF, JPG, PNG, WEBP (máx. 10MB)</p>
+                <p className="text-xs text-[rgba(0,68,23,0.6)] mt-1">PDF, JPG, PNG, WEBP (máx. 10MB)</p>
               </label>
             </div>
           </div>
@@ -326,14 +326,14 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 py-3 bg-white text-[#004417] rounded-[12px] hover:bg-[rgba(0,166,81,0.04)] transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 px-4 py-2 bg-[#397738] text-white rounded-lg hover:bg-[#092f20] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              className="flex-1 px-4 py-3 bg-[#00A651] text-white rounded-[12px] hover:bg-[#008a44] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
             >
               {isSubmitting ? (
                 <>

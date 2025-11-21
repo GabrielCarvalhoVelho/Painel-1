@@ -358,7 +358,7 @@ export default function ManejoAgricolaPanel() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] p-6">
+      <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-[#00A651]/10 rounded-full flex items-center justify-center">
@@ -371,7 +371,7 @@ export default function ManejoAgricolaPanel() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-[#00A651]/8 p-5 rounded-xl transition-transform duration-200 hover:scale-[1.01]">
             <div className="flex items-center space-x-2 mb-2">
               <div className="w-8 h-8 bg-[#00A651]/20 rounded-full flex items-center justify-center">
@@ -390,7 +390,7 @@ export default function ManejoAgricolaPanel() {
             </div>
             <p className="text-[22px] font-bold text-[#004417]">{atividadesFuturas.length}</p>
           </div>
-          <div className="bg-white p-5 rounded-xl border border-[rgba(0,68,23,0.08)] transition-transform duration-200 hover:scale-[1.01]">
+          <div className="bg-white p-5 rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] transition-transform duration-200 hover:scale-[1.01]">
             <div className="flex items-center space-x-2 mb-2">
               <div className="w-8 h-8 bg-[#00A651]/20 rounded-full flex items-center justify-center">
                 <MapPin className="w-4 h-4 text-[#00A651]" />
@@ -413,23 +413,23 @@ export default function ManejoAgricolaPanel() {
 
       {/* Filtro de Talhões */}
       {talhoes.length > 0 && (
-        <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] p-5">
+        <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-[#004417]">Filtrar por Talhão</h3>
-            <div className="text-[13px] text-[#004417]/65 font-medium">
+            <div className="text-[13px] text-[rgba(0,68,23,0.75)] font-medium">
               {talhoes.length} {talhoes.length === 1 ? 'talhão encontrado' : 'talhões encontrados'}
             </div>
           </div>
           
-          <div className="flex flex-wrap gap-2 overflow-x-auto pb-2">
+            <div className="flex flex-wrap gap-2 overflow-x-auto pb-2">
             {opcoesFiltraTalhao.map((opcao) => (
               <button
                 key={opcao}
                 onClick={() => setFiltroTalhao(opcao)}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 whitespace-nowrap ${
+                className={`px-4 py-2 rounded-[10px] text-sm font-semibold transition-all duration-200 whitespace-nowrap ${
                   filtroTalhao === opcao
-                    ? 'bg-[#00A651] text-white shadow-sm'
-                    : 'bg-[#004417]/5 text-[#004417] hover:bg-[#00A651]/10'
+                    ? 'bg-[rgba(0,166,81,0.10)] border border-[#00A651] text-[#004417] font-semibold'
+                    : 'bg-white border border-[rgba(0,68,23,0.10)] text-[#004417] hover:bg-[rgba(0,68,23,0.03)] hover:border-[rgba(0,68,23,0.12)]'
                 }`}
               >
                 {opcao === 'todos' ? 'Sem Filtro' : getNomeTalhaoPorId(opcao)}
@@ -441,11 +441,11 @@ export default function ManejoAgricolaPanel() {
 
       {/* Mensagem quando não há talhões */}
       {talhoes.length === 0 && (
-        <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] p-6">
+        <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] p-6">
           <div className="text-center py-8">
-            <MapPin className="w-12 h-12 text-[#004417]/65 mx-auto mb-4" />
+            <MapPin className="w-12 h-12 text-[#00A651] mx-auto mb-4" />
             <h3 className="text-lg font-bold text-[#004417] mb-2">Nenhum talhão encontrado</h3>
-            <p className="text-[#004417]/65 font-medium mb-4">
+            <p className="text-[rgba(0,68,23,0.75)] font-medium mb-4">
               Você ainda não possui talhões cadastrados. Os talhões são criados automaticamente 
               quando você registra atividades agrícolas via WhatsApp do Zé.
             </p>
@@ -460,7 +460,7 @@ export default function ManejoAgricolaPanel() {
       )}
       {/* Painel de Informações do Talhão */}
       {filtroTalhao !== 'todos' && talhaoSelecionado && (
-        <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] p-5">
+        <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] p-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-[#00A651]/20 rounded-full flex items-center justify-center">
@@ -475,7 +475,7 @@ export default function ManejoAgricolaPanel() {
             </div>
           </div>
           
-        <div className="bg-[#00A651]/8 p-4 rounded-xl mb-4 border border-[rgba(0,68,23,0.08)]">
+        <div className="bg-[#00A651]/8 p-4 rounded-xl mb-4">
   <div className="flex flex-wrap items-center gap-4 text-sm md:text-base">
     <div className="flex items-center space-x-2">
       <div className="w-3 h-3 bg-[#00A651] rounded-full"></div>
@@ -541,21 +541,21 @@ export default function ManejoAgricolaPanel() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Atividades Recentes */}
-        <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] p-5 md:p-6">
+        <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] p-5 md:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
             <h3 className="text-lg font-bold text-[#004417]">Atividades Recentes</h3>
-            <div className="flex items-center space-x-2 text-[#00A651]">
-              <CheckCircle className="w-4 h-4" />
-              <span className="text-sm font-semibold">
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="w-4 h-4 text-[#00A651]" />
+              <span className="text-sm font-semibold text-[#00A651]">
                 {filtroTalhao === 'todos' ? 'Sem Filtro' : getNomeTalhaoPorId(filtroTalhao)} ({atividadesRecentes.length})
               </span>
             </div>
           </div>
           
           <div className="space-y-4">
-            {atividadesRecentes.length === 0 ? (
-              <div className="text-center py-8 text-[#004417]/65">
-                <Sprout className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              {atividadesRecentes.length === 0 ? (
+              <div className="text-center py-8 text-[rgba(0,68,23,0.75)]">
+                <Sprout className="w-12 h-12 text-[#00A651] mx-auto mb-3" />
                 <p className="font-medium">Nenhuma atividade encontrada</p>
                 <p className="text-sm">Registre atividades via WhatsApp do ZÉ</p>
               </div>
@@ -563,13 +563,13 @@ export default function ManejoAgricolaPanel() {
               atividadesRecentes.map((atividade) => {
                 const atividadeDisplay = mapAtividadeToDisplay(atividade);
                 return (
-                  <div key={atividade.id_atividade} className={`p-4 rounded-xl border ${getStatusColorByType(atividade.nome_atividade || '')} hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all duration-200`}>
+                  <div key={atividade.id_atividade} className="p-5 rounded-xl bg-white shadow-[0_2px_8px_rgba(0,68,23,0.06)] transition-all duration-200">
         <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center space-x-3">
         {getIconByType(atividade.nome_atividade || '')}
                     <div>
                           <h4 className="font-semibold text-[#004417]">{atividadeDisplay.descricao}</h4>
-                          <p className="text-[13px] text-[#004417]/65 font-medium">{atividade.dataFormatada}</p>
+                          <p className="text-[13px] text-[rgba(0,68,23,0.75)] font-medium">{atividade.dataFormatada}</p>
                     </div>
                   </div>
       <span className="text-xs bg-[#00A651]/20 text-[#00A651] font-semibold px-2 py-1 rounded-full">
@@ -579,41 +579,41 @@ export default function ManejoAgricolaPanel() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                   <div>
-                    <span className="text-[#004417]/65 font-medium">Produtos:</span>
+                    <span className="text-[rgba(0,68,23,0.75)] font-medium">Produtos:</span>
                     <ul className="mt-1 space-y-1">
                       {atividade.produtos && atividade.produtos.length > 0 ? (
                         atividade.produtos.map((p, idx) => (
                           <li key={idx} className="flex justify-between">
                             <span className="font-semibold text-[#004417]">{p.nome_produto}</span>
-                            <span className="text-[#004417]/65 font-medium text-right">
+                            <span className="text-[rgba(0,68,23,0.75)] font-medium text-right">
                               {p.quantidade_val ?? '-'} {p.quantidade_un ?? ''}
                               {p.dose_val ? ` · ${p.dose_val} ${p.dose_un ?? ''}` : ''}
                             </span>
                           </li>
                         ))
                       ) : (
-                        <li className="text-[#004417]/65 font-medium">Não informado</li>
+                        <li className="text-[rgba(0,68,23,0.75)] font-medium">Não informado</li>
                       )}
                     </ul>
                   </div>
                   <div>
-                    <span className="text-[#004417]/65 font-medium">Máquinas:</span>
+                    <span className="text-[rgba(0,68,23,0.75)] font-medium">Máquinas:</span>
                     <ul className="mt-1 space-y-1">
                       {atividade.maquinas && atividade.maquinas.length > 0 ? (
                         atividade.maquinas.map((m, idx) => (
                           <li key={idx} className="flex justify-between">
                             <span className="font-semibold text-[#004417]">{m.nome_maquina}</span>
-                            <span className="text-[#004417]/65 font-medium">{m.horas_maquina ?? '-'} h</span>
+                            <span className="text-[rgba(0,68,23,0.75)] font-medium">{m.horas_maquina ?? '-'} h</span>
                           </li>
                         ))
                       ) : (
-                        <li className="text-[#004417]/65 font-medium">Não informado</li>
+                        <li className="text-[rgba(0,68,23,0.75)] font-medium">Não informado</li>
                       )}
                     </ul>
 
                     <div className="mt-2">
-                      <span className="text-[#004417]/65 font-medium">Responsável:</span>
-                      <p className="mt-1 text-sm text-[#092f20]">{atividade.responsaveis && atividade.responsaveis.length > 0 ? atividade.responsaveis.map(r => r.nome).join(', ') : 'Não informado'}</p>
+                      <span className="text-[rgba(0,68,23,0.75)] font-medium">Responsável:</span>
+                      <p className="mt-1 text-sm text-[rgba(0,68,23,0.75)]">{atividade.responsaveis && atividade.responsaveis.length > 0 ? atividade.responsaveis.map(r => r.nome).join(', ') : 'Não informado'}</p>
                     </div>
                   </div>
                 </div>
@@ -622,7 +622,7 @@ export default function ManejoAgricolaPanel() {
                   <div className="mt-3 pt-3 border-t border-[rgba(0,68,23,0.08)]">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <span className="text-[#004417]/65 font-medium text-sm">Observações:</span>
+                        <span className="text-[rgba(0,68,23,0.75)] font-medium text-sm">Observações:</span>
                         <p className="text-sm text-[#00A651] mt-1">{atividadeDisplay.observacoes}</p>
                       </div>
                       <button
@@ -630,10 +630,10 @@ export default function ManejoAgricolaPanel() {
                           atividade.id_atividade || '',
                           atividade.nome_atividade || 'Atividade'
                         )}
-                        className="p-2 text-[#004417]/65 font-medium hover:text-[#00A651] hover:bg-white rounded-lg transition-colors shadow-sm border border-[rgba(0,68,23,0.08)] flex-shrink-0 ml-2"
+                        className="p-2 text-[#00A651] hover:opacity-90 bg-transparent border-0 shadow-none flex-shrink-0 ml-2"
                         title="Gerenciar anexo"
                       >
-                        <Paperclip className="w-4 h-4" />
+                        <Paperclip className="w-4 h-4 text-[#00A651]" />
                       </button>
                     </div>
                   </div>
@@ -646,10 +646,10 @@ export default function ManejoAgricolaPanel() {
                           atividade.id_atividade || '',
                           atividade.nome_atividade || 'Atividade'
                         )}
-                        className="p-2 text-[#004417]/65 font-medium hover:text-[#00A651] hover:bg-white rounded-lg transition-colors shadow-sm border border-[rgba(0,68,23,0.08)]"
+                        className="p-2 text-[#00A651] hover:opacity-90 bg-transparent border-0 shadow-none"
                         title="Gerenciar anexo"
                       >
-                        <Paperclip className="w-4 h-4" />
+                        <Paperclip className="w-4 h-4 text-[#00A651]" />
                       </button>
                     </div>
                   </div>
@@ -662,12 +662,12 @@ export default function ManejoAgricolaPanel() {
         </div>
 
         {/* Atividades Futuras */}
-        <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,68,23,0.08)] p-4 md:p-6">
+        <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] p-5 md:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-[#004417]">Atividades Futuras</h3>
-            <div className="flex items-center space-x-2 text-[#86b646]">
-              <Clock className="w-4 h-4" />
-              <span className="text-sm">
+            <div className="flex items-center space-x-2">
+              <Clock className="w-4 h-4 text-[#00A651]" />
+              <span className="text-sm font-semibold text-[#00A651]">
                 {filtroTalhao === 'todos' ? 'Sem Filtro' : getNomeTalhaoPorId(filtroTalhao)} ({atividadesFuturas.length})
               </span>
             </div>
@@ -675,22 +675,22 @@ export default function ManejoAgricolaPanel() {
           
           <div className="space-y-4">
             {atividadesFuturas.length === 0 ? (
-              <div className="text-center py-8 text-[#004417]/65 font-medium">
-                <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>Nenhuma atividade futura programada</p>
-                <p className="text-sm">Programe atividades via WhatsApp do ZÉ</p>
+              <div className="text-center py-8 bg-[rgba(0,166,81,0.05)] rounded-xl p-6">
+                <Clock className="w-12 h-12 mx-auto mb-3 text-[#00A651]" />
+                <p className="text-[#004417] font-medium">Nenhuma atividade futura programada</p>
+                <p className="text-sm text-[rgba(0,68,23,0.85)]">Programe atividades via WhatsApp do ZÉ</p>
               </div>
             ) : (
               atividadesFuturas.map((atividade) => {
                 const atividadeDisplay = mapAtividadeToDisplay(atividade);
                 return (
-                  <div key={atividade.id_atividade} className={`p-4 rounded-xl border ${getStatusColorByType(atividade.nome_atividade || '')} hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all duration-200`}>
+                  <div key={atividade.id_atividade} className="p-5 rounded-xl bg-white shadow-[0_2px_8px_rgba(0,68,23,0.06)] transition-all duration-200">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center space-x-3">
                         {getIconByType(atividade.nome_atividade || '')}
                     <div>
                           <h4 className="font-semibold text-[#004417]">{atividadeDisplay.descricao}</h4>
-                          <p className="text-[13px] text-[#004417]/65 font-medium">{atividade.dataFormatada}</p>
+                          <p className="text-[13px] text-[rgba(0,68,23,0.75)] font-medium">{atividade.dataFormatada}</p>
                     </div>
                   </div>
                   <span className="text-xs bg-[#CADB2A]/20 text-[#004417] font-semibold px-2 py-1 rounded-full">
@@ -700,41 +700,41 @@ export default function ManejoAgricolaPanel() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                   <div>
-                    <span className="text-[#004417]/65 font-medium">Produtos:</span>
+                    <span className="text-[rgba(0,68,23,0.75)] font-medium">Produtos:</span>
                     <ul className="mt-1 space-y-1">
                       {atividade.produtos && atividade.produtos.length > 0 ? (
                         atividade.produtos.map((p, idx) => (
                           <li key={idx} className="flex justify-between">
                             <span className="font-semibold text-[#004417]">{p.nome_produto}</span>
-                            <span className="text-[#004417]/65 font-medium text-right">
+                            <span className="text-[rgba(0,68,23,0.75)] font-medium text-right">
                               {p.quantidade_val ?? '-'} {p.quantidade_un ?? ''}
                               {p.dose_val ? ` · ${p.dose_val} ${p.dose_un ?? ''}` : ''}
                             </span>
                           </li>
                         ))
                       ) : (
-                        <li className="text-[#004417]/65 font-medium">Não informado</li>
+                        <li className="text-[rgba(0,68,23,0.75)] font-medium">Não informado</li>
                       )}
                     </ul>
                   </div>
                   <div>
-                    <span className="text-[#004417]/65 font-medium">Máquinas:</span>
+                    <span className="text-[rgba(0,68,23,0.75)] font-medium">Máquinas:</span>
                     <ul className="mt-1 space-y-1">
                       {atividade.maquinas && atividade.maquinas.length > 0 ? (
                         atividade.maquinas.map((m, idx) => (
                           <li key={idx} className="flex justify-between">
                             <span className="font-semibold text-[#004417]">{m.nome_maquina}</span>
-                            <span className="text-[#004417]/65 font-medium">{m.horas_maquina ?? '-'} h</span>
+                            <span className="text-[rgba(0,68,23,0.75)] font-medium">{m.horas_maquina ?? '-'} h</span>
                           </li>
                         ))
                       ) : (
-                        <li className="text-[#004417]/65 font-medium">Não informado</li>
+                        <li className="text-[rgba(0,68,23,0.75)] font-medium">Não informado</li>
                       )}
                     </ul>
 
                     <div className="mt-2">
-                      <span className="text-[#004417]/65 font-medium">Responsável:</span>
-                      <p className="mt-1 text-sm text-[#092f20]">{atividade.responsaveis && atividade.responsaveis.length > 0 ? atividade.responsaveis.map(r => r.nome).join(', ') : 'Não informado'}</p>
+                      <span className="text-[rgba(0,68,23,0.75)] font-medium">Responsável:</span>
+                      <p className="mt-1 text-sm text-[rgba(0,68,23,0.75)]">{atividade.responsaveis && atividade.responsaveis.length > 0 ? atividade.responsaveis.map(r => r.nome).join(', ') : 'Não informado'}</p>
                     </div>
                   </div>
                 </div>
@@ -745,7 +745,7 @@ export default function ManejoAgricolaPanel() {
                   <div className="mt-3 pt-3 border-t border-[rgba(0,68,23,0.08)]">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <span className="text-[#004417]/65 font-medium text-sm">Observações:</span>
+                        <span className="text-[rgba(0,68,23,0.75)] font-medium text-sm">Observações:</span>
                         <p className="text-sm text-[#00A651] mt-1">{atividadeDisplay.observacoes}</p>
                       </div>
                       <button
@@ -753,10 +753,10 @@ export default function ManejoAgricolaPanel() {
                           atividade.id_atividade || '',
                           atividade.nome_atividade || 'Atividade'
                         )}
-                        className="p-2 text-[#004417]/65 font-medium hover:text-[#00A651] hover:bg-white rounded-lg transition-colors shadow-sm border border-[rgba(0,68,23,0.08)] flex-shrink-0 ml-2"
+                        className="p-2 text-[#00A651] hover:opacity-90 bg-transparent border-0 shadow-none flex-shrink-0 ml-2"
                         title="Gerenciar anexo"
                       >
-                        <Paperclip className="w-4 h-4" />
+                        <Paperclip className="w-4 h-4 text-[#00A651]" />
                       </button>
                     </div>
                   </div>
@@ -769,10 +769,10 @@ export default function ManejoAgricolaPanel() {
                           atividade.id_atividade || '',
                           atividade.nome_atividade || 'Atividade'
                         )}
-                        className="p-2 text-[#004417]/65 font-medium hover:text-[#00A651] hover:bg-white rounded-lg transition-colors shadow-sm border border-[rgba(0,68,23,0.08)]"
+                        className="p-2 text-[#00A651] hover:opacity-90 bg-transparent border-0 shadow-none"
                         title="Gerenciar anexo"
                       >
-                        <Paperclip className="w-4 h-4" />
+                        <Paperclip className="w-4 h-4 text-[#00A651]" />
                       </button>
                     </div>
                   </div>

@@ -184,11 +184,11 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(0,68,23,0.12)] w-full max-w-2xl my-auto">
-        <div className="flex items-center justify-between p-6 border-b border-[rgba(0,68,23,0.08)]">
+    <div className="fixed inset-0 bg-[rgba(0,68,23,0.25)] flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-[18px] shadow-[0_8px_32px_rgba(0,68,23,0.08)] w-full max-w-2xl my-auto">
+        <div className="flex items-center justify-between p-6">
           <h2 className="text-[20px] font-bold text-[#004417]">Cadastrar Nova Máquina/Equipamento</h2>
-          <button onClick={onClose} className="text-[rgba(0,68,23,0.5)] hover:text-[#004417] transition-colors">
+          <button onClick={onClose} className="text-[#00441766] hover:text-[#004417] transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -216,10 +216,8 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
               type="text"
               value={formData.nome}
               onChange={(e) => handleInputChange('nome', e.target.value)}
-              className={`w-full px-4 py-3 border rounded-xl text-[14px] focus:outline-none focus:ring-2 transition-all ${
-                errors.nome 
-                  ? 'border-[#DC2626] focus:ring-[rgba(220,38,38,0.2)]' 
-                  : 'border-[rgba(0,68,23,0.2)] focus:ring-[rgba(0,166,81,0.2)] focus:border-[#00A651]'
+              className={`w-full px-4 py-3 rounded-[12px] bg-[#F8FCF9] text-[#004417] placeholder:text-[#00441766] focus:outline-none transition-all ${
+                errors.nome ? 'ring-2 ring-[#DC2626]' : 'ring-0 border border-[#00A65133]'
               }`}
               placeholder="Ex.: Trator John Deere 6110, Pulverizador Jacto"
               required
@@ -233,10 +231,8 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
               type="text"
               value={formData.marca_modelo}
               onChange={(e) => handleInputChange('marca_modelo', e.target.value)}
-              className={`w-full px-4 py-3 border rounded-xl text-[14px] focus:outline-none focus:ring-2 transition-all ${
-                errors.marca_modelo 
-                  ? 'border-[#DC2626] focus:ring-[rgba(220,38,38,0.2)]' 
-                  : 'border-[rgba(0,68,23,0.2)] focus:ring-[rgba(0,166,81,0.2)] focus:border-[#00A651]'
+              className={`w-full px-4 py-3 rounded-[12px] bg-[#F8FCF9] text-[#004417] placeholder:text-[#00441766] focus:outline-none transition-all ${
+                errors.marca_modelo ? 'ring-2 ring-[#DC2626]' : 'ring-0 border border-[#00A65133]'
               }`}
               placeholder="Ex.: John Deere 6110D, Massey Ferguson 4283"
               required
@@ -249,10 +245,8 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
             <select
               value={formData.categoria}
               onChange={(e) => handleInputChange('categoria', e.target.value)}
-              className={`w-full px-4 py-3 border rounded-xl text-[14px] focus:outline-none focus:ring-2 transition-all ${
-                errors.categoria 
-                  ? 'border-[#DC2626] focus:ring-[rgba(220,38,38,0.2)]' 
-                  : 'border-[rgba(0,68,23,0.2)] focus:ring-[rgba(0,166,81,0.2)] focus:border-[#00A651]'
+              className={`w-full px-4 py-3 rounded-[12px] bg-[#F8FCF9] text-[#004417] placeholder:text-[#00441766] focus:outline-none transition-all ${
+                errors.categoria ? 'ring-2 ring-[#DC2626]' : 'ring-0 border border-[#00A65133]'
               }`}
               required
             >
@@ -278,7 +272,7 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
               step="0.01"
               value={formData.horimetro_atual}
               onChange={(e) => handleInputChange('horimetro_atual', e.target.value)}
-              className="w-full px-4 py-3 border border-[rgba(0,68,23,0.2)] rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-[rgba(0,166,81,0.2)] focus:border-[#00A651] transition-all"
+              className="w-full px-4 py-3 rounded-[12px] bg-[#F8FCF9] text-[#004417] placeholder:text-[#00441766] transition-all border border-[#00A65133]"
               placeholder="Ex.: 1500 (horas)"
             />
           </div>
@@ -305,7 +299,7 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
                   }));
                 }
               }}
-              className="w-full px-4 py-3 border border-[rgba(0,68,23,0.2)] rounded-xl text-[16px] font-semibold text-[#00A651] focus:outline-none focus:ring-2 focus:ring-[rgba(0,166,81,0.2)] focus:border-[#00A651] transition-all"
+              className="w-full px-4 py-3 rounded-[12px] bg-[#F8FCF9] text-[#00A651] font-semibold placeholder:text-[#00441766] transition-all border border-[#00A65133]"
               placeholder="R$ 0,00"
             />
             <p className="text-[13px] text-[rgba(0,68,23,0.6)] mt-2">
@@ -320,7 +314,7 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
                 type="date"
                 value={formData.data_compra}
                 onChange={(e) => handleInputChange('data_compra', e.target.value)}
-                className="w-full px-4 py-3 border border-[rgba(0,68,23,0.2)] rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-[rgba(0,166,81,0.2)] focus:border-[#00A651] transition-all"
+                className="w-full px-4 py-3 rounded-[12px] bg-[#F8FCF9] text-[#004417] transition-all border border-[#00A65133]"
               />
             </div>
             <div>
@@ -329,7 +323,7 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
                 type="text"
                 value={formData.numero_serie}
                 onChange={(e) => handleInputChange('numero_serie', e.target.value)}
-                className="w-full px-4 py-3 border border-[rgba(0,68,23,0.2)] rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-[rgba(0,166,81,0.2)] focus:border-[#00A651] transition-all"
+                className="w-full px-4 py-3 rounded-[12px] bg-[#F8FCF9] text-[#004417] transition-all border border-[#00A65133] placeholder:text-[#00441766]"
                 placeholder="Ex.: JD6110-2024-001"
               />
             </div>
@@ -341,10 +335,8 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
               type="text"
               value={formData.fornecedor}
               onChange={(e) => handleInputChange('fornecedor', e.target.value)}
-              className={`w-full px-4 py-3 border rounded-xl text-[14px] focus:outline-none focus:ring-2 transition-all ${
-                errors.fornecedor 
-                  ? 'border-[#DC2626] focus:ring-[rgba(220,38,38,0.2)]' 
-                  : 'border-[rgba(0,68,23,0.2)] focus:ring-[rgba(0,166,81,0.2)] focus:border-[#00A651]'
+              className={`w-full px-4 py-3 rounded-[12px] bg-[#F8FCF9] text-[#004417] placeholder:text-[#00441766] transition-all ${
+                errors.fornecedor ? 'ring-2 ring-[#DC2626]' : 'ring-0 border border-[#00A65133]'
               }`}
               placeholder="Ex.: Concessionária John Deere Sul de Minas"
               required
@@ -354,10 +346,10 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
 
           <div>
             <label className="block text-[14px] font-semibold text-[#004417] mb-2">Foto da máquina (opcional)</label>
-            <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
+            <div className={`rounded-[14px] p-4 text-center transition-all flex items-center gap-4 justify-between h-[54px] ${
               errors.anexo 
-                ? 'border-[#DC2626] bg-[#FEF2F2]' 
-                : 'border-[rgba(0,68,23,0.2)] hover:border-[#00A651] hover:bg-[rgba(0,166,81,0.02)]'
+                ? 'border-2 border-[#DC2626] bg-[#FEF2F2]' 
+                : 'bg-[#F5FDF8] border-2 border-dashed border-[#00A651]'
             }`}>
               <input
                 type="file"
@@ -367,15 +359,15 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
                 id="file-upload-maquina"
               />
               <label htmlFor="file-upload-maquina" className="cursor-pointer">
-                <Upload className={`w-10 h-10 mx-auto mb-3 ${
-                  errors.anexo ? 'text-[#DC2626]' : formData.anexo ? 'text-[#00A651]' : 'text-[rgba(0,68,23,0.3)]'
-                }`} />
-                <p className={`text-[14px] ${
-                  errors.anexo ? 'text-[#DC2626]' : formData.anexo ? 'font-bold text-[#00A651]' : 'text-[rgba(0,68,23,0.7)]'
-                }`}>
-                  {formData.anexo ? formData.anexo.name : 'Clique para selecionar um arquivo'}
-                </p>
-                <p className="text-[13px] text-[rgba(0,68,23,0.5)] mt-2">PDF, JPG, PNG, WEBP (máx. 10MB)</p>
+                <div className="flex items-center gap-3">
+                  <Upload className={`w-6 h-6 ${errors.anexo ? 'text-[#DC2626]' : formData.anexo ? 'text-[#00A651]' : 'text-[#00A651]'}`} />
+                  <div className="text-left">
+                    <p className={`text-[14px] ${errors.anexo ? 'text-[#DC2626]' : formData.anexo ? 'font-bold text-[#004417]' : 'text-[#00441799]'}`}>
+                      {formData.anexo ? formData.anexo.name : 'Anexar Arquivo'}
+                    </p>
+                    <p className="text-[13px] text-[#00441799]">PDF, JPG, PNG, WEBP (máx. 10MB)</p>
+                  </div>
+                </div>
               </label>
             </div>
             {errors.anexo && <p className="text-[#DC2626] text-[13px] mt-2">⚠️ {errors.anexo}</p>}
@@ -383,10 +375,10 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
 
           <div>
             <label className="block text-[14px] font-semibold text-[#004417] mb-2">Documento da máquina (opcional)</label>
-            <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
+            <div className={`rounded-[14px] p-4 text-center transition-all flex items-center gap-4 justify-between h-[54px] ${
               errors.documento_maquina 
-                ? 'border-[#DC2626] bg-[#FEF2F2]' 
-                : 'border-[rgba(0,68,23,0.2)] hover:border-[#00A651] hover:bg-[rgba(0,166,81,0.02)]'
+                ? 'border-2 border-[#DC2626] bg-[#FEF2F2]' 
+                : 'bg-[#F5FDF8] border-2 border-dashed border-[#00A651]'
             }`}>
               <input
                 type="file"
@@ -396,32 +388,32 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
                 id="file-upload-documento-maquina"
               />
               <label htmlFor="file-upload-documento-maquina" className="cursor-pointer">
-                <Upload className={`w-10 h-10 mx-auto mb-3 ${
-                  errors.documento_maquina ? 'text-[#DC2626]' : formData.documento_maquina ? 'text-[#00A651]' : 'text-[rgba(0,68,23,0.3)]'
-                }`} />
-                <p className={`text-[14px] ${
-                  errors.documento_maquina ? 'text-[#DC2626]' : formData.documento_maquina ? 'font-bold text-[#00A651]' : 'text-[rgba(0,68,23,0.7)]'
-                }`}>
-                  {formData.documento_maquina ? formData.documento_maquina.name : 'Clique para selecionar um arquivo'}
-                </p>
-                <p className="text-[13px] text-[rgba(0,68,23,0.5)] mt-2">PDF, JPG, PNG, WEBP (máx. 10MB)</p>
+                <div className="flex items-center gap-3">
+                  <Upload className={`w-6 h-6 ${errors.documento_maquina ? 'text-[#DC2626]' : formData.documento_maquina ? 'text-[#00A651]' : 'text-[#00A651]'}`} />
+                  <div className="text-left">
+                    <p className={`text-[14px] ${errors.documento_maquina ? 'text-[#DC2626]' : formData.documento_maquina ? 'font-bold text-[#004417]' : 'text-[#00441799]'}`}>
+                      {formData.documento_maquina ? formData.documento_maquina.name : 'Anexar Documento'}
+                    </p>
+                    <p className="text-[13px] text-[#00441799]">PDF, JPG, PNG, WEBP (máx. 10MB)</p>
+                  </div>
+                </div>
               </label>
             </div>
             {errors.documento_maquina && <p className="text-[#DC2626] text-[13px] mt-2">⚠️ {errors.documento_maquina}</p>}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-[rgba(0,68,23,0.08)]">
+          <div className="flex flex-col sm:flex-row gap-3 pt-6">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 h-[48px] px-6 border-2 border-[rgba(0,68,23,0.2)] text-[#004417] rounded-xl font-semibold hover:bg-[rgba(0,68,23,0.03)] active:scale-[0.98] transition-all"
+              className="flex-1 h-[48px] px-6 bg-white text-[#004417] rounded-[12px] font-semibold hover:bg-[rgba(0,166,81,0.04)] active:scale-[0.98] transition-all border border-[#00A65133]"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 h-[48px] px-6 bg-[#00A651] text-white rounded-xl font-bold hover:bg-[#004417] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 h-[48px] px-6 bg-[#00A651] text-white rounded-[12px] font-bold hover:bg-[#004417] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>

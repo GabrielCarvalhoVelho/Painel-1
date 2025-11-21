@@ -96,15 +96,17 @@ export default function MinhaFazendaPanel() {
   };
 
   const getStatusColor = (ativo: boolean) => {
-    return ativo 
-      ? 'bg-[rgba(0,166,81,0.1)] text-[#00A651] border-transparent'
-      : 'bg-gray-100 text-gray-600 border-transparent';
+    // Stickers use green background with low opacity and green text
+    return ativo
+      ? 'bg-[rgba(0,166,81,0.12)] text-[#00A651] rounded-[20px] px-3 py-1 text-xs font-medium'
+      : 'bg-[rgba(0,166,81,0.06)] text-[#00A651] rounded-[20px] px-3 py-1 text-xs font-medium';
   };
 
   const getStatusIcon = (ativo: boolean) => {
+    // Minimal icon used in the action button (always using dark green)
     return ativo 
-      ? <ToggleRight className="w-5 h-5 text-[#00A651]" />
-      : <ToggleLeft className="w-5 h-5 text-gray-500" />;
+      ? <ToggleRight className="w-5 h-5 text-[#004417]" />
+      : <ToggleLeft className="w-5 h-5 text-[#004417]" />;
   };
 
   if (loading) {
@@ -186,7 +188,7 @@ export default function MinhaFazendaPanel() {
     title: string, 
     emptyMessage: string 
   }) => (
-    <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.08)] border border-[rgba(0,68,23,0.08)]">
+    <div className="bg-white rounded-[14px] shadow-[0_1px_3px_rgba(0,68,23,0.10)]">
       <div className="px-6 py-5 border-b border-[rgba(0,68,23,0.08)]">
         <h3 className="text-base font-bold text-[#004417]">{title}</h3>
         {talhoes.length > 0 && (
@@ -195,69 +197,75 @@ export default function MinhaFazendaPanel() {
       </div>
 
       {talhoes.length === 0 ? (
-        <div className="p-6 text-center">
-          <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-base font-semibold text-[#004417] mb-2">{emptyMessage}</h3>
+        <div className="p-6 text-center bg-white rounded-[14px] shadow-[0_1px_3px_rgba(0,68,23,0.10)]">
+          <MapPin className="w-12 h-12 text-[rgba(0,68,23,0.35)] mx-auto mb-4" />
+          <h3 className="text-base font-semibold text-[rgba(0,68,23,0.6)] mb-2">{emptyMessage}</h3>
         </div>
       ) : (
-        <div className="space-y-3 p-4">
+        <div className="p-4">
           {talhoes.map((talhao) => (
             <div 
               key={talhao.id_talhao} 
-              className="bg-white rounded-xl border border-[rgba(0,68,23,0.08)] p-5 hover:shadow-md transition-all min-h-[120px]"
+              className="relative bg-white rounded-[14px] p-5 transition-all mb-5 min-h-[140px] shadow-[0_1px_3px_rgba(0,68,23,0.10)] hover:shadow-[0_2px_6px_rgba(0,68,23,0.12)]"
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <h4 className="text-[15px] font-bold text-[#004417]">{talhao.nome}</h4>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(talhao.ativo || false)}`}>
-                    {talhao.ativo ? 'Ativo' : 'Inativo'}
-                  </span>
-                </div>
-                <button
-                  onClick={() => handleToggleClick(talhao)}
-                  className="p-2 hover:bg-[rgba(0,68,23,0.05)] rounded-lg transition-colors"
-                  title={talhao.ativo ? 'Desativar talhão' : 'Ativar talhão'}
-                >
-                  {getStatusIcon(talhao.ativo || false)}
-                </button>
+              {/* Badge no canto superior direito */}
+              <span className={`absolute right-4 top-4 ${getStatusColor(talhao.ativo || false)}`}>
+                {talhao.ativo ? 'Ativo' : 'Inativo'}
+              </span>
+
+              <div className="mb-3">
+                <h4 className="text-lg font-bold text-[#004417]">{talhao.nome}</h4>
               </div>
-              
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <span className="text-xs text-[rgba(0,68,23,0.7)] uppercase tracking-wide block mb-1">Área</span>
+                  <span className="text-xs text-[rgba(0,68,23,0.6)] uppercase tracking-wide block mb-1">Área</span>
                   <p className="text-sm font-semibold text-[#004417]">
-                    {talhao.area?.toFixed(2) || '0.00'} <span className="opacity-70">ha</span>
+                    {talhao.area?.toFixed(2) || '0.00'} <span className="text-[#004417]">ha</span>
                   </p>
                 </div>
+
                 <div>
-                  <span className="text-xs text-[rgba(0,68,23,0.7)] uppercase tracking-wide block mb-1">Produtividade</span>
-                  <p className="text-sm font-semibold text-[rgba(0,68,23,0.9)]">
+                  <span className="text-xs text-[rgba(0,68,23,0.6)] uppercase tracking-wide block mb-1">Produtividade</span>
+                  <p className="text-sm font-semibold text-[#004417]">
                     {talhao.produtividade_saca ? (
                       <>
-                        {talhao.produtividade_saca} <span className="opacity-70">sc/ha</span>
+                        {talhao.produtividade_saca} <span className="text-[#004417]">sc/ha</span>
                       </>
                     ) : '-'}
                   </p>
                 </div>
+
                 <div>
-                  <span className="text-xs text-[rgba(0,68,23,0.7)] uppercase tracking-wide block mb-1">Variedade</span>
-                  <p className="text-sm font-semibold text-[rgba(0,68,23,0.9)]">{talhao.variedade_plantada || '-'}</p>
+                  <span className="text-xs text-[rgba(0,68,23,0.6)] uppercase tracking-wide block mb-1">Variedade</span>
+                  <p className="text-sm font-semibold text-[#004417]">{talhao.variedade_plantada || '-'}</p>
                 </div>
+
                 <div>
-                  <span className="text-xs text-[rgba(0,68,23,0.7)] uppercase tracking-wide block mb-1">Quantidade de Pés</span>
-                  <p className="text-sm font-semibold text-[rgba(0,68,23,0.9)]">
+                  <span className="text-xs text-[rgba(0,68,23,0.6)] uppercase tracking-wide block mb-1">Quantidade de Pés</span>
+                  <p className="text-sm font-semibold text-[#004417]">
                     {talhao.quantidade_de_pes ? (
                       <>
-                        {Number(talhao.quantidade_de_pes).toLocaleString()} <span className="opacity-70">pés</span>
+                        {Number(talhao.quantidade_de_pes).toLocaleString()} <span className="text-[#004417]">pés</span>
                       </>
                     ) : '-'}
                   </p>
                 </div>
-                <div>
-                  <span className="text-xs text-[rgba(0,68,23,0.7)] uppercase tracking-wide block mb-1">Ano de Plantio</span>
-                  <p className="text-sm font-semibold text-[rgba(0,68,23,0.9)]">{talhao.ano_de_plantio ? String(talhao.ano_de_plantio).substring(0, 4) : '-'}</p>
+
+                <div className="sm:col-span-2">
+                  <span className="text-xs text-[rgba(0,68,23,0.6)] uppercase tracking-wide block mb-1">Ano de Plantio</span>
+                  <p className="text-sm font-semibold text-[#004417]">{talhao.ano_de_plantio ? String(talhao.ano_de_plantio).substring(0, 4) : '-'}</p>
                 </div>
               </div>
+
+              {/* Botão minimalista no canto inferior direito */}
+              <button
+                onClick={() => handleToggleClick(talhao)}
+                className="absolute right-4 bottom-4 p-2 text-[#004417] hover:opacity-90"
+                title={talhao.ativo ? 'Desativar talhão' : 'Ativar talhão'}
+              >
+                {getStatusIcon(talhao.ativo || false)}
+              </button>
             </div>
           ))}
         </div>

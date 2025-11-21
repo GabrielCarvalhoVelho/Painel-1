@@ -182,30 +182,30 @@ if (produtividadeFazenda !== null && produtividadeFazenda !== undefined) {
   return (
     <div className="space-y-6">
       {/* Header with Productivity */}
-      <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] p-6">
+      <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] p-6">
         {/* Property Data */}
-        <div className="bg-[#00A651]/8 border border-[rgba(0,68,23,0.08)] rounded-xl p-5 mb-6">
+        <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] p-5 mb-6">
           <div className="flex items-center space-x-2 mb-4">
             <div className="w-2 h-2 bg-[#00A651] rounded-full"></div>
-            <span className="text-[13px] font-semibold text-[#004417]">Dados da Propriedade</span>
+            <span className="text-[12px] uppercase font-semibold text-[rgba(0,68,23,0.75)]">Dados da Propriedade</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 divide-y sm:divide-y-0 sm:divide-x divide-[rgba(0,68,23,0.12)]">
-            <div className="pt-4 sm:pt-0 sm:pr-4">
-              <span className="text-[13px] text-[#004417] font-semibold">ÁREA CULTIVADA</span>
-              <p className="text-[20px] font-bold text-[#004417] mt-1">{areaCultivada.toFixed(1)} <span className="text-[#004417]/75">ha</span></p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <span className="text-[12px] uppercase font-semibold text-[rgba(0,68,23,0.75)]">ÁREA CULTIVADA</span>
+              <p className="text-[22px] font-bold text-[#004417] mt-1">{areaCultivada.toFixed(1)} <span className="text-[rgba(0,68,23,0.75)]">ha</span></p>
             </div>
-            <div className="pt-4 sm:pt-0 sm:px-4">
-              <span className="text-[13px] text-[#004417] font-semibold">TALHÕES ATIVOS</span>
-              <p className="text-[20px] font-bold text-[#004417] mt-1">{talhoes.length}</p>
+            <div>
+              <span className="text-[12px] uppercase font-semibold text-[rgba(0,68,23,0.75)]">TALHÕES ATIVOS</span>
+              <p className="text-[22px] font-bold text-[#004417] mt-1">{talhoes.length}</p>
             </div>
-            <div className="pt-4 sm:pt-0 sm:pl-4">
-              <span className="text-[13px] text-[#004417] font-semibold">TRANSAÇÕES FINANCEIRAS</span>
-              <p className="text-[20px] font-bold text-[#004417] mt-1">{dadosFinanceiros?.balance?.totalTransactions ?? 0} <span className="text-[#004417]/75">lançamentos</span></p>
+            <div>
+              <span className="text-[12px] uppercase font-semibold text-[rgba(0,68,23,0.75)]">TRANSAÇÕES FINANCEIRAS</span>
+              <p className="text-[22px] font-bold text-[#004417] mt-1">{dadosFinanceiros?.balance?.totalTransactions ?? 0} <span className="text-[rgba(0,68,23,0.75)]">lançamentos</span></p>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+        <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-[#00A651]/10 rounded-full flex items-center justify-center flex-shrink-0">
               <Calculator className="w-6 h-6 text-[#00A651]" />
@@ -217,7 +217,7 @@ if (produtividadeFazenda !== null && produtividadeFazenda !== undefined) {
           </div>
           <button
             onClick={loadData}
-            className="w-full sm:w-auto px-4 py-2 text-sm bg-[#00A651]/10 text-[#004417] font-semibold rounded-lg hover:bg-white hover:text-[#00A651] hover:border hover:border-[#00A651] transition-all duration-200"
+            className="w-full sm:w-auto px-4 py-2 text-sm bg-[#00A651] text-white font-semibold rounded-[10px] hover:opacity-95 transition-all duration-200"
           >
             Atualizar Dados
           </button>
@@ -225,7 +225,7 @@ if (produtividadeFazenda !== null && produtividadeFazenda !== undefined) {
 
         {/* Productivity Fields */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          <div className="bg-[#00A651]/8 p-5 rounded-xl border border-[rgba(0,68,23,0.08)] transition-transform duration-200 hover:scale-[1.01]">
+          <div className="bg-white p-4 rounded-xl border border-[rgba(0,68,23,0.08)] transition-transform duration-200">
             <label className="block text-sm font-semibold text-[#004417] mb-3">
               Produtividade da Fazenda
             </label>
@@ -233,29 +233,29 @@ if (produtividadeFazenda !== null && produtividadeFazenda !== undefined) {
               <div className="flex-1 px-3 py-2 border border-[rgba(0,68,23,0.08)] rounded-lg text-[20px] font-bold bg-white text-[#004417]">
                 {produtividade.toFixed(1)}
               </div>
-              <span className="text-sm text-[#004417]/75 font-medium whitespace-nowrap">sacas/ha</span>
+              <span className="text-sm text-[rgba(0,68,23,0.75)] font-medium whitespace-nowrap">sacas/ha</span>
             </div>
-            <p className="text-[13px] text-[#004417]/65 font-medium mt-2">Calculado dos talhões cadastrados</p>
+            <p className="text-[13px] text-[rgba(0,68,23,0.75)] font-medium mt-2">Calculado dos talhões cadastrados</p>
           </div>
 
-          <div className="bg-[#CADB2A]/12 p-5 rounded-xl border border-[rgba(0,68,23,0.08)] transition-transform duration-200 hover:scale-[1.01]">
+          <div className="bg-white p-4 rounded-xl border border-[rgba(0,68,23,0.08)] transition-transform duration-200">
             <div className="flex items-center space-x-2 mb-3">
               <TrendingUp className="w-5 h-5 text-[#CADB2A]" />
               <span className="text-sm font-semibold text-[#004417]">Produtividade Média Brasil</span>
             </div>
             <p className="text-[22px] font-bold text-[#004417]">{produtividadeConab.toFixed(1)}</p>
-            <p className="text-[13px] text-[#004417]/65 font-medium">sacas/ha (Conab 2024)</p>
+            <p className="text-[13px] text-[rgba(0,68,23,0.75)] font-medium">sacas/ha (Conab 2024)</p>
           </div>
 
-          <div className="bg-[#004417]/5 p-5 rounded-xl border border-[rgba(0,68,23,0.08)] transition-transform duration-200 hover:scale-[1.01]">
+          <div className="bg-white p-4 rounded-xl border border-[rgba(0,68,23,0.08)] transition-transform duration-200">
             <div className="flex items-center space-x-2 mb-3">
               <span className="text-lg">{getComparacaoIcon()}</span>
               <span className="text-sm font-semibold text-[#004417]">Comparação</span>
             </div>
-            <p className={`text-lg font-bold ${getComparacaoColor()}`}>
+            <p className={`text-lg font-bold text-[#00A651]`}>
               {diferencaProdutividade > 0 ? '+' : ''}{diferencaProdutividade.toFixed(1)} sacas/ha
             </p>
-            <p className={`text-[13px] font-medium ${getComparacaoColor()}`}>
+            <p className={`text-[13px] font-medium text-[rgba(0,68,23,0.75)]`}>
               {Math.abs(percentualDiferenca).toFixed(1)}% {diferencaProdutividade >= 0 ? 'acima' : 'abaixo'} da média
             </p>
           </div>
@@ -264,13 +264,15 @@ if (produtividadeFazenda !== null && produtividadeFazenda !== undefined) {
       
 
       {/* Main table */}
-      <div className="p-6 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] rounded-xl">
-        <h2 className="text-xl font-bold text-[#004417] mb-6">Custos da Safra</h2>
-        <CustosTable
-          userId={userId}
-          areaCultivada={areaCultivada}
-          produtividade={produtividade}
-        />
+      <h2 className="text-xl font-bold text-[#004417] mb-6">Custos da Safra</h2>
+      <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] overflow-hidden">
+        <div className="p-6">
+          <CustosTable
+            userId={userId}
+            areaCultivada={areaCultivada}
+            produtividade={produtividade}
+          />
+        </div>
       </div>
     </div>
   );
