@@ -362,8 +362,8 @@ export default function AttachmentModal({
       {confirmState.type && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/40">
           <div className="bg-white rounded-xl shadow-lg max-w-sm w-full p-6 flex flex-col items-center">
-            <AlertCircle className="w-8 h-8 text-yellow-500 mb-2" />
-            <p className="text-base text-center mb-4 text-[#092f20] font-medium">
+            <AlertCircle className="w-8 h-8 text-[#F7941F] mb-2" />
+            <p className="text-base text-center mb-4 text-[#004417] font-medium">
               {confirmState.type === 'delete-image' && groupInfo?.tem_grupo
                 ? `Atenção: Este anexo é compartilhado com ${groupInfo.numero_parcelas} parcela${groupInfo.numero_parcelas > 1 ? 's' : ''}. Ao confirmar, o arquivo${confirmState.type.startsWith('replace') ? ' atual' : ''} será excluído de forma definitiva do Painel da Fazenda e do nosso banco de dados, afetando todas as parcelas. Deseja continuar?`
                 : `Atenção: ao confirmar, o arquivo${confirmState.type.startsWith('replace') ? ' atual' : ''} será excluído de forma definitiva do Painel da Fazenda e do nosso banco de dados. Deseja continuar?`
@@ -371,14 +371,14 @@ export default function AttachmentModal({
             </p>
             <div className="flex gap-4 mt-2">
               <button
-                className="px-4 py-2 rounded-lg bg-[#f3f4f6] text-[#092f20] hover:bg-[#e5e7eb]"
+                className="px-4 py-2 rounded-lg bg-white border border-[rgba(0,68,23,0.06)] text-[#004417] hover:bg-[rgba(0,68,23,0.03)]"
                 onClick={() => setConfirmState({ type: null })}
                 disabled={loading}
               >
                 Cancelar
               </button>
               <button
-                className="px-4 py-2 rounded-lg bg-[#ffeaea] text-[#b71c1c] hover:bg-[#ffd6d6]"
+                className="px-4 py-2 rounded-lg bg-[rgba(247,148,31,0.12)] text-[#F7941F] hover:bg-[rgba(247,148,31,0.18)]"
                 onClick={confirmState.onConfirm}
                 disabled={loading}
               >
@@ -392,17 +392,17 @@ export default function AttachmentModal({
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-[#86b646] to-[#397738] rounded-lg flex items-center justify-center">
-              <Paperclip className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 bg-[rgba(0,166,81,0.12)] rounded-lg flex items-center justify-center">
+              <Paperclip className="w-5 h-5 text-[#00A651]" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-[#092f20]">Gerenciar Anexos</h3>
-              <p className="text-sm text-gray-600 truncate max-w-48">{transactionDescription}</p>
+              <h3 className="text-lg font-semibold text-[#004417]">Gerenciar Anexos</h3>
+              <p className="text-sm text-[#004417]/80 truncate max-w-48">{transactionDescription}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-gray-500 hover:text-gray-700 rounded"
+            className="p-1 text-[rgba(0,68,23,0.65)] hover:text-[#004417] rounded"
             disabled={loading}
             aria-label="Fechar"
           >
@@ -436,7 +436,7 @@ export default function AttachmentModal({
           <div className="flex flex-col gap-4">
             {!attachments.find(a => a.type === 'image') && (
               <button
-                className="flex items-center justify-center gap-2 bg-[#86b646] text-white py-2 rounded hover:bg-[#397738] transition-colors"
+                className="flex items-center justify-center gap-2 bg-[#00A651] text-white py-2 rounded hover:bg-[#003015] transition-colors"
                 onClick={() => handleImageSelect(false)}
                 disabled={loading}
               >
@@ -445,7 +445,7 @@ export default function AttachmentModal({
             )}
             {!attachments.find(a => a.type === 'pdf' || a.type === 'xml' || a.type === 'file') && (
               <button
-                className="flex items-center justify-center gap-2 bg-[#397738] text-white py-2 rounded hover:bg-[#86b646] transition-colors"
+                className="flex items-center justify-center gap-2 bg-[#004417] text-white py-2 rounded hover:bg-[#003015] transition-colors"
                 onClick={() => handleFileSelect(false)}
                 disabled={loading}
               >
@@ -456,18 +456,18 @@ export default function AttachmentModal({
 
           {/* Se houver imagem */}
           {attachments.find(a => a.type === 'image') && (
-            <div className="flex flex-col items-center gap-2 bg-gray-50 p-3 rounded-lg border">
+            <div className="flex flex-col items-center gap-2 bg-white p-3 rounded-lg border border-[rgba(0,68,23,0.06)]">
               <img
                 key={imageKey}
                 src={`${attachments.find(a => a.type === 'image')?.url}&t=${imageKey}`}
                 alt="Imagem anexada"
-                className="max-h-32 mb-2 rounded border"
+                className="max-h-32 mb-2 rounded"
                 onLoad={() => console.log('🖼️ Imagem carregada:', imageKey)}
                 onError={(e) => console.error('❌ Erro ao carregar imagem:', e)}
               />
               <div className="flex gap-2 mb-2">
                 <button
-                  className="bg-[#f3f4f6] text-[#092f20] px-2 py-1 rounded hover:bg-[#e5e7eb] flex items-center gap-1 transition-colors"
+                  className="bg-white border border-[rgba(0,68,23,0.06)] text-[#004417] px-2 py-1 rounded hover:bg-[rgba(0,68,23,0.03)] flex items-center gap-1 transition-colors"
                   onClick={() => handleDownload('image')}
                   disabled={loading}
                 >
@@ -476,7 +476,7 @@ export default function AttachmentModal({
               </div>
               <div className="flex gap-2">
                 <button
-                  className="bg-[#eaf4ec] text-[#092f20] px-3 py-1 rounded hover:bg-[#d3e7d8] flex items-center gap-1 transition-colors"
+                  className="bg-[rgba(0,166,81,0.08)] text-[#004417] px-3 py-1 rounded hover:bg-[rgba(0,166,81,0.12)] flex items-center gap-1 transition-colors"
                   onClick={() => handleImageSelect(true)}
                   disabled={loading}
                 >
@@ -495,7 +495,7 @@ export default function AttachmentModal({
 
           {/* Se houver arquivo (PDF, XML) */}
           {attachments.find(a => a.type === 'pdf' || a.type === 'xml' || a.type === 'file') && (
-            <div className="flex flex-col items-center gap-2 bg-gray-50 p-3 rounded-lg border">
+            <div className="flex flex-col items-center gap-2 bg-white p-3 rounded-lg border border-[rgba(0,68,23,0.06)]">
               {(() => {
                 const attachment = attachments.find(a => a.type === 'pdf' || a.type === 'xml' || a.type === 'file');
                 if (!attachment) return null;
@@ -515,7 +515,7 @@ export default function AttachmentModal({
               })()}
               <div className="flex gap-2 mb-2">
                 <button
-                  className="bg-[#f3f4f6] text-[#092f20] px-2 py-1 rounded hover:bg-[#e5e7eb] flex items-center gap-1 transition-colors"
+                  className="bg-white border border-[rgba(0,68,23,0.06)] text-[#004417] px-2 py-1 rounded hover:bg-[rgba(0,68,23,0.03)] flex items-center gap-1 transition-colors"
                   onClick={() => handleDownload('file')}
                   disabled={loading}
                 >
@@ -524,7 +524,7 @@ export default function AttachmentModal({
               </div>
               <div className="flex gap-2">
                 <button
-                  className="bg-[#eaf4ec] text-[#092f20] px-3 py-1 rounded hover:bg-[#d3e7d8] flex items-center gap-1 transition-colors"
+                  className="bg-[rgba(0,166,81,0.08)] text-[#004417] px-3 py-1 rounded hover:bg-[rgba(0,166,81,0.12)] flex items-center gap-1 transition-colors"
                   onClick={() => handleFileSelect(true)}
                   disabled={loading}
                 >

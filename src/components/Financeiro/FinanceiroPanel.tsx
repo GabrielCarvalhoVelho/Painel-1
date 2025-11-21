@@ -198,10 +198,8 @@ const FinanceiroPanel: React.FC = () => {
     return (
       <div
         key={transaction.id_transacao}
-        className={`relative rounded-xl p-[18px] transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] ${
-          isIncome 
-            ? 'bg-[#00A651]/5' 
-            : 'bg-[#F7941F]/5'
+        className={`relative rounded-xl p-[18px] transition-all duration-200 ${
+          isFuture ? 'bg-[rgba(202,219,42,0.20)]' : isIncome ? 'bg-[rgba(0,166,81,0.08)]' : 'bg-[rgba(247,148,31,0.10)]'
         }`}
       >
         <div className="flex items-start justify-between mb-3">
@@ -213,10 +211,8 @@ const FinanceiroPanel: React.FC = () => {
               )}
             </div>
           </div>
-          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-            isFuture
-              ? (isIncome ? 'bg-[#00A651]/15 text-[#004417]' : 'bg-[#F7941F]/20 text-[#004417]')
-              : (isIncome ? 'bg-[#00A651]/15 text-[#004417]' : 'bg-[#F7941F]/20 text-[#004417]')
+          <span className={`text-xs px-2.5 py-1 rounded-[8px] font-medium ${
+            isFuture ? 'bg-[rgba(202,219,42,0.25)] text-[#004417]' : isIncome ? 'bg-[rgba(0,166,81,0.15)] text-[#00A651]' : 'bg-[rgba(247,148,31,0.15)] text-[#F7941F]'
           }`}>
             {isFuture ? 'Planejada' : (isIncome ? 'Entrada' : 'Saída')}
           </span>
@@ -235,10 +231,10 @@ const FinanceiroPanel: React.FC = () => {
           </div>
           <div>
             <span className="text-[#004417]/65">Data de pagamento:</span>
-            <p className="font-semibold text-[#004417]">
+              <p className="font-semibold text-[#004417]">
               {isFuture 
-                ? FinanceService.formatDataPagamento(transaction.data_agendamento_pagamento || '')
-                : FinanceService.formatDataPagamento(transaction.data_agendamento_pagamento || transaction.data_agendamento_pagamento || '')
+                ? FinanceService.formatDataPagamento(String(transaction.data_agendamento_pagamento || ''))
+                : FinanceService.formatDataPagamento(String(transaction.data_agendamento_pagamento || transaction.data_agendamento_pagamento || ''))
               }
             </p>
           </div>
@@ -283,12 +279,14 @@ const FinanceiroPanel: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Aviso Importante (topo) */}
-      <div className="bg-[#F7941F]/10 rounded-xl p-[14px_18px]">
+      <div className="bg-[rgba(247,148,31,0.06)] border-l-4 border-[#F7941F] rounded-xl shadow-card py-4 px-5">
         <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-[#F7941F] flex-shrink-0 mt-0.5" />
+          <div className="w-8 h-8 rounded-full flex items-center justify-center bg-[rgba(247,148,31,0.15)] flex-shrink-0 mt-0.5">
+            <AlertCircle className="w-5 h-5 text-[#F7941F]" />
+          </div>
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-[#004417] mb-1">Aviso Importante</h3>
-            <p className="text-sm text-[#004417]/80 leading-relaxed">
+            <p className="text-sm text-[#004417] leading-relaxed">
               Este painel é apenas um registro de conferência. O Zé não executa pagamentos, transferências ou movimentações financeiras.
             </p>
           </div>
@@ -296,7 +294,7 @@ const FinanceiroPanel: React.FC = () => {
       </div>
 
       {/* Filtros */}
-      <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,68,23,0.08)] p-4 md:p-6">
+      <div className="bg-white rounded-xl shadow-card p-5 md:p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-[#00A651]/10 rounded-lg flex items-center justify-center">
@@ -306,7 +304,7 @@ const FinanceiroPanel: React.FC = () => {
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center space-x-2 px-3 py-2 bg-white border border-[rgba(0,68,23,0.15)] text-[#004417] font-medium hover:bg-[#CADB2A]/15 rounded-lg transition-colors"
+            className="flex items-center space-x-2 px-3 py-2 bg-white border border-[rgba(0,68,23,0.10)] text-[#004417] font-medium hover:bg-[rgba(0,68,23,0.03)] rounded-[10px] transition-colors"
           >
             <span className="text-sm font-medium">{getFilterLabel()}</span>
             <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
@@ -325,36 +323,32 @@ const FinanceiroPanel: React.FC = () => {
                       setShowFilters(false);
                     }
                   }}
-                  className={`p-3 text-left rounded-lg border-2 transition-colors ${
-                    filterPeriod === option.value
-                      ? 'bg-[#00A651]/10 border-[#00A651] text-[#004417]'
-                      : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                  }`}
+                  className={`p-3 text-left rounded-[10px] transition-colors border ${filterPeriod === option.value ? 'bg-[rgba(0,166,81,0.10)] border-[#00A651] text-[#004417] font-semibold' : 'bg-white border-[rgba(0,68,23,0.06)] text-[rgba(0,68,23,0.8)] hover:bg-[rgba(0,68,23,0.03)] hover:border-[rgba(0,68,23,0.12)]'}`}
                 >
                   <div className="font-medium text-sm">{option.label}</div>
-                  <div className="text-xs text-gray-500 mt-1">{option.description}</div>
+                  <div className="text-xs text-[rgba(0,68,23,0.65)] mt-1">{option.description}</div>
                 </button>
               ))}
             </div>
 
             {filterPeriod === 'personalizado' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-white rounded-lg">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Data Inicial</label>
+                  <label className="block text-sm font-medium text-[rgba(0,68,23,0.85)] mb-2">Data Inicial</label>
                   <input
                     type="date"
                     value={customStartDate}
                     onChange={(e) => setCustomStartDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#397738] focus:border-[#397738]"
+                    className="w-full px-3 py-2 border border-[rgba(0,68,23,0.12)] rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-[#00A651]"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Data Final</label>
+                  <label className="block text-sm font-medium text-[rgba(0,68,23,0.85)] mb-2">Data Final</label>
                   <input
                     type="date"
                     value={customEndDate}
                     onChange={(e) => setCustomEndDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#397738] focus:border-[#397738]"
+                    className="w-full px-3 py-2 border border-[rgba(0,68,23,0.12)] rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-[#00A651]"
                   />
                 </div>
               </div>
@@ -369,7 +363,7 @@ const FinanceiroPanel: React.FC = () => {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
           {/* Card 1: Entradas */}
-          <div className="bg-[#00A651]/8 rounded-xl p-5 transition-transform duration-200 hover:scale-[1.01]">
+          <div className="bg-[rgba(0,166,81,0.10)] rounded-xl p-5 shadow-card transition-transform duration-200 hover:scale-[1.01]">
             <div className="flex items-center space-x-2 mb-3">
               <div className="w-10 h-10 rounded-full bg-[#00A651]/20 flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-[#00A651]" />
@@ -387,7 +381,7 @@ const FinanceiroPanel: React.FC = () => {
           </div>
             
           {/* Card 2: Saídas */}
-          <div className="bg-[#F7941F]/10 rounded-xl p-5 transition-transform duration-200 hover:scale-[1.01]">
+          <div className="bg-[rgba(247,148,31,0.12)] rounded-xl p-5 shadow-card transition-transform duration-200 hover:scale-[1.01]">
             <div className="flex items-center space-x-2 mb-3">
               <div className="w-10 h-10 rounded-full bg-[#F7941F]/20 flex items-center justify-center">
                 <TrendingDown className="w-5 h-5 text-[#F7941F]" />
@@ -406,7 +400,7 @@ const FinanceiroPanel: React.FC = () => {
           
           {/* Card 3: Saldo Real (agora condicional) */}
           {!isPastPeriod() && (
-            <div className="bg-white rounded-xl p-5 shadow-sm border border-[rgba(0,68,23,0.08)] transition-transform duration-200 hover:scale-[1.01]">
+            <div className="bg-[rgba(0,166,81,0.12)] rounded-xl p-5 shadow-card transition-transform duration-200 hover:scale-[1.01]">
               <div className="flex items-center space-x-2 mb-3">
                 <div className="w-10 h-10 rounded-full bg-[#00A651]/20 flex items-center justify-center">
                   <Wallet className="w-5 h-5 text-[#00A651]" />
@@ -431,7 +425,7 @@ const FinanceiroPanel: React.FC = () => {
           )}
           
           {shouldShowProjected() && (
-            <div className="bg-[#CADB2A]/12 rounded-xl p-5 transition-transform duration-200 hover:scale-[1.01]">
+            <div className="bg-[rgba(202,219,42,0.12)] rounded-xl p-5 shadow-card transition-transform duration-200 hover:scale-[1.01]">
               <div className="flex items-center space-x-2 mb-3">
                 <div className="w-10 h-10 rounded-full bg-[#CADB2A]/30 flex items-center justify-center">
                   <Target className="w-5 h-5 text-[#004417]" />
@@ -470,7 +464,7 @@ const FinanceiroPanel: React.FC = () => {
       {/* Colunas de Transações */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Coluna Esquerda - Transações Realizadas */}
-        <div className="bg-white rounded-xl shadow-[0_4px_10px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] p-5 md:p-6">
+        <div className="bg-white rounded-xl shadow-card p-5 md:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-[#004417]">Transações Realizadas</h3>
             <div className="flex items-center space-x-2 text-[#00A651]">
@@ -481,8 +475,8 @@ const FinanceiroPanel: React.FC = () => {
           
           <div className="space-y-4">
             {transacoesRealizadas.length === 0 ? (
-              <div className="text-center py-8 text-[#004417]/65">
-                <PiggyBank className="w-12 h-12 mx-auto mb-3 opacity-50 text-[#00A651]" />
+              <div className="text-center py-8 bg-[rgba(0,166,81,0.05)] rounded-xl text-[#004417] p-6">
+                <PiggyBank className="w-12 h-12 mx-auto mb-3 text-[#00A651]" />
                 <p className="font-medium text-[#004417]">Nenhuma transação encontrada</p>
                 <p className="text-sm mt-1">
                   {filterPeriod === 'todos' 
@@ -502,7 +496,7 @@ const FinanceiroPanel: React.FC = () => {
                   // Se a lista visível está RECOLHIDA, mostra o botão "Ver todas"
                   <button
                     onClick={() => setTransacoesRealizadas(todasTransacoesRealizadas)}
-                    className="w-full px-4 py-2.5 text-sm font-semibold text-[#00A651] bg-white border border-[#00A651] rounded-lg hover:bg-[#00A651]/10 transition-colors"
+                    className="w-full px-4 py-2.5 text-sm font-semibold text-[#00A651] bg-white border border-[#00A651] rounded-[10px] hover:bg-[rgba(0,166,81,0.10)] transition-colors"
                   >
                     Ver todas ({todasTransacoesRealizadas.length})
                   </button>
@@ -510,7 +504,7 @@ const FinanceiroPanel: React.FC = () => {
                   // Se a lista visível está EXPANDIDA, mostra o botão "Ver menos"
                   <button
                     onClick={() => setTransacoesRealizadas(todasTransacoesRealizadas.slice(0, INITIAL_ITEM_COUNT))}
-                    className="w-full px-4 py-2.5 text-sm font-semibold text-[#004417]/65 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="w-full px-4 py-2.5 text-sm font-semibold text-[#004417]/65 bg-white border border-[rgba(0,68,23,0.06)] rounded-[10px] hover:bg-[rgba(0,68,23,0.03)] transition-colors"
                   >
                     Ver menos
                   </button>
@@ -521,7 +515,7 @@ const FinanceiroPanel: React.FC = () => {
         </div>
 
         {/* Coluna Direita - Transações Futuras */}
-        <div className="bg-white rounded-xl shadow-[0_4px_10px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] p-5 md:p-6">
+        <div className="bg-white rounded-xl shadow-card p-5 md:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-[#004417]">Transações Futuras</h3>
             <div className="flex items-center space-x-2 text-[#00A651]">
@@ -532,8 +526,8 @@ const FinanceiroPanel: React.FC = () => {
           
           <div className="space-y-4">
             {transacoesFuturas.length === 0 ? (
-              <div className="text-center py-8 text-[#004417]/65">
-                <Clock className="w-12 h-12 mx-auto mb-3 opacity-50 text-[#00A651]" />
+              <div className="text-center py-8 bg-[rgba(0,166,81,0.05)] rounded-xl text-[#004417] p-6">
+                <Clock className="w-12 h-12 mx-auto mb-3 text-[#00A651]" />
                 <p className="font-medium text-[#004417]">Nenhum lançamento futuro neste período</p>
                 <p className="text-sm mt-2 leading-relaxed">
                   Todos os valores dependem exclusivamente das informações lançadas pelo produtor.
@@ -560,7 +554,7 @@ const FinanceiroPanel: React.FC = () => {
                       setTransacoesFuturas(todasTransacoesFuturas);
                       console.log('✅ Estado atualizado para mostrar todas as transações');
                     }}
-                    className="w-full px-4 py-2.5 text-sm font-semibold text-[#00A651] bg-white border border-[#00A651] rounded-lg hover:bg-[#00A651]/10 transition-colors"
+                    className="w-full px-4 py-2.5 text-sm font-semibold text-[#00A651] bg-white border border-[#00A651] rounded-[10px] hover:bg-[rgba(0,166,81,0.10)] transition-colors"
                   >
                     Ver todas ({todasTransacoesFuturas.length})
                   </button>
@@ -573,7 +567,7 @@ const FinanceiroPanel: React.FC = () => {
                       setTransacoesFuturas(todasTransacoesFuturas.slice(0, INITIAL_ITEM_COUNT));
                       console.log('✅ Estado atualizado para mostrar menos transações');
                     }}
-                    className="w-full px-4 py-2.5 text-sm font-semibold text-[#004417]/65 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="w-full px-4 py-2.5 text-sm font-semibold text-[#004417]/65 bg-white border border-[rgba(0,68,23,0.06)] rounded-[10px] hover:bg-[rgba(0,68,23,0.03)] transition-colors"
                   >
                     Ver menos
                   </button>
@@ -585,7 +579,7 @@ const FinanceiroPanel: React.FC = () => {
       </div>
 
       {/* Rodapé de Compliance */}
-      <div className="bg-[#00A651]/10 rounded-xl p-[14px_18px] mt-8">
+      <div className="bg-[rgba(202,219,42,0.18)] rounded-xl p-4 mt-8">
         <div className="flex items-start gap-3">
           <Info className="w-5 h-5 text-[#00A651] flex-shrink-0 mt-0.5" />
           <div className="flex-1">
@@ -600,16 +594,16 @@ const FinanceiroPanel: React.FC = () => {
 
       {/* Estado vazio geral */}
       {transacoesRealizadas.length === 0 && transacoesFuturas.length === 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,68,23,0.08)] p-6 text-center">
-          <div className="w-16 h-16 bg-[#00A651]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="bg-[rgba(0,166,81,0.05)] rounded-xl p-6 text-center">
+          <div className="w-16 h-16 bg-[rgba(0,166,81,0.10)] rounded-full flex items-center justify-center mx-auto mb-4">
             <PiggyBank className="w-8 h-8 text-[#00A651]" />
           </div>
           <h3 className="text-lg font-bold text-[#004417] mb-2">Sem lançamentos neste período</h3>
-          <p className="text-[#004417]/65 mb-4">
+          <p className="text-[#004417] mb-4">
             Para registrar, envie pelo WhatsApp do Zé.
           </p>
-          <div className="bg-[#F7941F]/10 p-4 rounded-lg">
-            <p className="text-sm text-[#004417]/80">
+          <div className="bg-[rgba(247,148,31,0.06)] border-l-4 border-[#F7941F] p-4 rounded-lg">
+            <p className="text-sm text-[#004417]">
               <strong className="text-[#004417]">Atenção:</strong> este painel é apenas para controle; nenhuma transação financeira é realizada pelo sistema.
             </p>
           </div>
@@ -621,22 +615,22 @@ const FinanceiroPanel: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
             <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Wallet className="w-8 h-8 text-blue-600" />
+              <div className="w-16 h-16 bg-[rgba(0,166,81,0.08)] rounded-full flex items-center justify-center mx-auto mb-4">
+                <Wallet className="w-8 h-8 text-[#00A651]" />
               </div>
               
-              <h3 className="text-lg font-bold text-blue-600 mb-2">
+              <h3 className="text-lg font-bold text-[#004417] mb-2">
                 Saldo Atual
               </h3>
               
-              <p className="text-gray-600 mb-6 leading-relaxed">
+              <p className="text-[#004417]/80 mb-6 leading-relaxed">
                 <strong>Saldo Atual:</strong> Mostra a soma de entradas e saídas já registradas pelo produtor no período selecionado. É apenas um controle, não representa saldo bancário.
               </p>
               
               <div className="flex space-x-3">
                 <button
                   onClick={() => setActiveTooltip(null)}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex-1 px-4 py-2 bg-[#004417] text-white rounded-lg hover:bg-[#003015] transition-colors"
                 >
                   Entendi
                 </button>
@@ -650,22 +644,22 @@ const FinanceiroPanel: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
             <div className="text-center">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Wallet className="w-8 h-8 text-purple-600" />
+              <div className="w-16 h-16 bg-[rgba(0,166,81,0.08)] rounded-full flex items-center justify-center mx-auto mb-4">
+                <Wallet className="w-8 h-8 text-[#00A651]" />
               </div>
               
-              <h3 className="text-lg font-bold text-purple-600 mb-2">
+              <h3 className="text-lg font-bold text-[#004417] mb-2">
                 Saldo Projetado
               </h3>
               
-              <p className="text-gray-600 mb-6 leading-relaxed">
+              <p className="text-[#004417]/80 mb-6 leading-relaxed">
                 <strong>Saldo Projetado:</strong> Mostra o saldo atual somado com todas as transações futuras agendadas. Ajuda a prever o fluxo de caixa considerando os compromissos futuros.
               </p>
               
               <div className="flex space-x-3">
                 <button
                   onClick={() => setActiveTooltip(null)}
-                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  className="flex-1 px-4 py-2 bg-[#004417] text-white rounded-lg hover:bg-[#003015] transition-colors"
                 >
                   Entendi
                 </button>
@@ -679,20 +673,20 @@ const FinanceiroPanel: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
             <div className="text-center">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Plus className="w-8 h-8 text-purple-600" />
+              <div className="w-16 h-16 bg-[rgba(0,166,81,0.08)] rounded-full flex items-center justify-center mx-auto mb-4">
+                <Plus className="w-8 h-8 text-[#00A651]" />
               </div>
               
-              <h3 className="text-lg font-bold text-purple-600 mb-2">
+              <h3 className="text-lg font-bold text-[#004417] mb-2">
                 Impactos Futuros
               </h3>
               
               <div className="space-y-3 mb-6">
                 {periodBalance.impactoFuturo7Dias !== undefined && (
-                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-700">Próximos 7 dias:</span>
+                  <div className="flex justify-between items-center p-3 bg-[rgba(0,166,81,0.04)] rounded-lg">
+                    <span className="text-sm text-[rgba(0,68,23,0.85)]">Próximos 7 dias:</span>
                     <span className={`font-medium ${
-                      periodBalance.impactoFuturo7Dias >= 0 ? 'text-green-600' : 'text-red-600'
+                      periodBalance.impactoFuturo7Dias >= 0 ? 'text-[#00A651]' : 'text-red-600'
                     }`}>
                       {periodBalance.impactoFuturo7Dias >= 0 ? '+' : ''}
                       {FinanceService.formatCurrency(periodBalance.impactoFuturo7Dias)}
@@ -700,10 +694,10 @@ const FinanceiroPanel: React.FC = () => {
                   </div>
                 )}
                 {periodBalance.impactoFuturo30Dias !== undefined && (
-                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-700">Próximos 30 dias:</span>
+                  <div className="flex justify-between items-center p-3 bg-[rgba(0,166,81,0.04)] rounded-lg">
+                    <span className="text-sm text-[rgba(0,68,23,0.85)]">Próximos 30 dias:</span>
                     <span className={`font-medium ${
-                      periodBalance.impactoFuturo30Dias >= 0 ? 'text-green-600' : 'text-red-600'
+                      periodBalance.impactoFuturo30Dias >= 0 ? 'text-[#00A651]' : 'text-red-600'
                     }`}>
                       {periodBalance.impactoFuturo30Dias >= 0 ? '+' : ''}
                       {FinanceService.formatCurrency(periodBalance.impactoFuturo30Dias)}
@@ -712,14 +706,14 @@ const FinanceiroPanel: React.FC = () => {
                 )}
               </div>
               
-              <p className="text-xs text-gray-600 mb-6">
+              <p className="text-xs text-[rgba(0,68,23,0.75)] mb-6">
                 Estes valores mostram o impacto das transações agendadas nos próximos períodos.
               </p>
               
               <div className="flex space-x-3">
                 <button
                   onClick={() => setActiveTooltip(null)}
-                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  className="flex-1 px-4 py-2 bg-[#004417] text-white rounded-lg hover:bg-[#003015] transition-colors"
                 >
                   Entendi
                 </button>
