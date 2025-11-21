@@ -43,23 +43,24 @@ export default function Sidebar({ activeTab, setActiveTab, onClose }: SidebarPro
   };
 
   return (
-    <div className="w-72 bg-[#004417] shadow-lg h-full flex flex-col">
-      <div className="p-4 md:p-6 border-b border-gray-200 relative">
+    <div className="fixed top-0 left-0 w-72 bg-[#004417] shadow-lg h-full flex flex-col font-nunito z-30">
+      <div className="pt-4 pb-4 px-4 relative">
         {/* Mobile close button */}
         {onClose && (
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 md:hidden p-1 text-gray-300 hover:text-white"
+            className="absolute top-4 right-4 md:hidden p-1 text-[rgba(255,255,255,0.85)] hover:text-white"
           >
             <X className="w-5 h-5" />
           </button>
         )}
         
         <div className="flex items-center space-x-3">
-          <img 
-            src="/LOGO-ZE.png" 
-            alt="Zé · Solos.ag" 
+          <img
+            src="/LOGO-ZE.png"
+            alt="Zé · Solos.ag"
             className="w-10 h-10 object-contain rounded-full"
+            style={{ objectFit: 'contain' }}
             onError={(e) => {
               e.currentTarget.style.display = 'none';
               e.currentTarget.nextElementSibling?.classList.remove('hidden');
@@ -69,39 +70,33 @@ export default function Sidebar({ activeTab, setActiveTab, onClose }: SidebarPro
             <Coffee className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white">Zé · Solos.ag</h2>
-            <p className="text-sm text-[#cadb2a]">Painel da Fazenda</p>
+            <h2 className="text-[15px] font-medium text-white">Zé · Solos.ag</h2>
+            <p className="text-sm text-[rgba(255,255,255,0.85)]">Painel da Fazenda</p>
           </div>
         </div>
       </div>
       
-      <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
-        {menuItems.map((item, index) => {
-          const isHighlighted = index < 8;
-          const textColor = isHighlighted 
-            ? (activeTab === item.id ? 'text-white' : 'text-[#cadb2a]') 
-            : (activeTab === item.id ? 'text-white' : 'text-gray-300');
-          const descriptionColor = isHighlighted
-            ? (activeTab === item.id ? 'text-gray-200' : 'text-[#cadb2a]/80')
-            : (activeTab === item.id ? 'text-gray-200' : 'text-gray-400');
-    
+      <nav className="px-4 py-3 space-y-2 flex-1 overflow-y-auto">
+        {menuItems.map((item) => {
+          const active = activeTab === item.id;
           return (
             <button
               key={item.id}
               onClick={() => handleTabClick(item.id)}
-              className={`w-full flex items-center justify-between p-3 rounded-lg transition-all duration-200 group opacity-100 hover:bg-[#397738]/20 hover:text-white ${
-                activeTab === item.id 
-                  ? 'bg-[#86b646]/20 border-l-4 border-[#86b646] text-white' 
-                  : `${textColor}`
+              className={`w-full flex items-center justify-between py-[14px] px-[16px] transition-all duration-200 group ${
+                active
+                  ? 'bg-[#003015] text-white rounded-[8px]'
+                  : 'text-[rgba(255,255,255,0.85)] hover:bg-[rgba(255,255,255,0.08)] rounded-[8px]'
               }`}
             >
               <div className="flex items-center space-x-3">
-                <item.icon className={`w-5 h-5 ${activeTab === item.id ? 'text-[#cadb2a]' : 'text-gray-400'}`} />
+                <item.icon className={`w-[18px] h-[18px] ${active ? 'text-[#00A651]' : 'text-[rgba(255,255,255,0.7)]'}`} />
                 <div className="text-left">
-                  <div className={`font-medium text-sm md:text-base ${textColor}`}>{item.label}</div>
-                  <div className={`text-xs ${descriptionColor}`}>{item.description}</div>
+                  <div className={`font-medium text-[15px] ${active ? 'text-white' : 'text-[rgba(255,255,255,0.85)]'}`}>{item.label}</div>
+                  <div className={`text-xs ${active ? 'text-white/80' : 'text-[rgba(255,255,255,0.7)]'}`}>{item.description}</div>
                 </div>
               </div>
+              <ChevronRight className={`w-[14px] h-[14px] ${active ? 'text-[#00A651]' : 'text-[rgba(255,255,255,0.7)]'}`} />
             </button>
           );
         })}
