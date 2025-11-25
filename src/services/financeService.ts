@@ -509,38 +509,46 @@ export class FinanceService {
   }
 
   static async getSomaTransacoesAteHoje(userId: string): Promise<number> {
-  try {
-    const { data, error } = await supabase
-      .from('transacoes_financeiras')
-      .select('valor')
-      .eq('user_id', userId);
+    try {
+      // Busca apenas os campos necessários para validar se a transação
+      // já foi processada (status e data) e para somar o valor.
+      const { data, error } = await supabase
+        .from('transacoes_financeiras')
+        .select('valor, status, data_agendamento_pagamento')
+        .eq('user_id', userId);
 
-    if (error) {
-      console.error('Erro ao buscar transações:', error);
+      if (error) {
+        console.error('Erro ao buscar transações:', error);
+        return 0;
+      }
+
+      if (!data || data.length === 0) {
+        return 0;
+      }
+
+      // Usa a regra padronizada do serviço para determinar se a transação
+      // já foi processada (não é futura). Filtramos client-side.
+      const transacoesProcessadas = (data || []).filter((t: any) =>
+        this.isTransacaoProcessada(t)
+      );
+
+      const somaTotal = transacoesProcessadas.reduce((acc: number, transacao: any) => {
+        const valor = Number(transacao.valor) || 0;
+        return acc + valor;
+      }, 0);
+
+      console.log(`Soma de transações processadas (até hoje) para usuário ${userId}:`, {
+        totalTransacoes: transacoesProcessadas.length,
+        somaTotal: this.formatCurrency(somaTotal)
+      });
+
+      return somaTotal;
+
+    } catch (error) {
+      console.error('Erro ao calcular soma total de transações até hoje:', error);
       return 0;
     }
-
-    if (!data || data.length === 0) {
-      return 0;
-    }
-
-    const somaTotal = data.reduce((acc, transacao) => {
-      const valor = Number(transacao.valor) || 0;
-      return acc + valor;
-    }, 0);
-
-    console.log(`Soma total de transações para usuário ${userId}:`, {
-      totalTransacoes: data.length,
-      somaTotal: this.formatCurrency(somaTotal)
-    });
-
-    return somaTotal;
-
-  } catch (error) {
-    console.error('Erro ao calcular soma total de transações:', error);
-    return 0;
   }
-}
 
   /**
    * Calcula o saldo real considerando APENAS transações com status 'Pago' até hoje
@@ -728,28 +736,29 @@ static async getResumoMensalFinanceiro(userId: string): Promise<{ totalReceitas:
   private static isTransacaoProcessada(transacao: MaybeTransacao): boolean {
     if (!transacao) return true;
 
-    // Se não tem status de agendado, considera como processada
-    if (transacao.status !== 'Agendado') {
-      return true;
+    // Se houver uma data de agendamento, respeitar a data explicitamente:
+    // - se a data for futura (> hoje) => NÃO processada (futura)
+    // - se a data for hoje ou passada => processada
+    if (transacao.data_agendamento_pagamento) {
+      try {
+        const dp = transacao.data_agendamento_pagamento;
+        const dataAgendamento = typeof dp === 'string' ? parseISO(dp) : new Date(dp as Date);
+        const hoje = startOfDay(new Date());
+        const dataAgendamentoSemHora = startOfDay(dataAgendamento);
+
+        if (dataAgendamentoSemHora > hoje) {
+          return false; // transação agendada para o futuro
+        }
+
+        return true; // data é hoje ou passada => considera processada
+      } catch {
+        // Se não conseguir parsear a data, cairá para a verificação por status abaixo
+      }
     }
 
-    // Se tem status agendado mas não tem data de agendamento, considera processada
-    if (!transacao.data_agendamento_pagamento) {
-      return true;
-    }
-
-    // Se tem data de agendamento no passado ou hoje, considera processada
-    try {
-      const dp = transacao.data_agendamento_pagamento;
-      const dataAgendamento = typeof dp === 'string' ? parseISO(dp) : new Date(dp as Date);
-      const hoje = startOfDay(new Date());
-      const dataAgendamentoSemHora = startOfDay(dataAgendamento);
-
-      return dataAgendamentoSemHora <= hoje;
-    } catch {
-      // Se não conseguir parsear a data, considera processada por segurança
-      return true;
-    }
+    // Se não houver data, ou houve erro no parse, usar o status como fallback:
+    // Considera processada quando status != 'Agendado'
+    return transacao.status !== 'Agendado';
   }
 
   /**
