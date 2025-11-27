@@ -270,39 +270,6 @@ import type { Talhao } from '../../lib/supabase';
           </div>
         </div>
 
-        {/* Cards de Indicadores */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-5">
-          {/* Total de Custos */}
-          <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-5 transition-transform duration-200 hover:scale-101">
-            <div className="flex items-start justify-between">
-              <div className="w-12 h-12 rounded-lg bg-[#00A651]/10 flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-[#004417]" />
-              </div>
-            </div>
-            <div className="mt-4">
-              <p className="text-sm text-[#1d3a2d] font-medium">Total de Custos</p>
-              <p className="text-2xl font-bold text-[#004417] mt-1">
-                {formatCurrency(totalCustos)}
-              </p>
-            </div>
-          </div>
-
-          {/* Custo Médio / ha */}
-          <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-5 transition-transform duration-200 hover:scale-101">
-            <div className="flex items-start justify-between">
-              <div className="w-12 h-12 rounded-lg bg-[#CADB2A]/20 flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-[#004417]" />
-              </div>
-            </div>
-            <div className="mt-4">
-              <p className="text-sm text-[#1d3a2d] font-medium">Custo Médio / ha</p>
-              <p className="text-2xl font-bold text-[#004417] mt-1">
-                {formatCurrency(custoMedioHa)}/ha
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* Tabela Principal - Desktop (≥1024px) */}
         <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-6 hidden lg:block">
           <h3 className="text-lg font-bold text-[#004417] mb-4">Custo por Talhão</h3>
