@@ -229,28 +229,6 @@ import { CustoPorTalhaoService, CustoTalhao, FiltrosCustoPorTalhao } from '../..
           </div>
         </div>
 
-        {/* Cards de Resumo */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-4">
-            <div className="text-sm text-[#1d3a2d]">Total de Custos</div>
-            <div className="text-xl font-bold text-[#004417] mt-1">{formatCurrency(totaisGerais.total)}</div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-4">
-            <div className="text-sm text-[#1d3a2d]">Área Total</div>
-            <div className="text-xl font-bold text-[#004417] mt-1">{totaisGerais.area.toFixed(2)} ha</div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-4">
-            <div className="text-sm text-[#1d3a2d]">Custo Médio/ha</div>
-            <div className="text-xl font-bold text-[#00A651] mt-1">
-              {formatCurrency(totaisGerais.area > 0 ? totaisGerais.total / totaisGerais.area : 0)}/ha
-            </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-4">
-            <div className="text-sm text-[#1d3a2d]">Talhões</div>
-            <div className="text-xl font-bold text-[#004417] mt-1">{talhoesFiltrados.length}</div>
-          </div>
-        </div>
-
         {/* Loading State */}
         {loading && (
           <div className="flex items-center justify-center py-12">
