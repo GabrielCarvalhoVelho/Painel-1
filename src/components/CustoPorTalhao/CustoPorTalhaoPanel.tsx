@@ -149,17 +149,6 @@ import { CustoPorTalhaoService, CustoTalhao, FiltrosCustoPorTalhao } from '../..
       area: acc.area + t.area
     }), { insumos: 0, operacional: 0, servicosLogistica: 0, administrativos: 0, outros: 0, total: 0, area: 0 });
 
-    // Gera lista de safras disponíveis (últimos 3 anos)
-    const safrasDisponiveis = (() => {
-      const hoje = new Date();
-      const anoAtual = hoje.getMonth() >= 4 ? hoje.getFullYear() : hoje.getFullYear() - 1;
-      return [
-        `${anoAtual}/${anoAtual + 1}`,
-        `${anoAtual - 1}/${anoAtual}`,
-        `${anoAtual - 2}/${anoAtual - 1}`
-      ];
-    })();
-
     return (
       <div className="space-y-6">
         {/* Header */}

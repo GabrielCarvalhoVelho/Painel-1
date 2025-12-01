@@ -2,6 +2,52 @@ import { supabase } from '../lib/supabase';
 import { TalhaoService } from './talhaoService';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 
+/**
+ * Busca o valor total de movimentações de estoque do tipo saída
+ * para calcular insumos por talhão (distribuição proporcional por área)
+ */
+async function getTotalMovimentacoesEstoque(
+  userId: string,
+  dataInicio: Date | null,
+  dataFim: Date | null
+): Promise<number> {
+  try {
+    let query = supabase
+      .from('movimentacoes_estoque')
+      .select('valor_total_movimentacao, tipo, created_at')
+      .eq('user_id', userId)
+      .eq('tipo', 'saida');
+
+    if (dataInicio) {
+      query = query.gte('created_at', format(dataInicio, 'yyyy-MM-dd'));
+    }
+    if (dataFim) {
+      query = query.lte('created_at', format(dataFim, 'yyyy-MM-dd') + 'T23:59:59');
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('❌ Erro ao buscar movimentações de estoque:', error);
+      return 0;
+    }
+
+    // Somar todos os valores de movimentações de saída
+    const total = (data || []).reduce((acc, mov) => {
+      const valor = typeof mov.valor_total_movimentacao === 'string' 
+        ? parseFloat(mov.valor_total_movimentacao) 
+        : (mov.valor_total_movimentacao || 0);
+      return acc + Math.abs(valor);
+    }, 0);
+
+    console.log('📦 Total movimentações estoque (saídas):', total, 'de', data?.length || 0, 'registros');
+    return total;
+  } catch (err) {
+    console.error('❌ Erro ao buscar movimentações de estoque:', err);
+    return 0;
+  }
+}
+
 export interface CustoTalhao {
   id: string;
   talhao: string;
@@ -245,7 +291,12 @@ export class CustoPorTalhaoService {
         fim: dataFim ? format(dataFim, 'dd/MM/yyyy') : 'N/A'
       });
 
-      // 3. Buscar transações financeiras do período
+      // 3. Buscar total de insumos das movimentações de estoque (saídas)
+      // O valor será distribuído proporcionalmente pela área dos talhões
+      const totalInsumosEstoque = await getTotalMovimentacoesEstoque(userId, dataInicio, dataFim);
+      console.log('📦 Total insumos de estoque para distribuir:', totalInsumosEstoque);
+
+      // 4. Buscar transações financeiras do período
       let query = supabase
         .from('transacoes_financeiras')
         .select('id_transacao, valor, categoria, descricao, area_vinculada, data_agendamento_pagamento, tipo_transacao, status')
@@ -269,7 +320,7 @@ export class CustoPorTalhaoService {
 
       console.log('💰 Transações encontradas:', transacoes?.length || 0);
 
-      // 4. Inicializar resultado com todos os talhões
+      // 5. Inicializar resultado com todos os talhões
       const resultado: Record<string, CustoTalhao> = {};
       for (const t of talhoesParaProcessar) {
         resultado[t.id_talhao] = {
@@ -286,7 +337,17 @@ export class CustoPorTalhaoService {
         };
       }
 
-      // Acumuladores para custos sem vínculo específico
+      // 6. Distribuir insumos de estoque proporcionalmente pela área
+      if (totalInsumosEstoque > 0 && totalArea > 0) {
+        for (const id of Object.keys(resultado)) {
+          const talhao = resultado[id];
+          const proporcao = talhao.area / totalArea;
+          talhao.insumos = totalInsumosEstoque * proporcao;
+        }
+        console.log('✅ Insumos de estoque distribuídos proporcionalmente entre', Object.keys(resultado).length, 'talhões');
+      }
+
+      // Acumuladores para custos sem vínculo específico (exceto insumos que vem do estoque)
       const semVinculo: Record<keyof typeof MACRO_CATEGORIAS, number> = {
         insumos: 0,
         operacional: 0,
@@ -295,7 +356,7 @@ export class CustoPorTalhaoService {
         outros: 0
       };
 
-      // 5. Processar cada transação
+      // 7. Processar cada transação financeira (exceto insumos que já vem do estoque)
       for (const tr of (transacoes || [])) {
         const valor = typeof tr.valor === 'string' ? parseFloat(tr.valor) : (tr.valor || 0);
         const valorAbs = Math.abs(valor);
@@ -305,6 +366,11 @@ export class CustoPorTalhaoService {
         
         if (!macrogrupo) {
           console.log('⚠️ Transação sem macrogrupo identificado:', { id: tr.id_transacao, categoria: tr.categoria, descricao: tr.descricao });
+          continue;
+        }
+
+        // Pular insumos - eles são calculados a partir das movimentações de estoque
+        if (macrogrupo === 'insumos') {
           continue;
         }
 
@@ -326,9 +392,12 @@ export class CustoPorTalhaoService {
         }
       }
 
-      // 6. Distribuir custos sem vínculo proporcionalmente pela área
+      // 8. Distribuir custos sem vínculo proporcionalmente pela área (exceto insumos)
       if (totalArea > 0) {
         for (const grupo of Object.keys(semVinculo) as Array<keyof typeof semVinculo>) {
+          // Pular insumos - já foram distribuídos a partir do estoque
+          if (grupo === 'insumos') continue;
+          
           const totalGrupo = semVinculo[grupo];
           if (totalGrupo <= 0) continue;
 
@@ -340,7 +409,7 @@ export class CustoPorTalhaoService {
         }
       }
 
-      // 7. Calcular totais e custo/ha
+      // 9. Calcular totais e custo/ha
       const resultadoFinal = Object.values(resultado).map(t => {
         const total = t.insumos + t.operacional + t.servicosLogistica + t.administrativos + t.outros;
         return {

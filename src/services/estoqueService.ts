@@ -518,10 +518,6 @@ export class EstoqueService {
           observacao: observacao || null,
           unidade_momento: unidadeMomento || null,
           valor_unitario_momento: valorUnitarioMomento || null,
-          // alguns triggers/funções antigas referenciam o campo `valor_unitario`
-          // (nome histórico). Para compatibilidade com instalações que usam
-          // esse nome dentro de triggers, incluímos o mesmo valor em `valor_unitario`.
-          valor_unitario: valorUnitarioMomento != null ? valorUnitarioMomento : null,
           unidade_valor_momento: unidadeValorMomento || null,
           valor_total_movimentacao: valorTotalMovimentacao,
         },
