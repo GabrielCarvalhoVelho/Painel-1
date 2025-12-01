@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { BarChart3, X, Info } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { BarChart3, X, Info, RefreshCw } from 'lucide-react';
 import { AuthService } from '../../services/authService';
-import { TalhaoService } from '../../services/talhaoService';
-import { CustoPorTalhaoService } from '../../services/custoPorTalhaoService';
-import type { Talhao } from '../../lib/supabase';
+import { CustoPorTalhaoService, CustoTalhao, FiltrosCustoPorTalhao } from '../../services/custoPorTalhaoService';
 
   // Interfaces
   interface Filtros {
@@ -14,18 +12,6 @@ import type { Talhao } from '../../lib/supabase';
     mesAno: string;
   }
 
-  interface CustoTalhao {
-    talhao: string;
-    area: number;
-    insumos: number;
-    operacional: number;
-    servicosLogistica: number;
-    administrativos: number;
-    outros: number;
-    total: number;
-    custoHa: number;
-  }
-
   interface DetalheCusto {
     data: string;
     categoria: string;
@@ -34,12 +20,17 @@ import type { Talhao } from '../../lib/supabase';
     valor: number;
   }
 
-
+  // Calcula a safra atual baseado no mês (Maio a Abril)
+  const calcularSafraAtual = (): string => {
+    const hoje = new Date();
+    const anoAtual = hoje.getMonth() >= 4 ? hoje.getFullYear() : hoje.getFullYear() - 1;
+    return `${anoAtual}/${anoAtual + 1}`;
+  };
 
   export default function CustoPorTalhaoPanel() {
-    const [_loading, setLoading] = useState(false);
-    const [_filtros, _setFiltros] = useState<Filtros>({
-      safra: '2024/2025',
+    const [loading, setLoading] = useState(false);
+    const [filtros, setFiltros] = useState<Filtros>({
+      safra: calcularSafraAtual(),
       fazenda: '',
       talhoes: [],
       macrogrupo: 'Todos',
@@ -47,12 +38,12 @@ import type { Talhao } from '../../lib/supabase';
     });
     const [filtroTalhao, setFiltroTalhao] = useState('todos');
 
-    const [talhoes, setTalhoes] = useState<Talhao[]>([]);
-    const [custosMap, setCustosMap] = useState<Record<string, { id: string; nome: string; area: number; insumos: number; operacional: number; servicosLogistica: number; administrativos: number; outros: number; receita: number }>>({});
+    const [custosTalhoes, setCustosTalhoes] = useState<CustoTalhao[]>([]);
     const [talhaoSelecionado, _setTalhaoSelecionado] = useState<CustoTalhao | null>(null);
     const [detalhesCusto, _setDetalhesCusto] = useState<DetalheCusto[]>([]);
     const [painelLateralAberto, setPainelLateralAberto] = useState(false);
     const [modalPendenciasAberto, setModalPendenciasAberto] = useState(false);
+    const [userId, setUserId] = useState<string | null>(null);
     
 
     // Dados iniciais simples — removidos os mocks complexos
@@ -66,11 +57,37 @@ import type { Talhao } from '../../lib/supabase';
       { key: 'outros', label: 'Outros', tooltip: 'Despesas diversas' }
     ];
 
-    // Carrega dados iniciais ao montar: buscar talhões do usuário e popular lista
+    // Função para carregar custos por talhão
+    const carregarCustos = useCallback(async (currentUserId: string, filtrosAtuais: Filtros) => {
+      setLoading(true);
+      try {
+        console.log('📊 Carregando custos por talhão...', { userId: currentUserId, filtros: filtrosAtuais });
+        
+        // Converter filtros do componente para o formato do service
+        const filtrosService: FiltrosCustoPorTalhao = {
+          safra: filtrosAtuais.safra || undefined,
+          fazenda: filtrosAtuais.fazenda || undefined,
+          talhoes: filtrosAtuais.talhoes.length > 0 ? filtrosAtuais.talhoes : undefined,
+          macrogrupo: filtrosAtuais.macrogrupo !== 'Todos' ? filtrosAtuais.macrogrupo : undefined,
+          mesAno: filtrosAtuais.mesAno || undefined
+        };
+
+        const custos = await CustoPorTalhaoService.getCustosPorTalhao(currentUserId, filtrosService);
+        setCustosTalhoes(custos || []);
+        
+        console.log('✅ Custos carregados:', custos?.length || 0, 'talhões');
+      } catch (err) {
+        console.error('❌ Erro ao carregar custos por talhão:', err);
+        setCustosTalhoes([]);
+      } finally {
+        setLoading(false);
+      }
+    }, []);
+
+    // Carrega dados iniciais ao montar
     useEffect(() => {
       let mounted = true;
-      const loadTalhoes = async () => {
-        setLoading(true);
+      const initPanel = async () => {
         try {
           const auth = AuthService.getInstance();
           let currentUser = auth.getCurrentUser();
@@ -79,46 +96,40 @@ import type { Talhao } from '../../lib/supabase';
           }
 
           if (!currentUser) {
-            console.warn('Usuário não autenticado — nenhum talhão será carregado');
-            setTalhoes([]);
+            console.warn('Usuário não autenticado — nenhum dado será carregado');
             return;
           }
 
-          const talhoesData = await TalhaoService.getTalhoesPorCriador(currentUser.user_id, { onlyActive: true, cultura: 'Café' });
           if (!mounted) return;
-          // Excluir talhão default (talhao_default === true) tanto do filtro quanto da tabela
-          const visibleTalhoes = (talhoesData || []).filter(t => !t.talhao_default);
-          setTalhoes(visibleTalhoes);
-
-          // carregar insumos do dia (data_agendamento_pagamento = hoje)
-          try {
-            const hoje = new Date();
-            const yyyy = hoje.getFullYear();
-            const mm = String(hoje.getMonth() + 1).padStart(2, '0');
-            const dd = String(hoje.getDate()).padStart(2, '0');
-            const hojeStr = `${yyyy}-${mm}-${dd}`;
-
-            const custos = await CustoPorTalhaoService.getInsumosPorTalhao(currentUser.user_id, hojeStr);
-            if (!mounted) return;
-            setCustosMap(custos || {});
-          } catch (err) {
-            console.error('Erro ao carregar insumos por talhão:', err);
-          }
-          // Neste passo apenas carregamos nomes; custos virão depois
+          setUserId(currentUser.user_id);
+          
+          // Carregar custos com filtros iniciais
+          await carregarCustos(currentUser.user_id, filtros);
         } catch (err) {
-          console.error('Erro ao carregar talhões:', err);
-          // fallback para lista vazia
-          setTalhoes([]);
-        } finally {
-          if (mounted) setLoading(false);
+          console.error('Erro ao inicializar painel:', err);
         }
       };
 
-      loadTalhoes();
+      initPanel();
       return () => { mounted = false; };
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Por enquanto não abrimos painel de detalhes (sem dados de custo)
+    // Recarregar quando filtros mudarem
+    useEffect(() => {
+      if (userId) {
+        carregarCustos(userId, filtros);
+      }
+    }, [userId, filtros, carregarCustos]);
+
+    // Função para atualizar filtro de safra
+    const handleSafraChange = (novaSafra: string) => {
+      setFiltros(prev => ({ ...prev, safra: novaSafra, mesAno: '' }));
+    };
+
+    // Filtra talhões exibidos baseado no filtro local
+    const talhoesFiltrados = filtroTalhao === 'todos' 
+      ? custosTalhoes 
+      : custosTalhoes.filter(t => t.talhao === filtroTalhao);
 
     const formatCurrency = (value: number) => {
       return new Intl.NumberFormat('pt-BR', {
@@ -127,30 +138,82 @@ import type { Talhao } from '../../lib/supabase';
       }).format(value);
     };
 
-    // NOTE: removido carregamento por mock
+    // Calcula totais gerais
+    const totaisGerais = talhoesFiltrados.reduce((acc, t) => ({
+      insumos: acc.insumos + t.insumos,
+      operacional: acc.operacional + t.operacional,
+      servicosLogistica: acc.servicosLogistica + t.servicosLogistica,
+      administrativos: acc.administrativos + t.administrativos,
+      outros: acc.outros + t.outros,
+      total: acc.total + t.total,
+      area: acc.area + t.area
+    }), { insumos: 0, operacional: 0, servicosLogistica: 0, administrativos: 0, outros: 0, total: 0, area: 0 });
+
+    // Gera lista de safras disponíveis (últimos 3 anos)
+    const safrasDisponiveis = (() => {
+      const hoje = new Date();
+      const anoAtual = hoje.getMonth() >= 4 ? hoje.getFullYear() : hoje.getFullYear() - 1;
+      return [
+        `${anoAtual}/${anoAtual + 1}`,
+        `${anoAtual - 1}/${anoAtual}`,
+        `${anoAtual - 2}/${anoAtual - 1}`
+      ];
+    })();
 
     return (
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-[#004417] flex items-center gap-3">
-            <BarChart3 className="w-8 h-8" />
-            Custo por Talhão
-          </h1>
-          <p className="text-[#1d3a2d] mt-1">Resumo dos custos por área</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-[#004417] flex items-center gap-3">
+              <BarChart3 className="w-8 h-8" />
+              Custo por Talhão
+            </h1>
+            <p className="text-[#1d3a2d] mt-1">Resumo dos custos por área - Safra {filtros.safra}</p>
+          </div>
+          <button
+            onClick={() => userId && carregarCustos(userId, filtros)}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-[#00A651] text-white rounded-lg hover:bg-[#008c44] transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Atualizar
+          </button>
         </div>
 
-        {/* Filtro por Talhões (igual ao Manejo Agrícola) */}
+        {/* Filtro de Safra */}
+        <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-[#004417]">Safra</h3>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {safrasDisponiveis.map((safra) => (
+              <button
+                key={safra}
+                onClick={() => handleSafraChange(safra)}
+                className={`px-4 py-2 rounded-[10px] text-sm font-semibold transition-all duration-200 ${
+                  filtros.safra === safra
+                    ? 'bg-[rgba(0,166,81,0.10)] border border-[#00A651] text-[#004417] font-semibold'
+                    : 'bg-white border border-[rgba(0,68,23,0.10)] text-[#004417] hover:bg-[rgba(0,68,23,0.03)] hover:border-[rgba(0,68,23,0.12)]'
+                }`}
+              >
+                {safra}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Filtro por Talhões */}
         <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold text-[#004417]">Filtrar por Talhão</h3>
             <div className="text-[13px] text-[rgba(0,68,23,0.75)] font-medium">
-              {talhoes.length} {talhoes.length === 1 ? 'talhão encontrado' : 'talhões encontrados'}
+              {custosTalhoes.length} {custosTalhoes.length === 1 ? 'talhão encontrado' : 'talhões encontrados'}
             </div>
           </div>
 
           <div className="flex items-center flex-row flex-nowrap gap-2 overflow-x-auto pb-2 snap-x snap-mandatory">
-            {['todos', ...talhoes.map(t => t.nome)].map((opcao) => (
+            {['todos', ...custosTalhoes.map(t => t.talhao)].map((opcao) => (
               <button
                 key={opcao}
                 onClick={() => setFiltroTalhao(opcao)}
@@ -160,83 +223,163 @@ import type { Talhao } from '../../lib/supabase';
                     : 'bg-white border border-[rgba(0,68,23,0.10)] text-[#004417] hover:bg-[rgba(0,68,23,0.03)] hover:border-[rgba(0,68,23,0.12)]'
                 }`}
               >
-                {opcao === 'todos' ? 'Sem Filtro' : opcao}
+                {opcao === 'todos' ? 'Todos os Talhões' : opcao}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Tabela Principal - Desktop (≥1024px) */}
-        <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-6 hidden lg:block">
-          <h3 className="text-lg font-bold text-[#004417] mb-4">Custo por Talhão</h3>
-        
-          <div className="overflow-x-auto bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] overflow-hidden">
-            <table className="min-w-full">
-              <thead>
-                <tr className="bg-[rgba(0,166,81,0.06)] rounded-t-2xl">
-                  <th className="px-6 py-4 text-left text-[14px] font-bold text-[#004417]">Talhão</th>
-                  {macrogrupos.map(grupo => (
-                    <th key={grupo.key} className="px-6 py-4 text-right text-[14px] font-bold text-[#004417] relative group">
-                      <span className="flex items-center justify-end gap-1">
-                        <span className="whitespace-nowrap">{grupo.label}</span>
-                        <Info className="w-3.5 h-3.5 text-[#004417]" />
-                      </span>
-                      <div className="hidden group-hover:block absolute top-full right-0 mt-1 bg-[#004417] text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
-                        {grupo.tooltip}
-                      </div>
-                    </th>
-                  ))}
-                  <th className="px-6 py-4 text-right text-[14px] font-bold text-[#004417]">Total</th>
-                  <th className="px-6 py-4 text-right text-[14px] font-bold text-[#004417]">R$/ha</th>
-                </tr>
-              </thead>
-              <tbody>
-                {talhoes.map((t, index) => (
-                  <tr
-                    key={t.id_talhao || index}
-                    className="bg-white border-b border-[rgba(0,0,0,0.06)] transition-all"
-                  >
-                    <td className="px-6 py-5 text-sm text-[#004417] font-medium align-top">{t.nome}</td>
-                    {/* Valores por macrogrupo */}
-                    {macrogrupos.map(gr => {
-                      const value = (custosMap[t.id_talhao] && (custosMap[t.id_talhao] as any)[gr.key]) || 0;
-                      return (
-                        <td key={gr.key} className="px-6 py-5 text-sm text-right text-[#1d3a2d] font-semibold align-top">
-                          {formatCurrency(value)}
-                        </td>
-                      );
-                    })}
-                    {/* Total */}
-                    <td className="px-6 py-5 text-sm font-bold text-[#004417] text-right align-top">
-                      {formatCurrency(((() => {
-                        const c = custosMap[t.id_talhao] || { insumos: 0, operacional: 0, servicosLogistica: 0, administrativos: 0, outros: 0 } as any;
-                        return (c.insumos || 0) + (c.operacional || 0) + (c.servicosLogistica || 0) + (c.administrativos || 0) + (c.outros || 0);
-                      })()))}
-                    </td>
-                    <td className="px-6 py-5 text-sm font-semibold text-[#00A651] text-right align-top">
-                      {(() => {
-                        const c = custosMap[t.id_talhao] || { insumos: 0, operacional: 0, servicosLogistica: 0, administrativos: 0, outros: 0, receita: 0 } as any;
-                        const total = (c.insumos || 0) + (c.operacional || 0) + (c.servicosLogistica || 0) + (c.administrativos || 0) + (c.outros || 0);
-                        const area = t.area || 0;
-                        const perHa = area > 0 ? total / area : 0;
-                        return formatCurrency(perHa) + '/ha';
-                      })()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* Cards de Resumo */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-4">
+            <div className="text-sm text-[#1d3a2d]">Total de Custos</div>
+            <div className="text-xl font-bold text-[#004417] mt-1">{formatCurrency(totaisGerais.total)}</div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-4">
+            <div className="text-sm text-[#1d3a2d]">Área Total</div>
+            <div className="text-xl font-bold text-[#004417] mt-1">{totaisGerais.area.toFixed(2)} ha</div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-4">
+            <div className="text-sm text-[#1d3a2d]">Custo Médio/ha</div>
+            <div className="text-xl font-bold text-[#00A651] mt-1">
+              {formatCurrency(totaisGerais.area > 0 ? totaisGerais.total / totaisGerais.area : 0)}/ha
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-4">
+            <div className="text-sm text-[#1d3a2d]">Talhões</div>
+            <div className="text-xl font-bold text-[#004417] mt-1">{talhoesFiltrados.length}</div>
           </div>
         </div>
 
-        {/* Cards Mobile - Vertical (≤1023px) */}
-        <div className="lg:hidden space-y-2">
-          {talhoes.map((t, index) => (
-            <div key={t.id_talhao || index} className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-3">
-              <div className="text-base font-medium text-[#004417]">{t.nome}</div>
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <RefreshCw className="w-8 h-8 text-[#00A651] animate-spin" />
+            <span className="ml-3 text-[#1d3a2d]">Carregando custos...</span>
+          </div>
+        )}
+
+        {/* Tabela Principal - Desktop (≥1024px) */}
+        {!loading && (
+          <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-6 hidden lg:block">
+            <h3 className="text-lg font-bold text-[#004417] mb-4">Custo por Talhão</h3>
+        
+            <div className="overflow-x-auto bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] overflow-hidden">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="bg-[rgba(0,166,81,0.06)] rounded-t-2xl">
+                    <th className="px-6 py-4 text-left text-[14px] font-bold text-[#004417]">Talhão</th>
+                    <th className="px-6 py-4 text-right text-[14px] font-bold text-[#004417]">Área (ha)</th>
+                    {macrogrupos.map(grupo => (
+                      <th key={grupo.key} className="px-6 py-4 text-right text-[14px] font-bold text-[#004417] relative group">
+                        <span className="flex items-center justify-end gap-1">
+                          <span className="whitespace-nowrap">{grupo.label}</span>
+                          <Info className="w-3.5 h-3.5 text-[#004417]" />
+                        </span>
+                        <div className="hidden group-hover:block absolute top-full right-0 mt-1 bg-[#004417] text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
+                          {grupo.tooltip}
+                        </div>
+                      </th>
+                    ))}
+                    <th className="px-6 py-4 text-right text-[14px] font-bold text-[#004417]">Total</th>
+                    <th className="px-6 py-4 text-right text-[14px] font-bold text-[#004417]">R$/ha</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {talhoesFiltrados.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="px-6 py-12 text-center text-[#1d3a2d]">
+                        {custosTalhoes.length === 0 
+                          ? 'Nenhum custo encontrado para a safra selecionada. Verifique se há lançamentos financeiros com status "Pago" no período.'
+                          : 'Nenhum talhão corresponde ao filtro selecionado.'}
+                      </td>
+                    </tr>
+                  ) : (
+                    <>
+                      {talhoesFiltrados.map((t, index) => (
+                        <tr
+                          key={t.id || index}
+                          className="bg-white border-b border-[rgba(0,0,0,0.06)] transition-all hover:bg-[rgba(0,166,81,0.02)]"
+                        >
+                          <td className="px-6 py-5 text-sm text-[#004417] font-medium align-top">{t.talhao}</td>
+                          <td className="px-6 py-5 text-sm text-right text-[#1d3a2d] align-top">{t.area.toFixed(2)}</td>
+                          {macrogrupos.map(gr => (
+                            <td key={gr.key} className="px-6 py-5 text-sm text-right text-[#1d3a2d] font-semibold align-top">
+                              {formatCurrency((t as any)[gr.key] || 0)}
+                            </td>
+                          ))}
+                          <td className="px-6 py-5 text-sm font-bold text-[#004417] text-right align-top">
+                            {formatCurrency(t.total)}
+                          </td>
+                          <td className="px-6 py-5 text-sm font-semibold text-[#00A651] text-right align-top">
+                            {formatCurrency(t.custoHa)}/ha
+                          </td>
+                        </tr>
+                      ))}
+                      {/* Linha de Totais */}
+                      {talhoesFiltrados.length > 1 && (
+                        <tr className="bg-[rgba(0,166,81,0.06)] font-bold">
+                          <td className="px-6 py-5 text-sm text-[#004417]">TOTAL</td>
+                          <td className="px-6 py-5 text-sm text-right text-[#004417]">{totaisGerais.area.toFixed(2)}</td>
+                          {macrogrupos.map(gr => (
+                            <td key={gr.key} className="px-6 py-5 text-sm text-right text-[#004417]">
+                              {formatCurrency((totaisGerais as any)[gr.key] || 0)}
+                            </td>
+                          ))}
+                          <td className="px-6 py-5 text-sm text-right text-[#004417]">
+                            {formatCurrency(totaisGerais.total)}
+                          </td>
+                          <td className="px-6 py-5 text-sm text-right text-[#00A651]">
+                            {formatCurrency(totaisGerais.area > 0 ? totaisGerais.total / totaisGerais.area : 0)}/ha
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  )}
+                </tbody>
+              </table>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
+
+        {/* Cards Mobile - Vertical (≤1023px) */}
+        {!loading && (
+          <div className="lg:hidden space-y-3">
+            {talhoesFiltrados.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-6 text-center text-[#1d3a2d]">
+                {custosTalhoes.length === 0 
+                  ? 'Nenhum custo encontrado para a safra selecionada.'
+                  : 'Nenhum talhão corresponde ao filtro selecionado.'}
+              </div>
+            ) : (
+              talhoesFiltrados.map((t, index) => (
+                <div key={t.id || index} className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-base font-bold text-[#004417]">{t.talhao}</div>
+                    <div className="text-sm text-[#1d3a2d]">{t.area.toFixed(2)} ha</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    {macrogrupos.map(gr => (
+                      <div key={gr.key} className="flex justify-between">
+                        <span className="text-[#1d3a2d]">{gr.label}:</span>
+                        <span className="font-semibold text-[#004417]">{formatCurrency((t as any)[gr.key] || 0)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-[rgba(0,0,0,0.06)]">
+                    <div>
+                      <span className="text-sm text-[#1d3a2d]">Total: </span>
+                      <span className="text-sm font-bold text-[#004417]">{formatCurrency(t.total)}</span>
+                    </div>
+                    <div className="text-sm font-bold text-[#00A651]">
+                      {formatCurrency(t.custoHa)}/ha
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
 
         {/* Painel Lateral (Drill-down) */}
         {painelLateralAberto && talhaoSelecionado && (
