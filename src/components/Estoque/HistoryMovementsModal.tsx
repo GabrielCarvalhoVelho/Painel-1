@@ -141,12 +141,13 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
     const quantidadeVal = lancamento.quantidade_val ?? 0;
     const unidadeQuant = lancamento.quantidade_un || produtoInfo?.unidade || 'un';
 
-    if (quantidadeVal <= 0 || !produtoInfo) return null;
+    // Validar valores de entrada
+    if (quantidadeVal <= 0 || !produtoInfo || isNaN(quantidadeVal)) return null;
 
     const unidadeValorOriginal = produtoInfo.unidade_valor_original || produtoInfo.unidade || 'un';
     let valorUnitarioNaUnidadeOriginal = 0;
 
-    if (produtoInfo.valor_total != null && produtoInfo.quantidade_inicial > 0) {
+    if (produtoInfo.valor_total != null && !isNaN(produtoInfo.valor_total) && produtoInfo.quantidade_inicial > 0) {
       const unidadeProd = produtoInfo.unidade;
       let quantidadeInicialConvertida = produtoInfo.quantidade_inicial;
 
@@ -157,14 +158,18 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
           quantidadeInicialConvertida = convertFromStandardUnit(produtoInfo.quantidade_inicial, 'mL', unidadeValorOriginal);
         }
       }
-      
-      // Validar divisão por zero
-      if (quantidadeInicialConvertida <= 0) return null;
+
+      // Validar divisão por zero e NaN
+      if (quantidadeInicialConvertida <= 0 || isNaN(quantidadeInicialConvertida)) return null;
       valorUnitarioNaUnidadeOriginal = produtoInfo.valor_total / quantidadeInicialConvertida;
-    } else if (produtoInfo.valor != null) {
+
+      // Validar resultado da divisão
+      if (isNaN(valorUnitarioNaUnidadeOriginal) || !isFinite(valorUnitarioNaUnidadeOriginal)) return null;
+    } else if (produtoInfo.valor != null && !isNaN(produtoInfo.valor)) {
       const unidadeProd = produtoInfo.unidade;
       if (unidadeProd !== unidadeValorOriginal) {
         const fatorConversao = convertToStandardUnit(1, unidadeValorOriginal).quantidade;
+        if (isNaN(fatorConversao) || !isFinite(fatorConversao)) return null;
         valorUnitarioNaUnidadeOriginal = produtoInfo.valor * fatorConversao;
       } else {
         valorUnitarioNaUnidadeOriginal = produtoInfo.valor;
@@ -172,24 +177,29 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
     }
 
     // Se não conseguiu calcular o valor unitário, retornar null
-    if (!valorUnitarioNaUnidadeOriginal || !isFinite(valorUnitarioNaUnidadeOriginal)) return null;
+    if (!valorUnitarioNaUnidadeOriginal || !isFinite(valorUnitarioNaUnidadeOriginal) || isNaN(valorUnitarioNaUnidadeOriginal)) return null;
 
     let quantidadeNaUnidadeDoValor = quantidadeVal;
     if (unidadeQuant !== unidadeValorOriginal) {
       if (isMassUnit(unidadeQuant) && isMassUnit(unidadeValorOriginal)) {
         const quantidadeEmMg = convertToStandardUnit(quantidadeVal, unidadeQuant).quantidade;
+        if (isNaN(quantidadeEmMg) || !isFinite(quantidadeEmMg)) return null;
         quantidadeNaUnidadeDoValor = convertFromStandardUnit(quantidadeEmMg, 'mg', unidadeValorOriginal);
       } else if (isVolumeUnit(unidadeQuant) && isVolumeUnit(unidadeValorOriginal)) {
         const quantidadeEmMl = convertToStandardUnit(quantidadeVal, unidadeQuant).quantidade;
+        if (isNaN(quantidadeEmMl) || !isFinite(quantidadeEmMl)) return null;
         quantidadeNaUnidadeDoValor = convertFromStandardUnit(quantidadeEmMl, 'mL', unidadeValorOriginal);
       }
     }
 
+    // Validar quantidadeNaUnidadeDoValor
+    if (isNaN(quantidadeNaUnidadeDoValor) || !isFinite(quantidadeNaUnidadeDoValor)) return null;
+
     const custoFinal = valorUnitarioNaUnidadeOriginal * quantidadeNaUnidadeDoValor;
-    
+
     // Validar resultado final
     if (!isFinite(custoFinal) || isNaN(custoFinal)) return null;
-    
+
     return custoFinal;
   }, []);
 
@@ -306,7 +316,19 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
         } else {
           const primeiro = movs[0];
           const quantidadeTotal = movs.reduce((sum, m) => sum + (m.quantidade || 0), 0);
-          const valorTotal = movs.reduce((sum, m) => sum + (m.valor_total || (m.valor_medio ? m.valor_medio * m.quantidade : 0)), 0);
+
+          // Calcular valorTotal com validação para evitar NaN
+          const valorTotal = movs.reduce((sum, m) => {
+            let valor = 0;
+            if (m.valor_total != null && !isNaN(m.valor_total) && isFinite(m.valor_total)) {
+              valor = m.valor_total;
+            } else if (m.valor_medio != null && !isNaN(m.valor_medio) && isFinite(m.valor_medio) &&
+                       m.quantidade != null && !isNaN(m.quantidade) && isFinite(m.quantidade)) {
+              valor = m.valor_medio * m.quantidade;
+            }
+            return sum + valor;
+          }, 0);
+
           const entradasRef = movs.filter(m => m.entrada_referencia).map(m => m.entrada_referencia!);
 
           movimentacoesAgrupadas.push({
@@ -611,6 +633,8 @@ function LancamentoDetails({ nomeAtividade, quantidade, unidade, custoCalculado 
 
 function EntradaDetails({ movement: m }: { movement: MovementItem }) {
   const valorUnitario = m.valor || m.valor_medio;
+  const valorUnitarioValido = valorUnitario != null && !isNaN(valorUnitario) && isFinite(valorUnitario) && valorUnitario > 0;
+  const valorTotalValido = m.valor_total != null && !isNaN(m.valor_total) && isFinite(m.valor_total) && m.valor_total > 0;
   const unidadeValorOriginal = m.unidade_valor_original || m.unidade;
 
   return (
@@ -623,16 +647,16 @@ function EntradaDetails({ movement: m }: { movement: MovementItem }) {
         <div><strong className="font-semibold text-[#004417]">Validade:</strong> {formatValidity(m.validade)}</div>
         <div><strong className="font-semibold text-[#004417]">Registro MAPA:</strong> {m.registro_mapa || '—'}</div>
       </div>
-      {valorUnitario != null && valorUnitario > 0 && (
+      {valorUnitarioValido && (
         <div className="mt-4 pt-3 border-t border-[rgba(0,68,23,0.08)]">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-[13px]">
             <div>
               <strong className="font-semibold text-[#004417]">Valor Unitário:</strong>{' '}
               <span className="text-[#004417]">{formatSmartCurrency(valorUnitario)} / {unidadeValorOriginal}</span>
             </div>
-            {m.valor_total && (
+            {valorTotalValido && (
               <div className="text-[15px] font-bold text-[#00A651]">
-                Total: {formatSmartCurrency(m.valor_total)}
+                Total: {formatSmartCurrency(m.valor_total!)}
               </div>
             )}
           </div>
@@ -643,8 +667,21 @@ function EntradaDetails({ movement: m }: { movement: MovementItem }) {
 }
 
 function SaidaDetails({ movement: m }: { movement: MovementItem }) {
-  const valorTotal = m.valor_total || (m.valor_medio ? m.valor_medio * m.quantidade : 0);
+  // Validar quantidade antes de usar
+  const quantidade = typeof m.quantidade === 'number' && !isNaN(m.quantidade) ? m.quantidade : 0;
+
+  // Calcular valorTotal com validação
+  let valorTotal = 0;
+  if (m.valor_total != null && !isNaN(m.valor_total) && isFinite(m.valor_total)) {
+    valorTotal = m.valor_total;
+  } else if (m.valor_medio != null && !isNaN(m.valor_medio) && isFinite(m.valor_medio)) {
+    valorTotal = m.valor_medio * quantidade;
+  }
+
+  // Validar valorUnitario
   const valorUnitario = m.valor || m.valor_medio;
+  const valorUnitarioValido = valorUnitario != null && !isNaN(valorUnitario) && isFinite(valorUnitario) && valorUnitario > 0;
+
   const unidadeValorOriginal = m.unidade_valor_original || m.unidade;
 
   return (
@@ -662,11 +699,11 @@ function SaidaDetails({ movement: m }: { movement: MovementItem }) {
           </div>
         </div>
       )}
-      {valorTotal > 0 && (
+      {valorUnitarioValido && !isNaN(valorTotal) && isFinite(valorTotal) && valorTotal > 0 && (
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div className="text-[13px] text-[rgba(0,68,23,0.85)]">
             <strong className="font-semibold text-[#004417]">Valor Unitário:</strong>{' '}
-            <span className="text-[#004417]">{formatSmartCurrency(Number(valorUnitario))} / {unidadeValorOriginal}</span>
+            <span className="text-[#004417]">{formatSmartCurrency(valorUnitario)} / {unidadeValorOriginal}</span>
           </div>
           <div className="text-[15px] font-bold text-[#F7941F]">
             Total: {formatSmartCurrency(valorTotal)}
