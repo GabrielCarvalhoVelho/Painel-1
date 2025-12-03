@@ -404,7 +404,6 @@ export default function CustoPorTalhaoPanel() {
                       onClick={() => handleTalhaoSelect(t)}
                       className="flex-1 text-left"
                     >
-                      <p className="text-xs text-[rgba(0,68,23,0.65)]">Talhão</p>
                       <h4 className="text-lg font-bold text-[#004417]">{t.talhao}</h4>
                       <span className="text-sm text-[#1d3a2d]">{t.area.toFixed(2)} ha</span>
                     </button>
