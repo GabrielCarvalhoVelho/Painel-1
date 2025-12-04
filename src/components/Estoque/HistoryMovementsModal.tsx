@@ -113,7 +113,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
     if (!product) return;
 
     try {
-      const entradas = product.entradas.reduce((sum, e) => sum + (e.quantidade || 0), 0);
+      const entradas = product.entradas.reduce((sum, e) => sum + (e.quantidade_inicial || 0), 0);
       let saidas = product.saidas.reduce((sum, s) => sum + (s.quantidade || 0), 0);
 
       const produtoIds = product.produtos.map(p => p.id);
@@ -212,16 +212,33 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
 
       // Mapear entradas
       for (const entrada of product.entradas) {
+        // Calcular quantidade inicial na unidade original
+        let quantidadeExibicao = entrada.quantidade_inicial ?? entrada.quantidade;
+        let unidadeExibicao = entrada.unidade;
+
+        if (entrada.unidade_valor_original && entrada.quantidade_inicial) {
+          if (isMassUnit(entrada.unidade_valor_original)) {
+            quantidadeExibicao = convertFromStandardUnit(entrada.quantidade_inicial, 'mg', entrada.unidade_valor_original);
+            unidadeExibicao = entrada.unidade_valor_original;
+          } else if (isVolumeUnit(entrada.unidade_valor_original)) {
+            quantidadeExibicao = convertFromStandardUnit(entrada.quantidade_inicial, 'mL', entrada.unidade_valor_original);
+            unidadeExibicao = entrada.unidade_valor_original;
+          } else {
+            // Caso seja 'un' ou outra unidade não conversível, mas que é a original
+            unidadeExibicao = entrada.unidade_valor_original;
+          }
+        }
+
         allMovements.push({
           id: entrada.id,
           produto_id: entrada.id,
           tipo: 'entrada',
-          quantidade: entrada.quantidade,
+          quantidade: quantidadeExibicao,
           created_at: entrada.created_at || new Date().toISOString(),
           nome_produto: entrada.nome_produto,
           marca: entrada.marca,
           categoria: entrada.categoria,
-          unidade: entrada.unidade,
+          unidade: unidadeExibicao,
           valor: entrada.valor,
           unidade_valor_original: entrada.unidade_valor_original,
           valor_total: entrada.valor_total,
@@ -406,10 +423,17 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                 <div className="whitespace-nowrap">
                   <strong className="font-semibold">Em estoque:</strong>{' '}
                   <span className="font-bold text-[#004417]">
-                    {product.totalEstoqueDisplay.toFixed(2)}{' '}
-                    <span className="text-[rgba(0,68,23,0.7)] text-[13px]">
-                      {formatUnitAbbreviated(product.unidadeDisplay || product.produtos[0]?.unidade)}
-                    </span>
+                    {(() => {
+                      const { quantidade, unidade } = autoScaleQuantity(totalEntradas - totalSaidas, unidadePadrao);
+                      return (
+                        <>
+                          {quantidade}{' '}
+                          <span className="text-[rgba(0,68,23,0.7)] text-[13px]">
+                            {formatUnitAbbreviated(unidade)}
+                          </span>
+                        </>
+                      );
+                    })()}
                   </span>
                 </div>
               </div>
