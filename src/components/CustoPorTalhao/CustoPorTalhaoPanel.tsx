@@ -74,12 +74,25 @@ export default function CustoPorTalhaoPanel() {
         mesAno: filtrosAtuais.mesAno || undefined
       };
 
-      const custos = await CustoPorTalhaoService.getCustosPorTalhao(currentUserId, filtrosService);
+      // Timeout de segurança para evitar loading infinito em produção
+      const timeoutMs = 15000;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        const id = setTimeout(() => {
+          clearTimeout(id);
+          reject(new Error('Tempo excedido ao carregar custos (timeout).'));
+        }, timeoutMs);
+      });
+
+      const custos = await Promise.race([
+        CustoPorTalhaoService.getCustosPorTalhao(currentUserId, filtrosService),
+        timeoutPromise
+      ]);
       setCustosTalhoes(custos || []);
 
       console.log('✅ Custos carregados:', custos?.length || 0, 'talhões');
     } catch (err) {
       console.error('❌ Erro ao carregar custos por talhão:', err);
+      // Exibir fallback informativo e evitar loading infinito
       setCustosTalhoes([]);
     } finally {
       setLoading(false);
