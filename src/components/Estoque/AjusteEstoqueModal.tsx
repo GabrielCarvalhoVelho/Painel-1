@@ -37,13 +37,10 @@ export default function AjusteEstoqueModal({ isOpen, onClose, productGroup, onSa
       setValor(result.numeric.toString());
       setValorDisplay(result.formatted);
 
-      // Copiar dados do produto mais recente
-      const ultimaEntrada = productGroup.entradas[productGroup.entradas.length - 1];
-      if (ultimaEntrada) {
-        setLote(ultimaEntrada.lote || '');
-        setValidade(ultimaEntrada.validade || '');
-        setFornecedor(ultimaEntrada.fornecedor || '');
-      }
+      // Campos adicionais começam sempre em branco para evitar preenchimento indevido
+      setLote('');
+      setValidade('');
+      setFornecedor('');
     }
   }, [isOpen, productGroup, quantidadeFaltante, precoSugerido]);
 
@@ -75,6 +72,11 @@ export default function AjusteEstoqueModal({ isOpen, onClose, productGroup, onSa
 
     if (valorUnitario <= 0) {
       alert('Valor unitário deve ser maior que zero');
+      return;
+    }
+
+    if (!fornecedor.trim()) {
+      alert('Informe o fornecedor responsável pela entrada.');
       return;
     }
 
@@ -206,6 +208,21 @@ export default function AjusteEstoqueModal({ isOpen, onClose, productGroup, onSa
             </p>
           </div>
 
+          {/* Fornecedor */}
+          <div>
+            <label className="block text-sm font-medium text-[#004417] mb-2">
+              Fornecedor <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={fornecedor}
+              onChange={(e) => setFornecedor(e.target.value)}
+              className="w-full px-4 py-3 rounded-[12px] bg-white shadow-[0_1px_3px_rgba(0,68,23,0.06)] border border-[rgba(0,68,23,0.12)] text-[#004417] placeholder:text-[rgba(0,166,81,0.45)] focus:ring-2 focus:ring-[#00A651] focus:border-transparent"
+              placeholder="Ex.: Cooxupé, Agro Silva"
+              required
+            />
+          </div>
+
           {/* Informações Adicionais (Opcional) */}
           <div className="border-t border-[rgba(0,68,23,0.08)] pt-5 space-y-4">
             <h3 className="text-sm font-semibold text-[#004417] mb-3">Informações Adicionais (Opcional)</h3>
@@ -230,17 +247,6 @@ export default function AjusteEstoqueModal({ isOpen, onClose, productGroup, onSa
                   className="w-full px-3 py-2 text-sm rounded-lg bg-white shadow-[0_1px_3px_rgba(0,68,23,0.06)] border border-[rgba(0,68,23,0.08)] text-[#004417]"
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-[#004417] mb-1">Fornecedor</label>
-              <input
-                type="text"
-                value={fornecedor}
-                onChange={(e) => setFornecedor(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg bg-white shadow-[0_1px_3px_rgba(0,68,23,0.06)] border border-[rgba(0,68,23,0.08)] text-[#004417] placeholder:text-[rgba(0,166,81,0.45)]"
-                placeholder="Ex.: Cooxupé, Agro Silva"
-              />
             </div>
           </div>
 

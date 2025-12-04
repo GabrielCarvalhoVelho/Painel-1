@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { X, Paperclip, Plus } from 'lucide-react';
+import { X, Paperclip } from 'lucide-react';
 import { ProdutoAgrupado } from '../../services/agruparProdutosService';
 import AttachmentProductModal from './AttachmentProductModal';
 import ActivityAttachmentModal from '../ManejoAgricola/ActivityAttachmentModal';
