@@ -97,8 +97,11 @@ const CustosTable: React.FC<{ userId: string; areaCultivada: number; produtivida
     console.log("Custos no estado >>>", custos);
   }, [custos]);
 
-  const formatNumber = (num: number, decimals: number = 4): string => {
-    return num.toFixed(decimals).replace('.', ',');
+  const formatNumber = (num: number): string => {
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(num);
   };
 
   // Sort custos alphabetically by categoria
