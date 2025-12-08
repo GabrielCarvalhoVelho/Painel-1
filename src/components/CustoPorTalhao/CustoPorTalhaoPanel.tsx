@@ -55,11 +55,11 @@ export default function CustoPorTalhaoPanel() {
   const totalPendencias = 0;
 
   const macrogrupos = [
-    { key: 'insumos', label: 'Insumos', tooltip: 'Fertilizantes, defensivos, sementes' },
-    { key: 'operacional', label: 'Operacional', tooltip: 'Combustível, manutenção, reparos' },
-    { key: 'servicosLogistica', label: 'Serviços/Logística', tooltip: 'Transporte, armazenagem, serviços terceirizados' },
-    { key: 'administrativos', label: 'Administrativos', tooltip: 'Despesas fixas, seguros, impostos' },
-    { key: 'outros', label: 'Outros', tooltip: 'Despesas diversas' }
+    { key: 'insumos', label: 'Insumos', tooltip: 'Fertilizantes, Defensivos Agrícolas, Sementes e mudas' },
+    { key: 'operacional', label: 'Operacional', tooltip: 'Máquinas e Equipamentos, Irrigação, Aluguel de Máquinas, Mão de obra, Manutenção e Instalações' },
+    { key: 'servicosLogistica', label: 'Serviços/Logística', tooltip: 'Transporte, Beneficiamento, Despesas de armazenagem, Classificação, Assistência Técnica, Serviços Diversos, Análise de Solo, Embalagens' },
+    { key: 'administrativos', label: 'Administrativos', tooltip: 'Despesas Administrativas, Despesas Gerais, Encargos Sociais, Arrendamento, Seguro, Gestão/Administração' },
+    { key: 'outros', label: 'Outros', tooltip: 'Outros' }
   ];
 
   // Função para carregar custos por talhão
