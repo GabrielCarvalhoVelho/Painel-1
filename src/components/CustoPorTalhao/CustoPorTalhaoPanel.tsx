@@ -16,8 +16,9 @@ interface DetalheCusto {
   data: string;
   categoria: string;
   descricao: string;
-  origem: 'Financeiro' | 'Atividade Agrícola';
+  origem: 'Financeiro' | 'Atividade Agrícola' | 'Estoque';
   valor: number;
+  macrogrupo?: string;
 }
 
 // Calcula a safra atual baseado no mês (Maio a Abril)
@@ -47,6 +48,7 @@ export default function CustoPorTalhaoPanel() {
   const [modalPendenciasAberto, setModalPendenciasAberto] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [talhaoExpandido, setTalhaoExpandido] = useState<string | null>(null);
+  const [filtroDetalheMacrogrupo, setFiltroDetalheMacrogrupo] = useState<'Todos' | 'insumos' | 'operacional' | 'servicosLogistica' | 'administrativos' | 'outros'>('Todos');
 
 
   // Dados iniciais simples — removidos os mocks complexos
@@ -65,8 +67,6 @@ export default function CustoPorTalhaoPanel() {
     setLoading(true);
     setErrorMessage(null);
     try {
-      console.log('📊 Carregando custos por talhão...', { userId: currentUserId, filtros: filtrosAtuais });
-
       // Converter filtros do componente para o formato do service
       const filtrosService: FiltrosCustoPorTalhao = {
         safra: filtrosAtuais.safra || undefined,
@@ -90,10 +90,7 @@ export default function CustoPorTalhaoPanel() {
         timeoutPromise
       ]);
       setCustosTalhoes(custos || []);
-
-      console.log('✅ Custos carregados:', custos?.length || 0, 'talhões');
     } catch (err) {
-      console.error('❌ Erro ao carregar custos por talhão:', err);
       // Exibir fallback informativo e evitar loading infinito
       setErrorMessage('Não foi possível carregar os custos em produção. Verifique a conexão e credenciais do Supabase.');
       setCustosTalhoes([]);
@@ -114,7 +111,6 @@ export default function CustoPorTalhaoPanel() {
         }
 
         if (!currentUser) {
-          console.warn('Usuário não autenticado — nenhum dado será carregado');
           return;
         }
 
@@ -123,8 +119,8 @@ export default function CustoPorTalhaoPanel() {
 
         // Carregar custos com filtros iniciais
         await carregarCustos(currentUser.user_id, filtros);
-      } catch (err) {
-        console.error('Erro ao inicializar painel:', err);
+      } catch {
+        // Erro ao inicializar painel
       }
     };
 
@@ -156,7 +152,7 @@ export default function CustoPorTalhaoPanel() {
   };
 
   const handleVerAnexos = () => {
-    console.info('📎 Abrir modal de anexos do talhão selecionado');
+    // TODO: Implementar modal de anexos do talhão selecionado
   };
 
   // Filtra talhões exibidos baseado no filtro local
@@ -183,8 +179,9 @@ export default function CustoPorTalhaoPanel() {
       );
 
       setDetalhesCusto(detalhes);
-    } catch (error) {
-      console.error('Erro ao carregar detalhes:', error);
+      setFiltroDetalheMacrogrupo('Todos');
+    } catch {
+      // Erro ao carregar detalhes
     } finally {
       setLoadingDetalhes(false);
     }
@@ -526,7 +523,7 @@ export default function CustoPorTalhaoPanel() {
 
           {/* Conteúdo centralizado */}
           <div className="absolute inset-0 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-3xl max-h-[85vh] shadow-2xl rounded-xl overflow-hidden flex flex-col" role="dialog" aria-modal="true">
+            <div className="bg-white w-full max-w-5xl max-h-[85vh] shadow-2xl rounded-xl overflow-hidden flex flex-col" role="dialog" aria-modal="true">
               {/* Header do Modal */}
               <div className="p-6 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)', backgroundColor: 'white' }}>
                 <div>
@@ -551,8 +548,39 @@ export default function CustoPorTalhaoPanel() {
                   </div>
                 ) : (
                   <div>
-                    {/* Desktop: tabela */}
-                    <div className="hidden lg:block overflow-x-auto">
+                    {/* Filtro de macrogrupo no modal */}
+                    <div className="mb-4 flex flex-wrap gap-2">
+                      {[
+                        { key: 'Todos', label: 'Todos' },
+                        { key: 'insumos', label: 'Insumos' },
+                        { key: 'operacional', label: 'Operacional' },
+                        { key: 'servicosLogistica', label: 'Serviços/Logística' },
+                        { key: 'administrativos', label: 'Administrativos' },
+                        { key: 'outros', label: 'Outros' }
+                      ].map((opt) => (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => setFiltroDetalheMacrogrupo(opt.key as any)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${filtroDetalheMacrogrupo === opt.key
+                            ? 'bg-[rgba(0,166,81,0.12)] border-[#00A651] text-[#004417]'
+                            : 'bg-white border-[rgba(0,68,23,0.15)] text-[#004417]'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {(() => {
+                      const itensFiltrados = filtroDetalheMacrogrupo === 'Todos'
+                        ? detalhesCusto
+                        : detalhesCusto.filter(d => d.macrogrupo === filtroDetalheMacrogrupo);
+
+                      return (
+                        <>
+                          {/* Desktop: tabela */}
+                          <div className="hidden lg:block overflow-x-auto">
                       <table className="w-full">
                         <thead>
                           <tr className="bg-[rgba(0,166,81,0.06)] rounded-t-2xl">
@@ -563,21 +591,21 @@ export default function CustoPorTalhaoPanel() {
                             <th className="px-6 py-4 text-right text-[14px] font-bold text-[#004417]">Valor</th>
                           </tr>
                         </thead>
-                        <tbody>
-                          {detalhesCusto.length === 0 ? (
+                            <tbody>
+                              {itensFiltrados.length === 0 ? (
                             <tr>
-                              <td colSpan={5} className="px-6 py-5 text-center text-sm text-[#1d3a2d]">
-                                Nenhum detalhamento disponível para este talhão.
+                                  <td colSpan={5} className="px-6 py-5 text-center text-sm text-[#1d3a2d]">
+                                Nenhum detalhamento disponível para este filtro.
                               </td>
                             </tr>
                           ) : (
-                          detalhesCusto.map((detalhe, index) => (
+                          itensFiltrados.map((detalhe, index) => (
                             <tr key={index} className="bg-white border-b border-[rgba(0,0,0,0.06)]">
                               <td className="px-6 py-5 text-sm text-[#1d3a2d]">{detalhe.data}</td>
                               <td className="px-6 py-5 text-sm text-[#1d3a2d]">{detalhe.categoria}</td>
                               <td className="px-6 py-5 text-sm text-[#1d3a2d]">{detalhe.descricao}</td>
                               <td className="px-6 py-5 text-sm">
-                                <span className={`text-sm font-medium ${detalhe.origem === 'Financeiro' ? 'text-[#004417]' : 'text-[#00A651]'
+                                <span className={`text-sm font-medium ${detalhe.origem === 'Financeiro' ? 'text-[#004417]' : detalhe.origem === 'Estoque' ? 'text-[#7A5F00]' : 'text-[#00A651]'
                                   }`}>
                                   {detalhe.origem}
                                 </span>
@@ -590,32 +618,35 @@ export default function CustoPorTalhaoPanel() {
                       </table>
                     </div>
 
-                    {/* Mobile: cards separados */}
-                    <div className="lg:hidden space-y-4">
-                    {detalhesCusto.length === 0 ? (
-                      <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-4 text-center text-sm text-[#1d3a2d]">
-                        Nenhum detalhamento disponível para este talhão.
-                      </div>
-                    ) : (
-                      detalhesCusto.map((detalhe, index) => (
-                        <div key={index} className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-4">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="min-w-0">
-                              <div className="text-sm text-[#1d3a2d]">{detalhe.data}</div>
-                              <div className="text-base font-bold text-[#004417] truncate">{detalhe.categoria}</div>
-                              <div className="text-sm text-[#1d3a2d] mt-1 truncate">{detalhe.descricao}</div>
+                          {/* Mobile: cards separados */}
+                          <div className="lg:hidden space-y-4">
+                          {itensFiltrados.length === 0 ? (
+                            <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-4 text-center text-sm text-[#1d3a2d]">
+                              Nenhum detalhamento disponível para este filtro.
                             </div>
-                            <div className="flex-shrink-0 text-right">
-                              <div className={`text-sm font-medium ${detalhe.origem === 'Financeiro' ? 'text-[#004417]' : 'text-[#00A651]'}`}>
-                                {detalhe.origem}
+                          ) : (
+                            itensFiltrados.map((detalhe, index) => (
+                              <div key={index} className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-4">
+                                <div className="flex items-start justify-between gap-4">
+                                  <div className="min-w-0">
+                                    <div className="text-sm text-[#1d3a2d]">{detalhe.data}</div>
+                                    <div className="text-base font-bold text-[#004417] truncate">{detalhe.categoria}</div>
+                                    <div className="text-sm text-[#1d3a2d] mt-1 truncate">{detalhe.descricao}</div>
+                                  </div>
+                                  <div className="flex-shrink-0 text-right">
+                                    <div className={`text-sm font-medium ${detalhe.origem === 'Financeiro' ? 'text-[#004417]' : detalhe.origem === 'Estoque' ? 'text-[#7A5F00]' : 'text-[#00A651]'}`}>
+                                      {detalhe.origem}
+                                    </div>
+                                    <div className="text-lg font-bold text-[#004417] mt-2">{formatCurrency(detalhe.valor)}</div>
+                                  </div>
+                                </div>
                               </div>
-                              <div className="text-lg font-bold text-[#004417] mt-2">{formatCurrency(detalhe.valor)}</div>
-                            </div>
+                              ))
+                            )}
                           </div>
-                        </div>
-                        ))
-                      )}
-                    </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
               </div>

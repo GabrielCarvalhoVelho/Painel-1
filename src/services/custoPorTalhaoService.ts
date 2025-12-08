@@ -29,8 +29,6 @@ async function getCustosInsumosPorTalhao(
   dataFim: Date | null
 ): Promise<Record<string, number>> {
   try {
-    console.log('🌱 Buscando custos de insumos das atividades agrícolas...');
-
     // 1. Buscar atividades agrícolas no período
     let queryAtividades = supabase
       .from('lancamentos_agricolas')
@@ -47,17 +45,14 @@ async function getCustosInsumosPorTalhao(
     const { data: atividades, error: errorAtividades } = await queryAtividades;
 
     if (errorAtividades) {
-      console.error('❌ Erro ao buscar atividades agrícolas:', errorAtividades);
       return {};
     }
 
     if (!atividades || atividades.length === 0) {
-      console.log('ℹ️ Nenhuma atividade agrícola encontrada no período');
       return {};
     }
 
     const atividadeIds = atividades.map(a => a.atividade_id);
-    console.log('📋 Atividades encontradas:', atividadeIds.length);
 
     // 2. Buscar produtos utilizados nas atividades com custo já calculado
     const { data: produtos, error: errorProdutos } = await supabase
@@ -67,16 +62,12 @@ async function getCustosInsumosPorTalhao(
       .not('produto_id', 'is', null);
 
     if (errorProdutos) {
-      console.error('❌ Erro ao buscar produtos das atividades:', errorProdutos);
       return {};
     }
 
     if (!produtos || produtos.length === 0) {
-      console.log('ℹ️ Nenhum produto vinculado às atividades');
       return {};
     }
-
-    console.log('📦 Produtos utilizados:', produtos.length);
 
     // 3. Buscar talhões vinculados às atividades
     const { data: talhoes, error: errorTalhoes } = await supabase
@@ -85,7 +76,6 @@ async function getCustosInsumosPorTalhao(
       .in('atividade_id', atividadeIds);
 
     if (errorTalhoes) {
-      console.error('❌ Erro ao buscar talhões das atividades:', errorTalhoes);
       return {};
     }
 
@@ -113,11 +103,6 @@ async function getCustosInsumosPorTalhao(
         area: t.area || 0
       });
       totalAreaElegivel += (t.area || 0);
-    });
-
-    console.log('📐 Talhões elegíveis para distribuição proporcional:', {
-      quantidade: talhoesElegivelMap.size,
-      areaTotal: totalAreaElegivel
     });
 
     // 5. Calcular custos por talhão usando custo_total_item
@@ -187,10 +172,6 @@ async function getCustosInsumosPorTalhao(
 
     const { data: movimentacoesEstoque, error: errorEstoque } = await queryEstoque;
 
-    if (errorEstoque) {
-      console.error('❌ Erro ao buscar movimentações de estoque:', errorEstoque);
-    }
-
     // Somar valores das saídas de estoque
     let custosSaidasEstoque = 0;
     (movimentacoesEstoque || []).forEach(mov => {
@@ -200,22 +181,10 @@ async function getCustosInsumosPorTalhao(
       custosSaidasEstoque += Math.abs(valor);
     });
 
-    console.log('📦 Movimentações de estoque (saídas):', {
-      quantidade: movimentacoesEstoque?.length || 0,
-      total: custosSaidasEstoque
-    });
-
     // 7. Distribuir custos sem vínculo + saídas de estoque proporcionalmente por área
     const custosTotaisParaDistribuir = custosSemVinculo + custosSaidasEstoque;
 
     if (custosTotaisParaDistribuir > 0 && totalAreaElegivel > 0) {
-      console.log('📊 Distribuindo custos proporcionalmente:', {
-        semVinculo: custosSemVinculo,
-        saidasEstoque: custosSaidasEstoque,
-        total: custosTotaisParaDistribuir,
-        talhoes: talhoesElegivelMap.size
-      });
-
       talhoesElegivelMap.forEach((talhao, talhaoId) => {
         const proporcao = talhao.area / totalAreaElegivel;
         const custoDistribuido = custosTotaisParaDistribuir * proporcao;
@@ -227,14 +196,8 @@ async function getCustosInsumosPorTalhao(
       });
     }
 
-    console.log('✅ Custos de insumos calculados:', {
-      talhoes: Object.keys(custosPorTalhao).length,
-      totalGeral: Object.values(custosPorTalhao).reduce((acc, val) => acc + val, 0)
-    });
-
     return custosPorTalhao;
-  } catch (err) {
-    console.error('❌ Erro ao buscar custos de insumos:', err);
+  } catch {
     return {};
   }
 }
@@ -266,7 +229,6 @@ async function getTotalMovimentacoesEstoque(
     const { data, error } = await query;
 
     if (error) {
-      console.error('❌ Erro ao buscar movimentações de estoque:', error);
       return 0;
     }
 
@@ -278,10 +240,8 @@ async function getTotalMovimentacoesEstoque(
       return acc + Math.abs(valor);
     }, 0);
 
-    console.log('📦 Total movimentações estoque (saídas):', total, 'de', data?.length || 0, 'registros');
     return total;
-  } catch (err) {
-    console.error('❌ Erro ao buscar movimentações de estoque:', err);
+  } catch {
     return 0;
   }
 }
@@ -303,7 +263,7 @@ export interface DetalheCusto {
   data: string;
   categoria: string;
   descricao: string;
-  origem: 'Financeiro' | 'Atividade Agrícola';
+  origem: 'Financeiro' | 'Atividade Agrícola' | 'Estoque';
   valor: number;
   macrogrupo: string;
 }
@@ -334,7 +294,14 @@ const MACRO_CATEGORIAS = {
     'Irrigação',
     'Aluguel de Máquinas',
     'Mão de obra',
-    'Manutenção e Instalações'
+    'Manutenção e Instalações',
+    // Categorias observadas nos logs
+    'Operação com máquinas',
+    'Aluguel Máquinas',
+    'Tratores e Colheitadeiras',
+    'Operação com Avião',
+    'Máquinas',
+    'Implementos',
   ],
   servicosLogistica: [
     'Transporte',
@@ -362,7 +329,17 @@ const MACRO_CATEGORIAS = {
 // Keywords para identificação por descrição (fallback quando categoria não bate)
 const KEYWORDS_MACROGRUPOS = {
   insumos: [], // Coluna 'insumos' será zerada - não busca de transacoes_financeiras
-  operacional: ['diesel', 'gasolina', 'combustivel', 'combustível', 'manutenc', 'manutenção', 'repar', 'mao de obra', 'mão de obra', 'salario', 'salário', 'trator', 'colheita', 'irrigação', 'mourão', 'mourao', 'cerca', 'instalação', 'instalacao'],
+  operacional: [
+    'diesel', 'gasolina', 'combustivel', 'combustível',
+    'manutenc', 'manutenção', 'repar',
+    'mao de obra', 'mão de obra', 'salario', 'salário',
+    'trator', 'colheita', 'irrigação',
+    'mourão', 'mourao', 'cerca', 'instalação', 'instalacao',
+    'óleo', 'oleo', 'lubrificante', 'lubrific', 'oficina', 'peça', 'peca', 'corrente', 'filtro',
+    // Palavras-chave adicionais dos logs
+    'maquinas', 'máquinas', 'operacao', 'operação', 'aviao', 'avião',
+    'colheitadeira', 'pulverizador', 'implementos', 'aluguel maquinas'
+  ],
   servicosLogistica: ['transporte', 'frete', 'beneficiament', 'armazen', 'classifica', 'assistência', 'assistencia', 'analise de solo', 'análise de solo'],
   administrativos: ['administrativ', 'encargo', 'arrend', 'seguro', 'imposto', 'taxa', 'gestao', 'gestão', 'administracao', 'administração'],
   outros: ['outro', 'venda']
@@ -413,6 +390,20 @@ export class CustoPorTalhaoService {
   }
 
   /**
+   * Identifica macrogrupo SOMENTE pela categoria (sem keywords),
+   * para alinhar o detalhamento com a regra solicitada.
+   */
+  private static identificarMacrogrupoPorCategoria(categoria: string): keyof typeof MACRO_CATEGORIAS | null {
+    const catNorm = this.normalize(categoria || '');
+    for (const [grupo, categorias] of Object.entries(MACRO_CATEGORIAS)) {
+      if (categorias.some(c => this.normalize(c) === catNorm)) {
+        return grupo as keyof typeof MACRO_CATEGORIAS;
+      }
+    }
+    return null;
+  }
+
+  /**
    * Calcula as datas de início e fim da safra
    * Safra agrícola brasileira: Maio do ano X até Abril do ano X+1
    * Exemplo: safra "2024/2025" = 01/05/2024 a 30/04/2025
@@ -436,14 +427,11 @@ export class CustoPorTalhaoService {
     filtros: FiltrosCustoPorTalhao = {}
   ): Promise<CustoTalhao[]> {
     try {
-      console.log('📊 [CustoPorTalhaoService] getCustosPorTalhao - Iniciando', { userId, filtros });
-
       // 1. Buscar talhões do usuário (non-default e ativos)
       const talhoes = await TalhaoService.getTalhoesNonDefault(userId, { onlyActive: true });
       const eligibleTalhoes = (talhoes || []).filter(t => t && !t.talhao_default && (t.area || 0) > 0);
 
       if (eligibleTalhoes.length === 0) {
-        console.log('⚠️ Nenhum talhão elegível encontrado');
         return [];
       }
 
@@ -524,14 +512,8 @@ export class CustoPorTalhaoService {
         dataFim = periodo.fim;
       }
 
-      console.log('📅 Período de filtro:', {
-        inicio: dataInicio ? format(dataInicio, 'dd/MM/yyyy') : 'N/A',
-        fim: dataFim ? format(dataFim, 'dd/MM/yyyy') : 'N/A'
-      });
-
       // 3. Buscar custos de insumos das atividades agrícolas por talhão
       const custosInsumosPorTalhao = await getCustosInsumosPorTalhao(userId, dataInicio, dataFim);
-      console.log('🌱 Custos de insumos por talhão:', custosInsumosPorTalhao);
 
       // 4. Buscar transações financeiras do período
       let query = supabase
@@ -551,11 +533,8 @@ export class CustoPorTalhaoService {
       const { data: transacoes, error } = await query;
 
       if (error) {
-        console.error('❌ Erro ao buscar transações:', error);
         throw error;
       }
-
-      console.log('💰 Transações encontradas:', transacoes?.length || 0);
 
       // 5. Inicializar resultado com todos os talhões
       const resultado: Record<string, CustoTalhao> = {};
@@ -580,12 +559,6 @@ export class CustoPorTalhaoService {
           resultado[talhaoId].insumos = custosInsumosPorTalhao[talhaoId];
         }
       }
-      
-      const totalInsumosAtribuidos = Object.values(resultado).reduce((acc, t) => acc + t.insumos, 0);
-      console.log('✅ Insumos atribuídos aos talhões:', {
-        talhoes: Object.keys(custosInsumosPorTalhao).length,
-        total: totalInsumosAtribuidos
-      });
 
       // Acumuladores para custos sem vínculo específico (exceto insumos que vem do estoque)
       const semVinculo: Record<keyof typeof MACRO_CATEGORIAS, number> = {
@@ -597,6 +570,11 @@ export class CustoPorTalhaoService {
       };
 
       // 7. Processar cada transação financeira (exceto insumos que já vem do estoque)
+      // Logs de diagnóstico para macrogrupo operacional
+      let operacionalDiretoTotal = 0;
+      let operacionalSemVinculoTotal = 0;
+      const operacionalSamples: Array<{ id: any; categoria: any; descricao: any; area_vinculada: any; valor: number; vinculadoTalhao: boolean }> = [];
+
       for (const tr of (transacoes || [])) {
         const valor = typeof tr.valor === 'string' ? parseFloat(tr.valor) : (tr.valor || 0);
         const valorAbs = Math.abs(valor);
@@ -605,7 +583,6 @@ export class CustoPorTalhaoService {
         const macrogrupo = this.identificarMacrogrupo(tr.categoria || '', tr.descricao || '');
         
         if (!macrogrupo) {
-          console.log('⚠️ Transação sem macrogrupo identificado:', { id: tr.id_transacao, categoria: tr.categoria, descricao: tr.descricao });
           continue;
         }
 
@@ -626,9 +603,25 @@ export class CustoPorTalhaoService {
         if (talhaoVinculado && resultado[talhaoVinculado.id_talhao]) {
           // Atribuir ao talhão específico
           resultado[talhaoVinculado.id_talhao][macrogrupo] += valorAbs;
+
+          // Coletar amostras e totais para operacional
+          if (macrogrupo === 'operacional') {
+            operacionalDiretoTotal += valorAbs;
+            if (operacionalSamples.length < 5) {
+              operacionalSamples.push({ id: tr.id_transacao, categoria: tr.categoria, descricao: tr.descricao, area_vinculada: tr.area_vinculada, valor: valorAbs, vinculadoTalhao: true });
+            }
+          }
         } else {
           // Acumular para distribuição proporcional
           semVinculo[macrogrupo] += valorAbs;
+
+          // Coletar totais para operacional sem vínculo
+          if (macrogrupo === 'operacional') {
+            operacionalSemVinculoTotal += valorAbs;
+            if (operacionalSamples.length < 5) {
+              operacionalSamples.push({ id: tr.id_transacao, categoria: tr.categoria, descricao: tr.descricao, area_vinculada: tr.area_vinculada, valor: valorAbs, vinculadoTalhao: false });
+            }
+          }
         }
       }
 
@@ -658,13 +651,10 @@ export class CustoPorTalhaoService {
           custoHa: t.area > 0 ? total / t.area : 0
         };
       });
-
-      console.log('✅ Custos calculados para', resultadoFinal.length, 'talhões');
       
       return resultadoFinal;
 
     } catch (error) {
-      console.error('❌ Erro ao buscar custos por talhão:', error);
       throw error;
     }
   }
@@ -679,8 +669,6 @@ export class CustoPorTalhaoService {
     filtros: FiltrosCustoPorTalhao
   ): Promise<DetalheCusto[]> {
     try {
-      console.log('📋 Buscando detalhes de custo para talhão:', talhaoId);
-
       const detalhes: DetalheCusto[] = [];
 
       // Calcular período de filtro
@@ -720,12 +708,7 @@ export class CustoPorTalhaoService {
 
       const { data: atividades, error: errorAtividades } = await queryAtividades;
 
-      if (errorAtividades) {
-        console.error('❌ Erro ao buscar atividades:', errorAtividades);
-      }
-
       if (!atividades || atividades.length === 0) {
-        console.log('ℹ️ Nenhuma atividade encontrada no período');
         return detalhes;
       }
 
@@ -738,19 +721,11 @@ export class CustoPorTalhaoService {
         .in('atividade_id', atividadeIds)
         .not('produto_id', 'is', null);
 
-      if (errorProdutos) {
-        console.error('❌ Erro ao buscar produtos:', errorProdutos);
-      }
-
       // 3. Buscar talhões vinculados às atividades (mesma query do getCustosInsumosPorTalhao)
       const { data: talhoes, error: errorTalhoes } = await supabase
         .from('lancamento_talhoes')
         .select('atividade_id, talhao_id')
         .in('atividade_id', atividadeIds);
-
-      if (errorTalhoes) {
-        console.error('❌ Erro ao buscar talhões:', errorTalhoes);
-      }
 
       // Criar mapa atividade_id -> talhao_ids[]
       const atividadeTalhoesMap = new Map<string, string[]>();
@@ -856,10 +831,6 @@ export class CustoPorTalhaoService {
 
       const { data: saidasEstoque, error: errorEstoque } = await queryEstoque;
 
-      if (errorEstoque) {
-        console.error('❌ Erro ao buscar saídas de estoque:', errorEstoque);
-      }
-
       // 7. Adicionar saídas de estoque proporcionalmente (mesma lógica do getCustosInsumosPorTalhao)
       if (proporcaoTalhao > 0 && saidasEstoque && saidasEstoque.length > 0) {
         saidasEstoque.forEach((saida: any) => {
@@ -900,23 +871,11 @@ export class CustoPorTalhaoService {
 
       const { data: transacoes } = await queryFinanceiro;
 
-      // Helper para identificar macrogrupo operacional com base nos mapeamentos existentes
-      const identificarOperacional = (categoria: string, descricao: string): boolean => {
-        const catLower = (categoria || '').toLowerCase();
-        const descNorm = CustoPorTalhaoService["normalize"](descricao || '');
-        const categorias = (MACRO_CATEGORIAS as any).operacional as string[];
-        const keywords = (KEYWORDS_MACROGRUPOS as any).operacional as string[];
-        if (categorias.some((c: string) => c.toLowerCase() === catLower)) return true;
-        if (keywords.some((kw: string) => descNorm.includes(kw))) return true;
-        return false;
-      };
-
       // Verifica vínculo de talhão pela área (mesma função inline utilizada em getCustosPorTalhao)
-      const { data: talhoesAll } = await supabase
-        .from('talhoes')
-        .select('id_talhao, nome, talhao_default, area')
-        .eq('usuario_id', userId);
-      const elegiveis = (talhoesAll || []).filter(t => t && !t.talhao_default && (t.area || 0) > 0);
+      // IMPORTANTE: Usar TalhaoService para garantir consistência com a tabela principal
+      const talhoesParaOperacional = await TalhaoService.getTalhoesNonDefault(userId, { onlyActive: true });
+      const elegiveis = talhoesParaOperacional.filter(t => t && (t.area || 0) > 0);
+      
       const nameMap = new Map<string, any>();
       const talhaoNames: string[] = [];
       elegiveis.forEach(t => {
@@ -941,28 +900,55 @@ export class CustoPorTalhaoService {
       const talhaoInfoOper = elegiveis.find(t => t.id_talhao === talhaoId);
       const proporcaoTalhaoOper = totalAreaElegivelOper > 0 ? ((talhaoInfoOper?.area || 0) / totalAreaElegivelOper) : 0;
 
+      // Contadores para debug
+      const contadoresMacro: Record<string, number> = {
+        operacional: 0,
+        servicosLogistica: 0,
+        administrativos: 0,
+        outros: 0
+      };
+      const totaisMacro: Record<string, number> = {
+        operacional: 0,
+        servicosLogistica: 0,
+        administrativos: 0,
+        outros: 0
+      };
+
+      // Mapear nome do macrogrupo para label de exibição
+      const macroLabels: Record<string, string> = {
+        operacional: 'Operacional',
+        servicosLogistica: 'Serviços/Logística',
+        administrativos: 'Administrativos',
+        outros: 'Outros'
+      };
+
       (transacoes || []).forEach(tr => {
         const valor = typeof tr.valor === 'string' ? parseFloat(tr.valor) : (tr.valor || 0);
         const valorAbs = Math.abs(valor);
         if (valorAbs <= 0) return;
 
-        // Só operacional
-        const ehOperacional = identificarOperacional(tr.categoria || '', tr.descricao || '');
-        if (!ehOperacional) return;
+        // Verificar classificação de cada transação
+        const macroClassificado = CustoPorTalhaoService["identificarMacrogrupo"](tr.categoria || '', tr.descricao || '');
+        
+        // Pular insumos (já calculados separadamente) e transações não classificadas
+        if (!macroClassificado || macroClassificado === 'insumos') return;
 
         const areaVinc = (tr.area_vinculada || '').toString().trim();
         const talhaoVinc = findTalhaoByAreaVinculada(areaVinc);
+        const labelCategoria = macroLabels[macroClassificado] || macroClassificado;
 
         if (talhaoVinc && talhaoVinc.id_talhao === talhaoId) {
           // Direto no talhão
           detalhes.push({
             data: format(parseISO(tr.data_agendamento_pagamento), 'dd/MM/yyyy', { locale: ptBR }),
-            categoria: 'Operacional',
-            descricao: tr.descricao || tr.categoria || 'Operacional',
+            categoria: labelCategoria,
+            descricao: tr.descricao || tr.categoria || labelCategoria,
             origem: 'Financeiro',
             valor: valorAbs,
-            macrogrupo: 'operacional'
+            macrogrupo: macroClassificado
           });
+          contadoresMacro[macroClassificado] = (contadoresMacro[macroClassificado] || 0) + 1;
+          totaisMacro[macroClassificado] = (totaisMacro[macroClassificado] || 0) + valorAbs;
         } else {
           // Sem vínculo com talhão específico non-default: distribuir proporcionalmente
           if (proporcaoTalhaoOper > 0) {
@@ -970,20 +956,17 @@ export class CustoPorTalhaoService {
             if (valorProp > 0) {
               detalhes.push({
                 data: format(parseISO(tr.data_agendamento_pagamento), 'dd/MM/yyyy', { locale: ptBR }),
-                categoria: 'Operacional',
-                descricao: `${tr.descricao || tr.categoria || 'Operacional'} - ${(proporcaoTalhaoOper * 100).toFixed(2)}% da área`,
+                categoria: labelCategoria,
+                descricao: `${tr.descricao || tr.categoria || labelCategoria} - ${(proporcaoTalhaoOper * 100).toFixed(2)}% da área`,
                 origem: 'Financeiro',
                 valor: valorProp,
-                macrogrupo: 'operacional'
+                macrogrupo: macroClassificado
               });
+              contadoresMacro[macroClassificado] = (contadoresMacro[macroClassificado] || 0) + 1;
+              totaisMacro[macroClassificado] = (totaisMacro[macroClassificado] || 0) + valorProp;
             }
           }
         }
-      });
-
-      console.log('✅ Detalhes de custo carregados:', {
-        total: detalhes.length,
-        valorTotal: detalhes.reduce((acc, d) => acc + d.valor, 0)
       });
 
       // Ordenar por data (mais recente primeiro)
@@ -996,7 +979,6 @@ export class CustoPorTalhaoService {
       });
 
     } catch (error) {
-      console.error('❌ Erro ao buscar detalhes de custo:', error);
       throw error;
     }
   }
@@ -1011,7 +993,6 @@ export class CustoPorTalhaoService {
       
       return [];
     } catch (error) {
-      console.error('Erro ao buscar pendências:', error);
       throw error;
     }
   }
@@ -1038,7 +1019,6 @@ export class CustoPorTalhaoService {
         distribuicaoMacrogrupos: {}
       };
     } catch (error) {
-      console.error('Erro ao calcular indicadores:', error);
       throw error;
     }
   }
@@ -1059,8 +1039,7 @@ export class CustoPorTalhaoService {
       // Remover duplicatas
       const safras = [...new Set(data?.map(t => t.safra).filter(Boolean) || [])];
       return safras;
-    } catch (error) {
-      console.error('Erro ao buscar safras:', error);
+    } catch {
       return [];
     }
   }
@@ -1081,8 +1060,7 @@ export class CustoPorTalhaoService {
         id: p.id_propriedade,
         nome: p.nome
       })) || [];
-    } catch (error) {
-      console.error('Erro ao buscar fazendas:', error);
+    } catch {
       return [];
     }
   }
@@ -1112,8 +1090,7 @@ export class CustoPorTalhaoService {
         id: t.id_talhao,
         nome: t.nome
       })) || [];
-    } catch (error) {
-      console.error('Erro ao buscar talhões:', error);
+    } catch {
       return [];
     }
   }
@@ -1245,15 +1222,8 @@ export class CustoPorTalhaoService {
         .lte('data_agendamento_pagamento', endOfDay);
 
       if (error) {
-        console.error('Erro ao buscar transações:', error);
         throw error;
       }
-
-      try { console.log('transacoes retornadas count:', (transacoes || []).length); } catch(e) {}
-      try {
-        console.log('query filters:', { user_id: userId, tipo_transacao: 'GASTO', status: 'Pago', data_agendamento_pagamento_lte: endOfDay });
-        console.log('transacoes amostra:', (transacoes || []).map(t => ({ id: t.id_transacao, user_id: (t as any).user_id || (t as any).usuario_id, categoria: t.categoria, descricao: t.descricao, area_vinculada: t.area_vinculada, data_agendamento_pagamento: t.data_agendamento_pagamento, tipo_transacao: t.tipo_transacao, status: t.status })));
-      } catch (e) {}
 
       // inicializa resultado com talhões elegíveis e todos os macrogrupos
       const result: Record<string, { id: string; nome: string; area: number; insumos: number; operacional: number; servicosLogistica: number; administrativos: number; outros: number; receita: number }> = {};
@@ -1280,17 +1250,6 @@ export class CustoPorTalhaoService {
         outros: 0,
         receita: 0
       };
-
-      // Logs agrupados para diagnóstico
-      try {
-        console.groupCollapsed && console.groupCollapsed('CustoPorTalhaoService.getInsumosPorTalhao');
-        console.log('dataAgendamento:', dataAgendamento);
-        console.log('talhoes elegiveis count:', eligibleTalhoes.length);
-        console.log('totalArea:', totalArea);
-        console.log('talhoes elegiveis:', eligibleTalhoes.map(t => ({ id: t.id_talhao, nome: t.nome, area: t.area })));
-      } catch (e) {
-        /* ignore logging errors */
-      }
 
       for (const tr of (transacoes || [])) {
         const valor = typeof tr.valor === 'string' ? parseFloat(tr.valor) : (tr.valor || 0);
@@ -1324,7 +1283,6 @@ export class CustoPorTalhaoService {
         }
 
         if (!matchedGroup) {
-          try { console.log('transacao ignorada (não categorizada):', { id: tr.id_transacao, categoria, descricao: descricaoRaw, valor: valorAbs }); } catch(e){}
           continue;
         }
 
@@ -1348,15 +1306,11 @@ export class CustoPorTalhaoService {
           }
           // acumula no grupo identificado
           (result[talhaoVinculado.id_talhao] as any)[matchedGroup] += valorAbs;
-          try { console.log('alocado por vinculo:', { id: tr.id_transacao, valor: valorAbs, area_vinculada: areaVinc, talhao: talhaoVinculado.nome, grupo: matchedGroup }); } catch(e){}
         } else {
           // sem vínculo detectável — acumula para distribuir depois por grupo
           semVinculo[matchedGroup] += valorAbs;
-          try { console.log('sem vinculo (acumulado):', { id: tr.id_transacao, valor: valorAbs, area_vinculada: areaVinc, grupo: matchedGroup }); } catch(e){}
         }
       }
-
-      try { console.log('semVinculo antes distribuicao por grupo:', semVinculo); } catch(e){}
 
       // distribuir semVinculo proporcionalmente pela area por grupo
       if (totalArea > 0) {
@@ -1367,21 +1321,12 @@ export class CustoPorTalhaoService {
             const tal = result[id];
             const share = (tal.area / totalArea) * totalForGroup;
             (tal as any)[groupKey] += share;
-            try { console.log('distribuido para talhao:', { grupo: groupKey, id: tal.id, nome: tal.nome, area: tal.area, share }); } catch(e){}
           }
         }
       }
 
-      try {
-        console.log('resultado final custos por talhao:', Object.keys(result).map(k => ({ id: k, insumos: result[k].insumos, operacional: result[k].operacional, servicosLogistica: result[k].servicosLogistica, administrativos: result[k].administrativos, outros: result[k].outros, receita: result[k].receita })));
-        console.groupEnd && console.groupEnd();
-      } catch (e) {
-        /* ignore logging errors */
-      }
-
       return result;
     } catch (error) {
-      console.error('Erro em getInsumosPorTalhao:', error);
       throw error;
     }
   }
