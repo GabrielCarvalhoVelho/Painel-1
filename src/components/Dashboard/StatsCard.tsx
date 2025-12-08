@@ -77,7 +77,6 @@ const StatsCard = ({
         title={title}
         icon={Icon}
         iconColor="text-[#86b646]"
-        showFooter={false}
       >
         {modalContent ? modalContent : (
           <div className="space-y-3">

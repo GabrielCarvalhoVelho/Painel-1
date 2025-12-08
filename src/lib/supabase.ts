@@ -102,7 +102,6 @@ export interface TransacaoFinanceira {
   anexo_arquivo_url?: string;
   id_grupo_anexo?: string;
   parcela_com_anexo_original?: boolean;
-  nome_talhao?: string; // Nome do talhão vinculado
 }
 
 export interface AtividadeAgricola {
@@ -175,7 +174,6 @@ export interface ProdutoEstoque {
 export interface MaquinasEquipamentos {
   id_maquina: string;
   user_id: string;
-  id_propriedade: string | null;
   nome: string;
   marca_modelo: string | null;
   categoria: string | null;
