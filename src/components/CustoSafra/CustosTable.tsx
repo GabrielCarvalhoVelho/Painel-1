@@ -161,17 +161,17 @@ const CustosTable: React.FC<{ userId: string; areaCultivada: number; produtivida
               {custosSorted.map((item, index) => (
                 <tr key={`ha-${index}`} className="bg-white border-b border-[rgba(0,0,0,0.06)]">
                   <td className="px-6 py-5 text-sm text-[#004417] font-medium align-top">{item.categoria}</td>
-                  <td className="px-6 py-5 text-sm text-right text-[#004417] font-medium align-top">R$ {formatNumber(item.estimadoHectare)}</td>
-                  <td className="px-6 py-5 text-sm text-right font-bold text-[#00A651] align-top">R$ {formatNumber(item.realHectare)}</td>
+                  <td className="px-6 py-5 text-sm text-right text-[#004417] font-medium align-top whitespace-nowrap">R$ {formatNumber(item.estimadoHectare)}</td>
+                  <td className="px-6 py-5 text-sm text-right font-bold text-[#00A651] align-top whitespace-nowrap">R$ {formatNumber(item.realHectare)}</td>
                 </tr>
               ))}
               {/* Totals */}
               <tr className="total-geral bg-[rgba(0,166,81,0.06)]">
                 <td className="px-5 py-4 text-sm text-[#004417] font-bold">TOTAL GERAL</td>
-                <td className="px-5 py-4 text-right text-sm text-[#004417] font-bold">
+                <td className="px-5 py-4 text-right text-sm text-[#004417] font-bold whitespace-nowrap">
                   R$ {formatNumber(totalEstimadoHectare)}
                 </td>
-                <td className="px-5 py-4 text-right text-sm text-[#004417] font-bold">
+                <td className="px-5 py-4 text-right text-sm text-[#004417] font-bold whitespace-nowrap">
                   R$ {formatNumber(totalRealHectare)}
                 </td>
               </tr>
@@ -196,17 +196,17 @@ const CustosTable: React.FC<{ userId: string; areaCultivada: number; produtivida
               {custosSorted.map((item, index) => (
                 <tr key={`saca-${index}`} className="bg-white border-b border-[rgba(0,0,0,0.06)]">
                   <td className="px-6 py-5 text-sm text-[#004417] font-medium align-top">{item.categoria}</td>
-                  <td className="px-6 py-5 text-sm text-right text-[#004417] font-medium align-top">R$ {formatNumber(item.estimadoSaca)}</td>
-                  <td className="px-6 py-5 text-sm text-right font-bold text-[#00A651] align-top">R$ {formatNumber(item.realSaca)}</td>
+                  <td className="px-6 py-5 text-sm text-right text-[#004417] font-medium align-top whitespace-nowrap">R$ {formatNumber(item.estimadoSaca)}</td>
+                  <td className="px-6 py-5 text-sm text-right font-bold text-[#00A651] align-top whitespace-nowrap">R$ {formatNumber(item.realSaca)}</td>
                 </tr>
               ))}
               {/* Totals */}
               <tr className="total-geral bg-[rgba(0,166,81,0.06)]">
                 <td className="px-5 py-4 text-sm text-[#004417] font-bold">TOTAL GERAL</td>
-                <td className="px-5 py-4 text-right text-sm text-[#004417] font-bold">
+                <td className="px-5 py-4 text-right text-sm text-[#004417] font-bold whitespace-nowrap">
                   R$ {formatNumber(totalEstimadoSaca)}
                 </td>
-                <td className="px-5 py-4 text-right text-sm text-[#004417] font-bold">
+                <td className="px-5 py-4 text-right text-sm text-[#004417] font-bold whitespace-nowrap">
                   R$ {formatNumber(totalRealSaca)}
                 </td>
               </tr>
