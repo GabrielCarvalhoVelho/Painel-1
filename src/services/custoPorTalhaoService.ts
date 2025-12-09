@@ -501,15 +501,17 @@ export class CustoPorTalhaoService {
       const custosInsumosPorTalhao = await getCustosInsumosPorTalhao(userId, dataInicio, dataFim);
 
       // 4. Buscar transações financeiras do período com vínculos de talhões
+      // Incluir status "Pago" e "Agendado" (para datas até hoje)
+      const hoje = format(new Date(), 'yyyy-MM-dd');
       let query = supabase
         .from('transacoes_financeiras')
         .select(`
-          id_transacao, 
-          valor, 
-          categoria, 
-          descricao, 
-          data_agendamento_pagamento, 
-          tipo_transacao, 
+          id_transacao,
+          valor,
+          categoria,
+          descricao,
+          data_agendamento_pagamento,
+          tipo_transacao,
           status,
           transacoes_talhoes(
             id_talhao
@@ -517,7 +519,7 @@ export class CustoPorTalhaoService {
         `)
         .eq('user_id', userId)
         .eq('tipo_transacao', 'GASTO')
-        .eq('status', 'Pago');
+        .or(`status.eq.Pago,and(status.eq.Agendado,data_agendamento_pagamento.lte.${hoje})`);
 
       if (dataInicio) {
         query = query.gte('data_agendamento_pagamento', format(dataInicio, 'yyyy-MM-dd'));
@@ -854,15 +856,17 @@ export class CustoPorTalhaoService {
       }
 
       // 8. Adicionar DETALHES de Operacional a partir de transações financeiras
+      // Incluir status "Pago" e "Agendado" (para datas até hoje)
+      const hojeFinanceiro = format(new Date(), 'yyyy-MM-dd');
       let queryFinanceiro = supabase
         .from('transacoes_financeiras')
         .select(`
-          id_transacao, 
-          valor, 
-          categoria, 
-          descricao, 
-          data_agendamento_pagamento, 
-          tipo_transacao, 
+          id_transacao,
+          valor,
+          categoria,
+          descricao,
+          data_agendamento_pagamento,
+          tipo_transacao,
           status,
           transacoes_talhoes(
             id_talhao
@@ -870,7 +874,7 @@ export class CustoPorTalhaoService {
         `)
         .eq('user_id', userId)
         .eq('tipo_transacao', 'GASTO')
-        .eq('status', 'Pago');
+        .or(`status.eq.Pago,and(status.eq.Agendado,data_agendamento_pagamento.lte.${hojeFinanceiro})`);
 
       if (dataInicio) {
         queryFinanceiro = queryFinanceiro.gte('data_agendamento_pagamento', format(dataInicio, 'yyyy-MM-dd'));
