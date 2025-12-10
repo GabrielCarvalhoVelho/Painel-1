@@ -30,7 +30,6 @@ const menuItems = [
   { id: 'minha-fazenda', icon: LandPlot, label: 'Minha Fazenda', description: 'Detalhes dos talhões'},
   { id: 'estoque', icon: Package, label: 'Estoque', description: 'Controle de insumos' },
   { id: 'maquinas', icon: Settings, label: 'Máquinas e Equipamentos', description: 'Controle de máquinas' },
-  // Abas ocultas temporariamente - descomentar quando necessário:
   // { id: 'estoque-cafe', icon: Coffee, label: 'Estoque de Café', description: 'Armazenamento' },
   // { id: 'vendas', icon: TrendingUp, label: 'Vendas', description: 'Simulador e histórico' },
   // { id: 'agenda', icon: Calendar, label: 'Agenda', description: 'Atividades técnicas' },
