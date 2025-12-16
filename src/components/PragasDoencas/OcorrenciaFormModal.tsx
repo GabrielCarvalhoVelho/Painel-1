@@ -20,7 +20,6 @@ interface OcorrenciaFormModalProps {
 const fasesOptions = ['Vegetativo', 'Floração', 'Granação', 'Pré-colheita', 'Colheita', 'Pós-colheita'];
 const tiposOptions = ['Praga', 'Doença', 'Deficiência', 'Planta daninha', 'Não sei / Outra'];
 const severidadeOptions = ['Baixa', 'Média', 'Alta'];
-const diagnosticoOptions = ['Sugerido pela IA (não confirmado)', 'Confirmado pelo agrônomo', 'Ainda em dúvida'];
 const statusOptions = ['Nova', 'Em acompanhamento', 'Resolvida'];
 
 export default function OcorrenciaFormModal({
@@ -42,7 +41,6 @@ export default function OcorrenciaFormModal({
       sintomas: '',
       acaoTomada: '',
       nomePraga: '',
-      diagnostico: 'Sugerido pela IA (não confirmado)',
       descricaoDetalhada: '',
       climaRecente: '',
       produtosAplicados: [],
@@ -339,24 +337,6 @@ export default function OcorrenciaFormModal({
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                     placeholder="Ex: Ferrugem do cafeeiro"
                   />
-                </div>
-
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Confirmacao do Diagnostico
-                  </label>
-                  <select
-                    name="diagnostico"
-                    value={formData.diagnostico || 'Sugerido pela IA (nao confirmado)'}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
-                  >
-                    {diagnosticoOptions.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
                 </div>
 
                 <div className="mb-4">
