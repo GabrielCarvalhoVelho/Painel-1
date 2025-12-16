@@ -73,8 +73,12 @@ export default function OcorrenciaFormModal({
   const loadTalhoes = async () => {
     setLoadingTalhoes(true);
     try {
-      const data = await TalhaoService.getTalhoesByUserId(userId);
-      setTalhoes(data);
+      const allTalhoes = await TalhaoService.getTalhoesNonDefault(userId);
+      const talhaoOptions = allTalhoes.map(t => ({
+        id_talhao: t.id_talhao,
+        nome: t.nome
+      }));
+      setTalhoes(talhaoOptions);
     } catch (error) {
       console.error('Erro ao carregar talhoes:', error);
     } finally {
