@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Check } from 'lucide-react';
+import { X, Check, Upload, Image as ImageIcon } from 'lucide-react';
 import { Ocorrencia } from './mockOcorrencias';
 import { TalhaoService } from '../../services/talhaoService';
 
@@ -11,7 +11,7 @@ interface TalhaoOption {
 interface OcorrenciaFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (ocorrencia: Partial<Ocorrencia>, talhaoIds: string[]) => void;
+  onSubmit: (ocorrencia: Partial<Ocorrencia>, talhaoIds: string[], imageFile?: File) => void;
   initialData?: Ocorrencia | null;
   userId: string;
   initialTalhaoIds?: string[];
@@ -54,16 +54,25 @@ export default function OcorrenciaFormModal({
   const [talhoes, setTalhoes] = useState<TalhaoOption[]>([]);
   const [selectedTalhaoIds, setSelectedTalhaoIds] = useState<string[]>(initialTalhaoIds);
   const [loadingTalhoes, setLoadingTalhoes] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && userId) {
       loadTalhoes();
+    }
+    if (!isOpen) {
+      setSelectedImage(null);
+      setImagePreview(null);
     }
   }, [isOpen, userId]);
 
   useEffect(() => {
     if (initialData) {
       setFormData(initialData);
+      if (initialData.fotoPrincipal && !initialData.fotoPrincipal.includes('emoji')) {
+        setImagePreview(initialData.fotoPrincipal);
+      }
     }
     if (initialTalhaoIds.length > 0) {
       setSelectedTalhaoIds(initialTalhaoIds);
@@ -123,6 +132,28 @@ export default function OcorrenciaFormModal({
     }));
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('A imagem deve ter no máximo 5MB');
+        return;
+      }
+
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const selectedTalhaoNames = talhoes
@@ -135,7 +166,7 @@ export default function OcorrenciaFormModal({
       talhao: selectedTalhaoNames || formData.talhao,
     };
 
-    onSubmit(dataToSubmit, selectedTalhaoIds);
+    onSubmit(dataToSubmit, selectedTalhaoIds, selectedImage || undefined);
     onClose();
   };
 
@@ -322,10 +353,50 @@ export default function OcorrenciaFormModal({
                     required
                   />
                 </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Foto Principal
+                  </label>
+                  {!imagePreview ? (
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-200 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-500 font-medium">Clique para adicionar foto</p>
+                        <p className="text-xs text-gray-400 mt-1">PNG, JPG até 5MB</p>
+                      </div>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                      />
+                    </label>
+                  ) : (
+                    <div className="relative w-full h-40 border border-gray-200 rounded-lg overflow-hidden">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                      <div className="absolute bottom-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                        <ImageIcon className="w-3 h-3" />
+                        Imagem selecionada
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="pt-4 border-t border-gray-100">
-                <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
+                <h3 className="text-sm font-medium text-gray-700 mb-3 uppercase tracking-wide">
                   Informacoes Adicionais
                 </h3>
 

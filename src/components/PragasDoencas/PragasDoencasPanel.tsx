@@ -115,7 +115,7 @@ export default function PragasDoencasPanel() {
     setSelectedOcorrencia(null);
   };
 
-  const handleFormSubmit = async (formData: Partial<Ocorrencia>, talhaoIds: string[]) => {
+  const handleFormSubmit = async (formData: Partial<Ocorrencia>, talhaoIds: string[], imageFile?: File) => {
     if (editingOcorrencia) {
       const payload = {
         user_id: TEMP_USER_ID,
@@ -176,7 +176,7 @@ export default function PragasDoencasPanel() {
         anexos: [],
       };
 
-      const { error } = await PragasDoencasService.createOcorrencia(payload, talhaoIds);
+      const { error } = await PragasDoencasService.createOcorrencia(payload, talhaoIds, imageFile);
 
       if (error) {
         console.error('Erro ao criar ocorrencia:', error);

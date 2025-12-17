@@ -135,9 +135,39 @@ export class PragasDoencasService {
     }
   }
 
+  static async uploadImage(file: File, ocorrenciaId: number): Promise<string | null> {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${ocorrenciaId}.${fileExt}`;
+      const filePath = fileName;
+
+      const { error: uploadError } = await supabase.storage
+        .from('pragas_e_doencas')
+        .upload(filePath, file, {
+          upsert: true,
+          contentType: file.type,
+        });
+
+      if (uploadError) {
+        console.error('Erro ao fazer upload da imagem:', uploadError);
+        return null;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('pragas_e_doencas')
+        .getPublicUrl(filePath);
+
+      return publicUrlData.publicUrl;
+    } catch (err) {
+      console.error('Erro no upload da imagem:', err);
+      return null;
+    }
+  }
+
   static async createOcorrencia(
     payload: Partial<PragaDoenca>,
-    talhaoIds: string[] = []
+    talhaoIds: string[] = [],
+    imageFile?: File
   ) {
     try {
       const { data, error } = await supabase
@@ -151,9 +181,21 @@ export class PragasDoencasService {
         return { error };
       }
 
+      const ocorrenciaId = (data as any).id;
+
+      if (imageFile) {
+        const imageUrl = await this.uploadImage(imageFile, ocorrenciaId);
+        if (imageUrl) {
+          await supabase
+            .from('pragas_e_doencas')
+            .update({ foto_principal: imageUrl })
+            .eq('id', ocorrenciaId);
+        }
+      }
+
       if (talhaoIds.length > 0) {
         const vinculos = talhaoIds.map((talhao_id) => ({
-          praga_doenca_id: (data as any).id,
+          praga_doenca_id: ocorrenciaId,
           talhao_id,
           user_id: payload.user_id,
         }));
