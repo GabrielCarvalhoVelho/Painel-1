@@ -1,30 +1,32 @@
 import { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { DividasFinanciamentosService, DividaFinanciamento } from '../../services/dividasFinanciamentosService';
-import { useSupabase } from '../../lib/useSupabase';
+import { AuthService } from '../../services/authService';
 import DividaCard from './DividaCard';
 import DividaDetailPanel from './DividaDetailPanel';
 import DividaFormModal from './DividaFormModal';
 
 export default function DividasFinanciamentosPanel() {
-  const { user } = useSupabase();
   const [dividas, setDividas] = useState<DividaFinanciamento[]>([]);
   const [selectedDivida, setSelectedDivida] = useState<DividaFinanciamento | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user?.id) {
-      loadDividas();
+    const user = AuthService.getInstance().getCurrentUser();
+    if (user?.user_id) {
+      setUserId(user.user_id);
+      loadDividas(user.user_id);
+    } else {
+      setIsLoading(false);
     }
-  }, [user]);
+  }, []);
 
-  const loadDividas = async () => {
-    if (!user?.id) return;
-
+  const loadDividas = async (uid: string) => {
     setIsLoading(true);
-    const data = await DividasFinanciamentosService.getAll(user.id);
+    const data = await DividasFinanciamentosService.getAll(uid);
     setDividas(data);
     setIsLoading(false);
   };
@@ -43,9 +45,10 @@ export default function DividasFinanciamentosPanel() {
   };
 
   const handleLiquidar = async (id: string) => {
+    if (!userId) return;
     const success = await DividasFinanciamentosService.liquidar(id);
     if (success) {
-      await loadDividas();
+      await loadDividas(userId);
       if (isDetailOpen) {
         setIsDetailOpen(false);
         setSelectedDivida(null);
@@ -54,9 +57,10 @@ export default function DividasFinanciamentosPanel() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!userId) return;
     const success = await DividasFinanciamentosService.delete(id);
     if (success) {
-      await loadDividas();
+      await loadDividas(userId);
       if (isDetailOpen) {
         setIsDetailOpen(false);
         setSelectedDivida(null);
@@ -65,16 +69,16 @@ export default function DividasFinanciamentosPanel() {
   };
 
   const handleFormSubmit = async (formData: Partial<DividaFinanciamento>) => {
-    if (!user?.id) return;
+    if (!userId) return;
 
     const dividaData = {
       ...formData,
-      user_id: user.id,
+      user_id: userId,
     } as Omit<DividaFinanciamento, 'id' | 'created_at' | 'updated_at'>;
 
     const newDivida = await DividasFinanciamentosService.create(dividaData);
     if (newDivida) {
-      await loadDividas();
+      await loadDividas(userId);
       setIsFormOpen(false);
     }
   };
