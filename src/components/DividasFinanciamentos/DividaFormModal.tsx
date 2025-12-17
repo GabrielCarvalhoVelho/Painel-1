@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Upload, RefreshCw, Trash2 } from 'lucide-react';
 import { DividaFinanciamento } from '../../services/dividasFinanciamentosService';
 import CurrencyInput from '../common/CurrencyInput';
 
 interface DividaFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (divida: Partial<DividaFinanciamento>) => void;
+  // agora aceita arquivos selecionados opcionalmente
+  onSubmit: (divida: Partial<DividaFinanciamento>, files?: File[], removedAnexos?: string[]) => void;
   initialData?: DividaFinanciamento | null;
 }
 
@@ -59,6 +60,9 @@ export default function DividaFormModal({
   const [formData, setFormData] = useState<Partial<DividaFinanciamento>>(
     initialData || getEmptyFormData()
   );
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [existingAnexos, setExistingAnexos] = useState<string[]>([]);
+  const [removedAnexos, setRemovedAnexos] = useState<string[]>([]);
 
   const [showIndexadorOutro, setShowIndexadorOutro] = useState(
     initialData?.indexador === 'Outro'
@@ -69,11 +73,30 @@ export default function DividaFormModal({
     if (initialData) {
       setFormData(initialData);
       setShowIndexadorOutro(initialData.indexador === 'Outro');
+      // normalizar anexos do initialData (pode ser array ou string JSON)
+      try {
+        const raw = (initialData as any).anexos;
+        if (!raw) setExistingAnexos([]);
+        else if (Array.isArray(raw)) setExistingAnexos(raw as string[]);
+        else if (typeof raw === 'string') {
+          const parsed = JSON.parse(raw);
+          setExistingAnexos(Array.isArray(parsed) ? parsed : []);
+        } else setExistingAnexos([]);
+      } catch (err) {
+        setExistingAnexos([]);
+      }
     } else {
       setFormData(getEmptyFormData());
       setShowIndexadorOutro(false);
     }
+    // reset arquivos selecionados quando troca entre editar/novo
+    setSelectedFiles([]);
   }, [initialData]);
+
+  // quando modal fecha, garantir que o state de arquivos seja resetado
+  useEffect(() => {
+    if (!isOpen) setSelectedFiles([]);
+  }, [isOpen]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -107,8 +130,12 @@ export default function DividaFormModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('📝 Formulário enviado:', formData);
-    onSubmit(formData);
+    console.log('📝 Formulário enviado:', formData, 'arquivos:', selectedFiles);
+    onSubmit(
+      formData,
+      selectedFiles.length ? selectedFiles : undefined,
+      removedAnexos.length ? removedAnexos : undefined
+    );
     onClose();
   };
 
@@ -513,16 +540,134 @@ export default function DividaFormModal({
                 />
               </div>
 
-              {/* 17. Anexos (mockado) */}
+              {/* 17. Anexos */}
               <div className="col-span-1 md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Anexos (Mockado)
+                  Anexos
                 </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-not-allowed">
-                  <p className="text-sm text-gray-600">
-                    Upload de arquivos desabilitado (mock apenas)
-                  </p>
+
+                {existingAnexos.length > 0 && (
+                  <div className="mb-3 flex items-center gap-4">
+                    {existingAnexos.map((url, i) => {
+                      const name = url.split('/').pop()?.split('?')[0] || `anexo-${i}`;
+                      const ext = (name.split('.').pop() || '').toLowerCase();
+                      const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext);
+                      return (
+                        <div key={i} className="relative">
+                          <a href={url} target="_blank" rel="noreferrer" className="block">
+                            {isImage ? (
+                              <img src={url} alt={name} className="w-20 h-14 object-cover rounded border border-gray-100" />
+                            ) : (
+                              <div className="w-20 h-14 flex items-center justify-center bg-gray-100 rounded border border-gray-100 text-xs text-gray-600 px-1">
+                                {name.length > 18 ? name.slice(0, 15) + '...' : name}
+                              </div>
+                            )}
+                          </a>
+
+                          <div className="absolute -top-2 -right-2 flex gap-2">
+                            <label htmlFor={`replace-${i}`} className="cursor-pointer bg-white border border-gray-200 rounded-full p-2 text-gray-600 shadow-sm hover:bg-gray-50" title="Substituir">
+                              <RefreshCw className="w-4 h-4" />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setExistingAnexos((prev) => prev.filter((u) => u !== url));
+                                setRemovedAnexos((prev) => [...prev, url]);
+                              }}
+                              className="bg-white border border-gray-200 rounded-full p-2 text-red-500 shadow-sm hover:bg-gray-50"
+                              title="Remover"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          <input
+                            id={`replace-${i}`}
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png,.webp"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (!f) return;
+                              // mark old for removal and add new to selected files
+                              setExistingAnexos((prev) => prev.filter((u) => u !== url));
+                              setRemovedAnexos((prev) => [...prev, url]);
+                              setSelectedFiles((prev) => [...prev, f]);
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className={`rounded-[14px] p-5 transition-all flex items-center gap-4 justify-between ${
+                  selectedFiles.length > 0 ? 'bg-[#F5FDF8] border-2 border-dashed border-[#00A651]' : 'bg-[#F5FDF8] border-2 border-dashed border-[#00A651]'
+                }`}>
+                  <input
+                    type="file"
+                    id="file-upload-divida"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                    multiple
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (!files) return;
+                      setSelectedFiles(Array.from(files));
+                    }}
+                    className="hidden"
+                  />
+
+                  <label htmlFor="file-upload-divida" className="cursor-pointer w-full">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-lg bg-white/60 border border-gray-100 flex items-center justify-center">
+                        <Upload className={`w-7 h-7 text-[#00A651]`} />
+                      </div>
+
+                      <div className="text-left w-full">
+                        <p className={`text-[15px] ${selectedFiles.length ? 'font-semibold text-[#004417]' : 'text-[#00441799]'}`}>
+                          {selectedFiles.length === 0 ? 'Anexar arquivo(s)' : selectedFiles.length === 1 ? selectedFiles[0].name : `${selectedFiles.length} arquivos selecionados`}
+                        </p>
+                        <p className="text-[13px] text-[#00441799]">PDF, JPG, PNG, WEBP — máximo 10MB por arquivo</p>
+                      </div>
+
+                      <div className="text-sm text-gray-500">Clique para selecionar</div>
+                    </div>
+                  </label>
                 </div>
+
+                {selectedFiles.length > 0 && (
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    {selectedFiles.map((f, idx) => {
+                      const isImage = /(png|jpe?g|webp|gif)$/i.test(f.name);
+                      const sizeKb = Math.round(f.size / 1024);
+                      return (
+                        <div key={idx} className="flex items-center gap-3 bg-white p-3 rounded-[12px] border border-[#00A65133]">
+                          <div className="w-20 h-14 flex items-center justify-center bg-gray-50 rounded overflow-hidden border">
+                            {isImage ? (
+                              <img src={URL.createObjectURL(f)} alt={f.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="text-xs text-gray-600 px-2 text-center">{f.name.length > 20 ? f.name.slice(0, 17) + '...' : f.name}</div>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-sm text-[#004417] truncate">{f.name}</div>
+                            <div className="text-xs text-[#00441799]">{sizeKb} KB</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedFiles((prev) => prev.filter((_, i) => i !== idx))}
+                              className="bg-white border border-gray-200 rounded-full p-2 text-red-500 shadow-sm hover:bg-gray-50"
+                              title="Remover arquivo selecionado"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* 18. Situação */}

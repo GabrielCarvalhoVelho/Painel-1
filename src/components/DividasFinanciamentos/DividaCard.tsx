@@ -12,7 +12,7 @@ interface DividaCardProps {
 const getSituacaoBadgeColor = (situacao: string) => {
   switch (situacao) {
     case 'Ativa':
-      return 'bg-orange-50 text-[#F7941F] border border-orange-200';
+      return 'bg-orange-50 text-[#F7941F]';
     case 'Liquidada':
       return 'bg-green-50 text-[#00A651] border border-green-200';
     case 'Renegociada':
@@ -122,7 +122,7 @@ export default function DividaCard({
         </button>
         <button
           onClick={() => onLiquidar(divida.id)}
-          className="flex-1 px-3 py-2 border border-[#F7941F] bg-orange-50 hover:bg-orange-100 rounded-lg text-sm font-medium text-[#F7941F] transition-colors"
+          className="flex-1 px-3 py-2 bg-orange-50 hover:bg-orange-100 rounded-lg text-sm font-medium text-[#F7941F] transition-colors"
         >
           Liquidar
         </button>

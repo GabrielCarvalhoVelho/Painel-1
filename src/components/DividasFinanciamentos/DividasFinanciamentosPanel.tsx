@@ -5,6 +5,7 @@ import { AuthService } from '../../services/authService';
 import DividaCard from './DividaCard';
 import DividaDetailPanel from './DividaDetailPanel';
 import DividaFormModal from './DividaFormModal';
+import { supabase } from '../../lib/supabase';
 
 export default function DividasFinanciamentosPanel() {
   const [dividas, setDividas] = useState<DividaFinanciamento[]>([]);
@@ -73,13 +74,104 @@ export default function DividasFinanciamentosPanel() {
     }
   };
 
-  const handleFormSubmit = async (formData: Partial<DividaFinanciamento>) => {
+  const uploadFilesForDivida = async (dividaId: string, files: File[]) => {
+    const bucket = 'dividas_financiamentos';
+    const ALLOWED_EXT = ['pdf', 'png', 'jpg', 'jpeg'];
+    const MAX_BYTES = 10 * 1024 * 1024; // 10MB
+    const uploadedUrls: string[] = [];
+
+    if (!userId) return uploadedUrls;
+
+    for (const file of files) {
+      try {
+        const ext = (file.name.split('.').pop() || '').toLowerCase();
+        if (!ALLOWED_EXT.includes(ext)) {
+          console.warn('Formato não permitido:', file.name);
+          continue;
+        }
+        if (file.size > MAX_BYTES) {
+          console.warn('Arquivo excede tamanho máximo:', file.name);
+          continue;
+        }
+
+        const safeName = file.name.replace(/\s+/g, '_');
+        const path = `${userId}/${dividaId}/${Date.now()}_${safeName}`;
+        const { error: uploadError } = await supabase.storage.from(bucket).upload(path, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+        if (uploadError) {
+          console.error('Erro upload arquivo:', uploadError);
+          continue;
+        }
+
+        const { data: urlData, error: urlErr } = await supabase.storage.from(bucket).getPublicUrl(path);
+        if (urlErr) {
+          console.error('Erro public url:', urlErr);
+          continue;
+        }
+        if ((urlData as any)?.publicUrl) uploadedUrls.push((urlData as any).publicUrl);
+      } catch (err) {
+        console.error('Erro no upload de arquivo:', err);
+      }
+    }
+
+    return uploadedUrls;
+  };
+
+  const getPathFromPublicUrl = (url: string) => {
+    // tenta extrair caminho após bucket `dividas_financiamentos/`
+    try {
+      const m = url.match(/dividas_financiamentos\/(.*)$/);
+      if (!m) return null;
+      return decodeURIComponent(m[1].split('?')[0]);
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const removeFilesFromStorage = async (urls: string[]) => {
+    const bucket = 'dividas_financiamentos';
+    const paths = urls.map(getPathFromPublicUrl).filter(Boolean) as string[];
+    if (paths.length === 0) return;
+    const { error } = await supabase.storage.from(bucket).remove(paths);
+    if (error) console.error('Erro removendo arquivos do storage:', error);
+  };
+
+  const handleFormSubmit = async (
+    formData: Partial<DividaFinanciamento>,
+    files?: File[],
+    removedAnexos?: string[]
+  ) => {
     if (!userId) return;
 
     // Se estiver editando, atualiza
     if (editingDivida) {
+      // primeiro: remover arquivos marcados
+      if (removedAnexos && removedAnexos.length) {
+        await removeFilesFromStorage(removedAnexos);
+      }
+
       const updated = await DividasFinanciamentosService.update(editingDivida.id, formData);
       if (updated) {
+        // atualizar lista de anexos existentes (removendo os marcados)
+        let existing: string[] = Array.isArray(editingDivida.anexos) ? editingDivida.anexos : [];
+        if (removedAnexos && removedAnexos.length) {
+          existing = existing.filter((u: string) => !removedAnexos.includes(u));
+        }
+
+        // se houver arquivos novos, subir e juntar
+        if (files && files.length > 0) {
+          const urls = await uploadFilesForDivida(editingDivida.id, files);
+          if (urls.length > 0) {
+            existing = [...existing, ...urls];
+          }
+        }
+
+        // gravar anexos finais
+        await DividasFinanciamentosService.update(editingDivida.id, { anexos: existing });
+
         await loadDividas(userId);
         setIsFormOpen(false);
         setEditingDivida(null);
@@ -93,6 +185,14 @@ export default function DividasFinanciamentosPanel() {
 
       const newDivida = await DividasFinanciamentosService.create(dividaData);
       if (newDivida) {
+        // upload de arquivos usando o id recém-criado
+        if (files && files.length > 0) {
+          const urls = await uploadFilesForDivida(newDivida.id, files);
+          if (urls.length > 0) {
+            await DividasFinanciamentosService.update(newDivida.id, { anexos: urls });
+          }
+        }
+
         await loadDividas(userId);
         setIsFormOpen(false);
       }
