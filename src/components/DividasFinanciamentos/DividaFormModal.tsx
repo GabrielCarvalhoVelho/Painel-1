@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { DividaFinanciamento } from '../../services/dividasFinanciamentosService';
 import CurrencyInput from '../common/CurrencyInput';
@@ -34,33 +34,46 @@ export default function DividaFormModal({
   onSubmit,
   initialData,
 }: DividaFormModalProps) {
+  const getEmptyFormData = (): Partial<DividaFinanciamento> => ({
+    nome: '',
+    credor: '',
+    tipo: '',
+    data_contratacao: '',
+    valor_contratado: 0,
+    taxa: '',
+    juros_aa: 'a.a.',
+    indexador: 'Fixo',
+    carencia: '',
+    garantia: '',
+    responsavel: 'Produtor',
+    observacoes: '',
+    situacao: 'Ativa',
+    anexos: [],
+    pagamento_parcela: { valor: 0, data: '' },
+    pagamento_parcelado: { numParcelas: 0, valorParcela: 0, primeiradata: '' },
+    pagamento_producao: { produto: '', quantidadeSacas: 0, dataPeriodo: '' },
+    cronograma_manual: '',
+    forma_pagamento: '',
+  });
+
   const [formData, setFormData] = useState<Partial<DividaFinanciamento>>(
-    initialData || {
-      nome: '',
-      credor: '',
-      tipo: '',
-      data_contratacao: '',
-      valor_contratado: 0,
-      taxa: '',
-      juros_aa: 'a.a.',
-      indexador: 'Fixo',
-      carencia: '',
-      garantia: '',
-      responsavel: 'Produtor',
-      observacoes: '',
-      situacao: 'Ativa',
-      anexos: [],
-      pagamento_parcela: { valor: 0, data: '' },
-      pagamento_parcelado: { numParcelas: 0, valorParcela: 0, primeiradata: '' },
-      pagamento_producao: { produto: '', quantidadeSacas: 0, dataPeriodo: '' },
-      cronograma_manual: '',
-      forma_pagamento: '',
-    }
+    initialData || getEmptyFormData()
   );
 
   const [showIndexadorOutro, setShowIndexadorOutro] = useState(
     initialData?.indexador === 'Outro'
   );
+
+  // Atualiza o formData quando initialData mudar (edição vs novo)
+  useEffect(() => {
+    if (initialData) {
+      setFormData(initialData);
+      setShowIndexadorOutro(initialData.indexador === 'Outro');
+    } else {
+      setFormData(getEmptyFormData());
+      setShowIndexadorOutro(false);
+    }
+  }, [initialData]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>

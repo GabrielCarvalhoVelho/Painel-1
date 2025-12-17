@@ -9,6 +9,7 @@ import DividaFormModal from './DividaFormModal';
 export default function DividasFinanciamentosPanel() {
   const [dividas, setDividas] = useState<DividaFinanciamento[]>([]);
   const [selectedDivida, setSelectedDivida] = useState<DividaFinanciamento | null>(null);
+  const [editingDivida, setEditingDivida] = useState<DividaFinanciamento | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,8 +41,12 @@ export default function DividasFinanciamentosPanel() {
   };
 
   const handleEdit = (id: string) => {
-    console.log('✏️ Editar dívida:', id);
-    setIsFormOpen(true);
+    const divida = dividas.find((d) => d.id === id);
+    if (divida) {
+      console.log('✏️ Editar dívida:', divida);
+      setEditingDivida(divida);
+      setIsFormOpen(true);
+    }
   };
 
   const handleLiquidar = async (id: string) => {
@@ -71,15 +76,26 @@ export default function DividasFinanciamentosPanel() {
   const handleFormSubmit = async (formData: Partial<DividaFinanciamento>) => {
     if (!userId) return;
 
-    const dividaData = {
-      ...formData,
-      user_id: userId,
-    } as Omit<DividaFinanciamento, 'id' | 'created_at' | 'updated_at'>;
+    // Se estiver editando, atualiza
+    if (editingDivida) {
+      const updated = await DividasFinanciamentosService.update(editingDivida.id, formData);
+      if (updated) {
+        await loadDividas(userId);
+        setIsFormOpen(false);
+        setEditingDivida(null);
+      }
+    } else {
+      // Senão, cria novo
+      const dividaData = {
+        ...formData,
+        user_id: userId,
+      } as Omit<DividaFinanciamento, 'id' | 'created_at' | 'updated_at'>;
 
-    const newDivida = await DividasFinanciamentosService.create(dividaData);
-    if (newDivida) {
-      await loadDividas(userId);
-      setIsFormOpen(false);
+      const newDivida = await DividasFinanciamentosService.create(dividaData);
+      if (newDivida) {
+        await loadDividas(userId);
+        setIsFormOpen(false);
+      }
     }
   };
 
@@ -99,7 +115,10 @@ export default function DividasFinanciamentosPanel() {
           <h1 className="text-3xl font-bold text-gray-900">Dívidas e Financiamentos</h1>
         </div>
         <button
-          onClick={() => setIsFormOpen(true)}
+          onClick={() => {
+            setEditingDivida(null);
+            setIsFormOpen(true);
+          }}
           className="flex items-center gap-2 px-4 py-2 bg-[#00A651] hover:bg-[#008c44] text-white rounded-lg font-medium transition-colors"
         >
           <Plus className="w-5 h-5" />
@@ -127,7 +146,10 @@ export default function DividasFinanciamentosPanel() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
           <p className="text-gray-600 mb-4">Nenhuma dívida ou financiamento cadastrado</p>
           <button
-            onClick={() => setIsFormOpen(true)}
+            onClick={() => {
+              setEditingDivida(null);
+              setIsFormOpen(true);
+            }}
             className="px-4 py-2 bg-[#00A651] hover:bg-[#008c44] text-white rounded-lg font-medium transition-colors"
           >
             Cadastrar agora
@@ -151,8 +173,12 @@ export default function DividasFinanciamentosPanel() {
       {/* Form Modal */}
       <DividaFormModal
         isOpen={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
+        onClose={() => {
+          setIsFormOpen(false);
+          setEditingDivida(null);
+        }}
         onSubmit={handleFormSubmit}
+        initialData={editingDivida}
       />
     </div>
   );
