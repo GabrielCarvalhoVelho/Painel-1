@@ -175,8 +175,7 @@ if (produtividadeFazenda !== null && produtividadeFazenda !== undefined) {
     <div className="space-y-6">
       {/* Page title (outside white cards) */}
       <div className="mb-2">
-        <h1 className="text-2xl font-bold text-[#004417]">Custo Safra</h1>
-        <p className="text-sm text-[#004417]/80 font-medium">Custos reais por hectare e por saca</p>
+        <h2 className="text-xl font-bold text-[#004417] mb-4">Custo Safra</h2>
       </div>
       {/* Header with Productivity */}
       <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] p-6">

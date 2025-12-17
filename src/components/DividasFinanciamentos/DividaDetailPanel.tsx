@@ -79,9 +79,7 @@ export default function DividaDetailPanel({
 
           {/* Informações Básicas */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">
-              Informações Básicas
-            </h3>
+              <h3 className="text-[16px] font-bold text-[#004417] mb-3">Informações Básicas</h3>
             <DetailField label="Tipo" value={divida.tipo} />
             <DetailField label="Credor" value={divida.credor} />
             <DetailField label="Data da Contratação" value={formatDateBR(divida.data_contratacao)} />
@@ -90,9 +88,7 @@ export default function DividaDetailPanel({
 
           {/* Valores e Taxas */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">
-              Valores e Taxas
-            </h3>
+            <h3 className="text-[16px] font-bold text-[#004417] mb-3">Valores e Taxas</h3>
             {divida.valor_contratado && divida.valor_contratado > 0 && (
               <DetailField
                 label="Valor Contratado"
@@ -105,9 +101,7 @@ export default function DividaDetailPanel({
 
           {/* Garantias e Pagamento */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">
-              Garantias e Pagamento
-            </h3>
+            <h3 className="text-[16px] font-bold text-[#004417] mb-3">Garantias e Pagamento</h3>
             <DetailField label="Garantia" value={divida.garantia} />
             <DetailField label="Forma de Pagamento" value={divida.forma_pagamento} />
           </div>
@@ -115,9 +109,7 @@ export default function DividaDetailPanel({
           {/* Observações */}
           {divida.observacoes && (
             <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">
-                Observações
-              </h3>
+              <h3 className="text-[16px] font-bold text-[#004417] mb-3">Observações</h3>
               <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
                 {divida.observacoes}
               </p>
@@ -129,9 +121,7 @@ export default function DividaDetailPanel({
             ((divida.pagamento_parcela?.valor ?? 0) > 0) ||
             ((divida.pagamento_producao?.quantidadeSacas ?? 0) > 0)) && (
             <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">
-                Cronograma de Pagamento
-              </h3>
+              <h3 className="text-[16px] font-bold text-[#004417] mb-3">Cronograma de Pagamento</h3>
               {((divida.pagamento_parcelado?.numParcelas ?? 0) > 0) && ((divida.pagamento_parcelado?.valorParcela ?? 0) > 0) && (
                 <div className="bg-gray-50 p-3 rounded-lg space-y-2 mb-3">
                   <p className="text-sm text-gray-700">
@@ -186,9 +176,7 @@ export default function DividaDetailPanel({
           {/* Anexos */}
           {divida.anexos && divida.anexos.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">
-                Anexos
-              </h3>
+              <h3 className="text-[16px] font-bold text-[#004417] mb-3">Anexos</h3>
               <div className="grid grid-cols-3 gap-3">
                 {divida.anexos.map((anexo, idx) => {
                   const name = anexo.split('/').pop()?.split('?')[0] || `anexo-${idx}`;

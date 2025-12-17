@@ -362,7 +362,6 @@ export default function ManejoAgricolaPanel() {
       {/* Header reduzido: título compacto (resumo removido conforme solicitado) */}
       <div className="mb-4">
         <h2 className="text-xl font-bold text-[#004417] mb-4">Manejo Agrícola</h2>
-        <p className="text-sm text-[#004417]/75">Controle de atividades técnicas da propriedade</p>
       </div>
 
       {/* Filtro de Talhões */}

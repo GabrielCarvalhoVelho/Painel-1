@@ -242,10 +242,7 @@ export default function CustoPorTalhaoPanel() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#004417] flex items-center gap-2">
-            Custo por Talhão
-          </h1>
-          <p className="text-[#1d3a2d] mt-1">Custos agrícolas divididos por área</p>
+          <h2 className="text-xl font-bold text-[#004417] mb-4">Custo por Talhão</h2>
         </div>
       </div>
 
@@ -369,7 +366,7 @@ export default function CustoPorTalhaoPanel() {
       {/* Tabela Principal - Desktop (≥1024px) */}
       {!loading && (
         <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-6 hidden lg:block">
-          <h3 className="text-lg font-bold text-[#004417] mb-4">Custo por Talhão</h3>
+          <h3 className="text-[16px] font-bold text-[#004417] mb-4">Custo por Talhão</h3>
 
           <div className="overflow-x-auto bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] overflow-hidden">
             <table className="min-w-full">

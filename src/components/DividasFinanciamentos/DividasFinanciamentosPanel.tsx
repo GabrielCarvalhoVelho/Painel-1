@@ -214,16 +214,31 @@ export default function DividasFinanciamentosPanel() {
         <div>
           <h1 className="text-xl font-bold text-[#004417] mb-4">Dívidas e Financiamentos</h1>
         </div>
-        <button
-          onClick={() => {
-            setEditingDivida(null);
-            setIsFormOpen(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-[#00A651] hover:bg-[#008c44] text-white rounded-lg font-medium transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Nova dívida/financiamento
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Desktop: botão com texto (restaurado ao estilo original) */}
+          <button
+            onClick={() => {
+              setEditingDivida(null);
+              setIsFormOpen(true);
+            }}
+            className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-[#00A651] hover:bg-[#008c44] text-white rounded-lg font-medium transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Nova dívida/financiamento</span>
+          </button>
+
+          {/* Mobile: apenas o ícone + */}
+          <button
+            onClick={() => {
+              setEditingDivida(null);
+              setIsFormOpen(true);
+            }}
+            className="inline-flex md:hidden items-center justify-center p-2 bg-[#00A651] hover:bg-[#008c44] text-white rounded-full"
+            aria-label="Nova dívida"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Cards Grid */}

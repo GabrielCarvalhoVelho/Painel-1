@@ -221,15 +221,27 @@ export default function PragasDoencasPanel() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Pragas e Doenças</h1>
+          <h2 className="text-xl font-bold text-[#004417] mb-4">Pragas e Doenças</h2>
         </div>
-        <button
-          onClick={handleNewOcorrencia}
-          className="flex items-center gap-2 px-4 py-2 bg-[#00A651] hover:bg-[#008c44] text-white rounded-lg font-medium transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Nova Ocorrencia
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Desktop: botão com texto */}
+          <button
+            onClick={handleNewOcorrencia}
+            className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-[#00A651] hover:bg-[#008c44] text-white rounded-lg font-medium transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Nova Ocorrencia</span>
+          </button>
+
+          {/* Mobile: somente ícone + */}
+          <button
+            onClick={handleNewOcorrencia}
+            className="inline-flex md:hidden items-center justify-center p-2 bg-[#00A651] hover:bg-[#008c44] text-white rounded-full"
+            aria-label="Nova Ocorrencia"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {ocorrencias.length === 0 ? (
