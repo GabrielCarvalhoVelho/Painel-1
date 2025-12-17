@@ -1,10 +1,19 @@
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseServiceRole = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY
-);
+// Cliente com service role para operações de storage (contorna RLS)
+// Em produção, usa anon key (requer políticas RLS corretas no Storage)
+const url = import.meta.env.VITE_SUPABASE_URL;
+const serviceRole = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+const storageKey = serviceRole || anonKey;
+
+if (!url || !storageKey) {
+  throw new Error('Supabase configuration missing for activityAttachmentService');
+}
+
+const supabaseServiceRole = createClient(url, storageKey);
 
 /**
  * Service de anexos agora trabalha somente com Supabase Storage.
