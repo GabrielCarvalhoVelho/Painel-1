@@ -28,7 +28,9 @@ const apiKey = DEV_MODE && serviceRole ? serviceRole : anon;
 console.log('🔧 Supabase Client Mode:', {
   mode: import.meta.env.MODE,
   isDev: DEV_MODE,
-  usingServiceRole: DEV_MODE && !!serviceRole
+  usingServiceRole: DEV_MODE && !!serviceRole,
+  hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
+  keyType: DEV_MODE && serviceRole ? 'SERVICE_ROLE (⚠️ BYPASS RLS)' : 'ANON (✅ RLS ATIVO)'
 });
 
 // Singleton Supabase client

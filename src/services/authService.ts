@@ -98,7 +98,8 @@ export class AuthService {
           email: payload.email,
           role: payload.role,
           aud: payload.aud,
-          ambiente: DEV_BYPASS ? 'development' : 'production'
+          ambiente: DEV_BYPASS ? 'development' : 'production',
+          rlsStatus: DEV_BYPASS ? '⚠️ BYPASS (service_role)' : '✅ ATIVO (anon key + JWT)'
         });
 
         if (!payload?.sub) {

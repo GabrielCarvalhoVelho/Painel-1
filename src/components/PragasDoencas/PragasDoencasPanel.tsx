@@ -6,8 +6,7 @@ import OcorrenciaDetailPanel from './OcorrenciaDetailPanel';
 import OcorrenciaFormModal from './OcorrenciaFormModal';
 import LoadingSpinner from '../Dashboard/LoadingSpinner';
 import { PragasDoencasService, PragaDoencaComTalhoes } from '../../services/pragasDoencasService';
-
-const TEMP_USER_ID = 'c7f13743-67ef-45d4-807c-9f5de81d4999';
+import { AuthService } from '../../services/authService';
 
 interface OcorrenciaComTalhaoIds extends Ocorrencia {
   talhaoIds?: string[];
@@ -53,14 +52,25 @@ export default function PragasDoencasPanel() {
   const [editingOcorrencia, setEditingOcorrencia] = useState<OcorrenciaComTalhaoIds | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const authService = AuthService.getInstance();
+  const currentUser = authService.getCurrentUser();
+  const userId = currentUser?.user_id;
+
   useEffect(() => {
+    if (!userId) {
+      console.error('Usuário não autenticado');
+      setLoading(false);
+      return;
+    }
     loadOcorrencias();
-  }, []);
+  }, [userId]);
 
   const loadOcorrencias = async () => {
+    if (!userId) return;
+
     setLoading(true);
     try {
-      const data = await PragasDoencasService.getOcorrencias(TEMP_USER_ID);
+      const data = await PragasDoencasService.getOcorrencias(userId);
       const adaptadas = data.map(adaptarParaOcorrencia);
       setOcorrencias(adaptadas);
     } catch (error) {
@@ -84,10 +94,15 @@ export default function PragasDoencasPanel() {
   };
 
   const handleMarkResolved = async (ocorrencia: Ocorrencia) => {
+    if (!userId) {
+      console.error('Usuário não autenticado');
+      return;
+    }
+
     const { error } = await PragasDoencasService.updateStatus(
       ocorrencia.id,
       'Resolvida',
-      TEMP_USER_ID
+      userId
     );
 
     if (error) {
@@ -116,9 +131,14 @@ export default function PragasDoencasPanel() {
   };
 
   const handleFormSubmit = async (formData: Partial<Ocorrencia>, talhaoIds: string[], imageFile?: File) => {
+    if (!userId) {
+      console.error('Usuário não autenticado');
+      return;
+    }
+
     if (editingOcorrencia) {
       const payload = {
-        user_id: TEMP_USER_ID,
+        user_id: userId,
         talhoes: formData.talhao,
         data_da_ocorrencia: formData.dataOcorrencia,
         fase_da_lavoura: formData.faseLavoura,
@@ -154,7 +174,7 @@ export default function PragasDoencasPanel() {
       setEditingOcorrencia(null);
     } else {
       const payload = {
-        user_id: TEMP_USER_ID,
+        user_id: userId,
         talhoes: formData.talhao,
         data_da_ocorrencia: formData.dataOcorrencia || new Date().toISOString().split('T')[0],
         fase_da_lavoura: formData.faseLavoura || 'Vegetativo',
@@ -261,7 +281,7 @@ export default function PragasDoencasPanel() {
         }}
         onSubmit={handleFormSubmit}
         initialData={editingOcorrencia}
-        userId={TEMP_USER_ID}
+        userId={userId || ''}
         initialTalhaoIds={editingOcorrencia?.talhaoIds || []}
       />
     </div>
