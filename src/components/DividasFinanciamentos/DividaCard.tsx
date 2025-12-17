@@ -63,10 +63,43 @@ export default function DividaCard({
       </div>
 
       {/* Forma de pagamento */}
-      <div className="mb-5 pb-4 border-b border-gray-100">
-        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Forma de Pagamento</p>
-        <p className="text-sm text-gray-900 font-medium">{divida.forma_pagamento}</p>
-      </div>
+      {(divida.forma_pagamento ||
+        divida.pagamento_parcelado?.numParcelas ||
+        divida.pagamento_parcela?.valor ||
+        divida.pagamento_producao?.quantidadeSacas) && (
+        <div className="mb-5 pb-4 border-b border-gray-100">
+          {divida.forma_pagamento && (
+            <div className="mb-3">
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Forma de Pagamento</p>
+              <p className="text-sm text-gray-900 font-medium">{divida.forma_pagamento}</p>
+            </div>
+          )}
+
+          {divida.pagamento_parcelado?.numParcelas && (
+            <div className="mb-2 p-2 bg-blue-50 rounded-lg">
+              <p className="text-xs text-blue-600 font-medium">
+                {divida.pagamento_parcelado.numParcelas}x R$ {divida.pagamento_parcelado.valorParcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          )}
+
+          {divida.pagamento_parcela?.valor && (
+            <div className="mb-2 p-2 bg-green-50 rounded-lg">
+              <p className="text-xs text-green-600 font-medium">
+                Parcela Única: R$ {divida.pagamento_parcela.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          )}
+
+          {divida.pagamento_producao?.quantidadeSacas && (
+            <div className="p-2 bg-orange-50 rounded-lg">
+              <p className="text-xs text-orange-600 font-medium">
+                {divida.pagamento_producao.quantidadeSacas} sacas de {divida.pagamento_producao.produto}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Ações */}
       <div className="flex gap-2">
