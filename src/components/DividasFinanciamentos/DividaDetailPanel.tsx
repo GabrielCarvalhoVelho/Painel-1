@@ -13,13 +13,13 @@ interface DividaDetailPanelProps {
 const getSituacaoBadgeColor = (situacao: string) => {
   switch (situacao) {
     case 'Ativa':
-      return 'bg-blue-100 text-blue-800';
+      return 'bg-blue-50 text-blue-700 border border-blue-200';
     case 'Liquidada':
-      return 'bg-green-100 text-green-800';
+      return 'bg-green-50 text-[#00A651] border border-green-200';
     case 'Renegociada':
-      return 'bg-amber-100 text-amber-800';
+      return 'bg-orange-50 text-[#F7941F] border border-orange-200';
     default:
-      return 'bg-gray-100 text-gray-800';
+      return 'bg-gray-100 text-gray-800 border border-gray-200';
   }
 };
 
@@ -71,14 +71,14 @@ export default function DividaDetailPanel({
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Status Badge */}
           <div className="flex items-center gap-2">
-            <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getSituacaoBadgeColor(divida.situacao)}`}>
+            <span className={`px-4 py-2 rounded-lg text-sm font-semibold ${getSituacaoBadgeColor(divida.situacao)}`}>
               {divida.situacao}
             </span>
           </div>
 
           {/* Informações Básicas */}
           <div>
-            <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">
               Informações Básicas
             </h3>
             <DetailField label="Tipo" value={divida.tipo} />
@@ -89,7 +89,7 @@ export default function DividaDetailPanel({
 
           {/* Valores e Taxas */}
           <div>
-            <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">
               Valores e Taxas
             </h3>
             <DetailField
@@ -102,7 +102,7 @@ export default function DividaDetailPanel({
 
           {/* Garantias e Pagamento */}
           <div>
-            <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">
               Garantias e Pagamento
             </h3>
             <DetailField label="Garantia" value={divida.garantia} />
@@ -112,7 +112,7 @@ export default function DividaDetailPanel({
           {/* Observações */}
           {divida.observacoes && (
             <div>
-              <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">
                 Observações
               </h3>
               <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
@@ -124,7 +124,7 @@ export default function DividaDetailPanel({
           {/* Cronograma de Pagamento */}
           {(divida.pagamentoParcelado || divida.pagamentoParcela || divida.pagamentoProducao) && (
             <div>
-              <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">
                 Cronograma de Pagamento
               </h3>
               {divida.pagamentoParcelado && (
@@ -175,7 +175,7 @@ export default function DividaDetailPanel({
           {/* Anexos */}
           {divida.anexos && divida.anexos.length > 0 && (
             <div>
-              <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">
                 Anexos
               </h3>
               <div className="space-y-2">
@@ -196,7 +196,7 @@ export default function DividaDetailPanel({
         </div>
 
         {/* Footer com botões */}
-        <div className="border-t border-gray-200 p-4 space-y-2">
+        <div className="border-t border-gray-100 p-4 space-y-2">
           <button
             onClick={() => {
               onEdit(divida.id);
@@ -212,7 +212,7 @@ export default function DividaDetailPanel({
               onLiquidar(divida.id);
               onClose();
             }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-green-200 hover:bg-green-50 text-green-700 rounded-lg font-medium transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-[#F7941F] bg-orange-50 hover:bg-orange-100 text-[#F7941F] rounded-lg font-medium transition-colors"
           >
             <CheckCircle className="w-4 h-4" />
             Liquidar
@@ -222,7 +222,7 @@ export default function DividaDetailPanel({
               onDelete(divida.id);
               onClose();
             }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-red-200 hover:bg-red-50 text-red-700 rounded-lg font-medium transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-red-300 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-colors"
           >
             <Trash2 className="w-4 h-4" />
             Excluir

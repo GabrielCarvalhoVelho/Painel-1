@@ -46,10 +46,7 @@ export default function DividasFinanciamentosPanel() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dívidas e Financiamentos</h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Gerencie suas dívidas, financiamentos e compromissos financeiros
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900">Dívidas e Financiamentos</h1>
         </div>
         <button
           onClick={() => setIsFormOpen(true)}

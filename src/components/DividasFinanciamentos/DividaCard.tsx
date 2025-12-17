@@ -11,13 +11,13 @@ interface DividaCardProps {
 const getSituacaoBadgeColor = (situacao: string) => {
   switch (situacao) {
     case 'Ativa':
-      return 'bg-blue-100 text-blue-800';
+      return 'bg-blue-50 text-blue-700 border border-blue-200';
     case 'Liquidada':
-      return 'bg-green-100 text-green-800';
+      return 'bg-green-50 text-[#00A651] border border-green-200';
     case 'Renegociada':
-      return 'bg-amber-100 text-amber-800';
+      return 'bg-orange-50 text-[#F7941F] border border-orange-200';
     default:
-      return 'bg-gray-100 text-gray-800';
+      return 'bg-gray-100 text-gray-800 border border-gray-200';
   }
 };
 
@@ -25,8 +25,8 @@ const renderField = (label: string, value?: string | number | null) => {
   if (!value) return null;
   return (
     <div className="mb-3">
-      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{label}</p>
-      <p className="text-sm text-gray-900 font-medium">{value}</p>
+      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">{label}</p>
+      <p className="text-sm text-gray-900">{value}</p>
     </div>
   );
 };
@@ -38,14 +38,14 @@ export default function DividaCard({
   onLiquidar,
 }: DividaCardProps) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
       {/* Header com título e badge */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
-          <h3 className="text-base font-bold text-gray-900">{divida.nome}</h3>
+          <h3 className="text-lg font-bold text-gray-900">{divida.nome}</h3>
           <p className="text-sm text-gray-600 mt-1">{divida.credor}</p>
         </div>
-        <span className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ml-2 ${getSituacaoBadgeColor(divida.situacao)}`}>
+        <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap ml-2 ${getSituacaoBadgeColor(divida.situacao)}`}>
           {divida.situacao}
         </span>
       </div>
@@ -72,7 +72,7 @@ export default function DividaCard({
       <div className="flex gap-2">
         <button
           onClick={() => onViewDetails(divida.id)}
-          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-100 rounded-lg text-sm font-medium text-gray-700 transition-colors"
         >
           Ver detalhes
           <ChevronRight className="w-4 h-4" />
@@ -85,7 +85,7 @@ export default function DividaCard({
         </button>
         <button
           onClick={() => onLiquidar(divida.id)}
-          className="flex-1 px-3 py-2 border border-red-200 hover:bg-red-50 rounded-lg text-sm font-medium text-red-700 transition-colors"
+          className="flex-1 px-3 py-2 border border-[#F7941F] bg-orange-50 hover:bg-orange-100 rounded-lg text-sm font-medium text-[#F7941F] transition-colors"
         >
           Liquidar
         </button>

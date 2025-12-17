@@ -112,9 +112,9 @@ export default function DividaFormModal({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between p-6 border-b border-gray-100">
             <h2 className="text-2xl font-bold text-gray-900">
-              Cadastro de Dívidas, Financiamentos e Compromissos
+              {initialData ? 'Editar' : 'Nova'} Dívida/Financiamento
             </h2>
             <button
               onClick={onClose}
@@ -137,7 +137,7 @@ export default function DividaFormModal({
                   name="nome"
                   value={formData.nome || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                  className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                   placeholder="Ex: Custeio 2025"
                   required
                 />
@@ -153,7 +153,7 @@ export default function DividaFormModal({
                   name="credor"
                   value={formData.credor || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                  className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                   placeholder="Ex: Banco do Brasil"
                   required
                 />
@@ -168,7 +168,7 @@ export default function DividaFormModal({
                   name="tipo"
                   value={formData.tipo || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                  className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                   required
                 >
                   <option value="">Selecione...</option>
@@ -190,7 +190,7 @@ export default function DividaFormModal({
                   name="dataContratacao"
                   value={formData.dataContratacao || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                  className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                 />
               </div>
 
@@ -204,7 +204,7 @@ export default function DividaFormModal({
                   name="valorContratado"
                   value={formData.valorContratado || 0}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                  className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                   placeholder="0.00"
                   step="0.01"
                 />
@@ -220,7 +220,7 @@ export default function DividaFormModal({
                   name="taxa"
                   value={formData.taxa || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                  className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                   placeholder="Ex: 12"
                   step="0.01"
                 />
@@ -235,7 +235,7 @@ export default function DividaFormModal({
                   name="jurosAA"
                   value={formData.jurosAA || 'a.a.'}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                  className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                 >
                   {jurosFreqOptions.map((opt) => (
                     <option key={opt} value={opt}>
@@ -254,7 +254,7 @@ export default function DividaFormModal({
                   name="indexador"
                   value={formData.indexador || 'Fixo'}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                  className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                 >
                   {indexadorOptions.map((opt) => (
                     <option key={opt} value={opt}>
@@ -273,7 +273,7 @@ export default function DividaFormModal({
                     value={formData.indexadorOutro || ''}
                     onChange={handleChange}
                     placeholder="Especifique o indexador"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                    className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                   />
                 </div>
               )}
@@ -288,7 +288,7 @@ export default function DividaFormModal({
                   name="carencia"
                   value={formData.carencia || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                  className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                   placeholder="Ex: 6 meses"
                 />
               </div>
@@ -303,7 +303,7 @@ export default function DividaFormModal({
                   name="garantia"
                   value={formData.garantia || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                  className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                   placeholder="Ex: Safra 2025"
                 />
               </div>
@@ -317,7 +317,7 @@ export default function DividaFormModal({
                   name="responsavel"
                   value={formData.responsavel || 'Produtor'}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                  className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                 >
                   {responsavelOptions.map((opt) => (
                     <option key={opt} value={opt}>
@@ -336,7 +336,7 @@ export default function DividaFormModal({
                   name="observacoes"
                   value={formData.observacoes || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none resize-none"
+                  className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none resize-none"
                   rows={3}
                   placeholder="Adicione observações sobre a dívida"
                 />
@@ -348,7 +348,7 @@ export default function DividaFormModal({
               </div>
 
               {/* 13. Pagamento parcela única */}
-              <div className="col-span-1 md:col-span-2 border border-gray-200 p-4 rounded-lg">
+              <div className="col-span-1 md:col-span-2 border border-gray-100 p-4 rounded-lg">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">Parcela Única</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -365,7 +365,7 @@ export default function DividaFormModal({
                           parseFloat(e.target.value) || 0
                         )
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                      className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                       placeholder="0.00"
                       step="0.01"
                     />
@@ -380,14 +380,14 @@ export default function DividaFormModal({
                       onChange={(e) =>
                         handleNestedChange('pagamentoParcela', 'data', e.target.value)
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                      className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                     />
                   </div>
                 </div>
               </div>
 
               {/* 14. Pagamento parcelado */}
-              <div className="col-span-1 md:col-span-2 border border-gray-200 p-4 rounded-lg">
+              <div className="col-span-1 md:col-span-2 border border-gray-100 p-4 rounded-lg">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">Parcelado</h4>
                 <div className="grid grid-cols-3 gap-3">
                   <div>
@@ -404,7 +404,7 @@ export default function DividaFormModal({
                           parseInt(e.target.value) || 0
                         )
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                      className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                       placeholder="0"
                     />
                   </div>
@@ -422,7 +422,7 @@ export default function DividaFormModal({
                           parseFloat(e.target.value) || 0
                         )
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                      className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                       placeholder="0.00"
                       step="0.01"
                     />
@@ -437,14 +437,14 @@ export default function DividaFormModal({
                       onChange={(e) =>
                         handleNestedChange('pagamentoParcelado', 'primeiradata', e.target.value)
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                      className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                     />
                   </div>
                 </div>
               </div>
 
               {/* 15. Pagamento com produção */}
-              <div className="col-span-1 md:col-span-2 border border-gray-200 p-4 rounded-lg">
+              <div className="col-span-1 md:col-span-2 border border-gray-100 p-4 rounded-lg">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">Com Produção</h4>
                 <div className="grid grid-cols-4 gap-3">
                   <div>
@@ -457,7 +457,7 @@ export default function DividaFormModal({
                       onChange={(e) =>
                         handleNestedChange('pagamentoProducao', 'produto', e.target.value)
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                      className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                       placeholder="Ex: Café"
                     />
                   </div>
@@ -475,7 +475,7 @@ export default function DividaFormModal({
                           parseInt(e.target.value) || 0
                         )
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                      className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                       placeholder="0"
                     />
                   </div>
@@ -493,7 +493,7 @@ export default function DividaFormModal({
                           parseFloat(e.target.value) || undefined
                         )
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                      className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                       placeholder="0.00"
                       step="0.01"
                     />
@@ -508,7 +508,7 @@ export default function DividaFormModal({
                       onChange={(e) =>
                         handleNestedChange('pagamentoProducao', 'dataPeriodo', e.target.value)
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                      className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                       placeholder="Ex: Junho 2025"
                     />
                   </div>
@@ -524,7 +524,7 @@ export default function DividaFormModal({
                   name="cronogramaManual"
                   value={formData.cronogramaManual || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none resize-none"
+                  className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none resize-none"
                   rows={3}
                   placeholder="Descreva o cronograma de pagamento customizado"
                 />
@@ -551,7 +551,7 @@ export default function DividaFormModal({
                   name="situacao"
                   value={formData.situacao || 'Ativa'}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
+                  className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                   required
                 >
                   {situacaoOptions.map((opt) => (
@@ -565,10 +565,10 @@ export default function DividaFormModal({
           </form>
 
           {/* Footer */}
-          <div className="border-t border-gray-200 p-4 flex gap-3 justify-end">
+          <div className="border-t border-gray-100 p-4 md:p-6 flex gap-3 justify-end">
             <button
               onClick={onClose}
-              className="px-6 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+              className="px-6 py-2 border border-gray-100 hover:bg-gray-50 rounded-lg text-sm font-medium text-gray-700 transition-colors"
             >
               Cancelar
             </button>
