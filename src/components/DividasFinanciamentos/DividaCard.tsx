@@ -11,11 +11,11 @@ interface DividaCardProps {
 const getSituacaoBadgeColor = (situacao: string) => {
   switch (situacao) {
     case 'Ativa':
-      return 'bg-blue-50 text-blue-700 border border-blue-200';
+      return 'bg-orange-50 text-[#F7941F] border border-orange-200';
     case 'Liquidada':
       return 'bg-green-50 text-[#00A651] border border-green-200';
     case 'Renegociada':
-      return 'bg-orange-50 text-[#F7941F] border border-orange-200';
+      return 'bg-gray-100 text-gray-700 border border-gray-300';
     default:
       return 'bg-gray-100 text-gray-800 border border-gray-200';
   }
