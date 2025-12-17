@@ -38,7 +38,7 @@ export default function SimuladorVendaPanel() {
       {/* Header */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-[#092f20]">Simulador de Venda</h2>
+          <h2 className="text-xl font-bold text-[#004417]">Simulador de Venda</h2>
           <div className="flex items-center space-x-2 text-[#397738]">
             <div className="w-2 h-2 bg-[#397738] rounded-full animate-pulse"></div>
             <span className="text-sm font-medium">Cotação atualizada</span>

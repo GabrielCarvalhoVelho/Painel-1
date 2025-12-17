@@ -1,5 +1,6 @@
 import { DividaFinanciamento } from '../../services/dividasFinanciamentosService';
 import { X, Edit2, Trash2, CheckCircle } from 'lucide-react';
+import { formatDateBR } from '../../lib/dateUtils';
 
 interface DividaDetailPanelProps {
   divida: DividaFinanciamento | null;
@@ -13,11 +14,11 @@ interface DividaDetailPanelProps {
 const getSituacaoBadgeColor = (situacao: string) => {
   switch (situacao) {
     case 'Ativa':
-      return 'bg-blue-50 text-blue-700 border border-blue-200';
+      return 'bg-blue-50 text-gray-700';
     case 'Liquidada':
-      return 'bg-green-50 text-[#00A651] border border-green-200';
+      return 'bg-green-50 text-[#00A651]';
     case 'Renegociada':
-      return 'bg-orange-50 text-[#F7941F] border border-orange-200';
+      return 'bg-orange-50 text-[#F7941F]';
     default:
       return 'bg-gray-100 text-gray-800 border border-gray-200';
   }
@@ -52,11 +53,11 @@ export default function DividaDetailPanel({
       />
 
       {/* Panel */}
-      <div className="fixed right-0 top-0 h-full w-96 bg-white shadow-2xl z-50 flex flex-col overflow-hidden animate-in slide-in-from-right-96">
+      <div className="fixed right-0 top-0 bottom-0 w-96 bg-white shadow-2xl z-50 flex flex-col overflow-hidden animate-in slide-in-from-right-96">
         {/* Header */}
         <div className="border-b border-gray-200 p-6 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">{divida.nome}</h2>
+            <h2 className="text-xl font-bold text-[#004417] mb-4">{divida.nome}</h2>
             <p className="text-sm text-gray-600 mt-1">{divida.credor}</p>
           </div>
           <button
@@ -83,7 +84,7 @@ export default function DividaDetailPanel({
             </h3>
             <DetailField label="Tipo" value={divida.tipo} />
             <DetailField label="Credor" value={divida.credor} />
-            <DetailField label="Data da Contratação" value={divida.data_contratacao} />
+            <DetailField label="Data da Contratação" value={formatDateBR(divida.data_contratacao)} />
             <DetailField label="Responsável" value={divida.responsavel} />
           </div>
 
@@ -92,10 +93,12 @@ export default function DividaDetailPanel({
             <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">
               Valores e Taxas
             </h3>
-            <DetailField
-              label="Valor Contratado"
-              value={`R$ ${divida.valor_contratado.toLocaleString('pt-BR')}`}
-            />
+            {divida.valor_contratado && divida.valor_contratado > 0 && (
+              <DetailField
+                label="Valor Contratado"
+                value={`R$ ${divida.valor_contratado.toLocaleString('pt-BR')}`}
+              />
+            )}
             <DetailField label="Taxa" value={divida.taxa} />
             <DetailField label="Carência" value={divida.carencia} />
           </div>
@@ -122,14 +125,14 @@ export default function DividaDetailPanel({
           )}
 
           {/* Cronograma de Pagamento */}
-          {(divida.pagamento_parcelado?.numParcelas ||
-            divida.pagamento_parcela?.valor ||
-            divida.pagamento_producao?.quantidadeSacas) && (
+          {(((divida.pagamento_parcelado?.numParcelas ?? 0) > 0 && (divida.pagamento_parcelado?.valorParcela ?? 0) > 0) ||
+            ((divida.pagamento_parcela?.valor ?? 0) > 0) ||
+            ((divida.pagamento_producao?.quantidadeSacas ?? 0) > 0)) && (
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">
                 Cronograma de Pagamento
               </h3>
-              {divida.pagamento_parcelado?.numParcelas && (
+              {((divida.pagamento_parcelado?.numParcelas ?? 0) > 0) && ((divida.pagamento_parcelado?.valorParcela ?? 0) > 0) && (
                 <div className="bg-gray-50 p-3 rounded-lg space-y-2 mb-3">
                   <p className="text-sm text-gray-700">
                     <strong>Parcelado:</strong> {divida.pagamento_parcelado.numParcelas} parcelas de R${' '}
@@ -139,12 +142,12 @@ export default function DividaDetailPanel({
                   </p>
                   {divida.pagamento_parcelado.primeiradata && (
                     <p className="text-sm text-gray-600">
-                      Primeira parcela: {divida.pagamento_parcelado.primeiradata}
+                      Primeira parcela: {formatDateBR(divida.pagamento_parcelado.primeiradata)}
                     </p>
                   )}
                 </div>
               )}
-              {divida.pagamento_parcela?.valor && (
+              {((divida.pagamento_parcela?.valor ?? 0) > 0) && (
                 <div className="bg-gray-50 p-3 rounded-lg space-y-2 mb-3">
                   <p className="text-sm text-gray-700">
                     <strong>Parcela Única:</strong> R${' '}
@@ -154,25 +157,25 @@ export default function DividaDetailPanel({
                   </p>
                   {divida.pagamento_parcela.data && (
                     <p className="text-sm text-gray-600">
-                      Data: {divida.pagamento_parcela.data}
+                      Data: {formatDateBR(divida.pagamento_parcela.data)}
                     </p>
                   )}
                 </div>
               )}
-              {divida.pagamento_producao?.quantidadeSacas && (
+              {((divida.pagamento_producao?.quantidadeSacas ?? 0) > 0) && (
                 <div className="bg-gray-50 p-3 rounded-lg space-y-2">
                   <p className="text-sm text-gray-700">
                     <strong>Com Produção:</strong> {divida.pagamento_producao.quantidadeSacas} sacas de{' '}
                     {divida.pagamento_producao.produto}
                   </p>
-                  {divida.pagamento_producao.precoPorSaca && (
+                  {((divida.pagamento_producao?.precoPorSaca ?? 0) > 0) && (
                     <p className="text-sm text-gray-600">
                       Preço: R$ {divida.pagamento_producao.precoPorSaca.toLocaleString('pt-BR')} / saca
                     </p>
                   )}
                   {divida.pagamento_producao.dataPeriodo && (
                     <p className="text-sm text-gray-600">
-                      Período: {divida.pagamento_producao.dataPeriodo}
+                      Período: {formatDateBR(divida.pagamento_producao.dataPeriodo)}
                     </p>
                   )}
                 </div>
@@ -186,18 +189,31 @@ export default function DividaDetailPanel({
               <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">
                 Anexos
               </h3>
-              <div className="space-y-2">
-                {divida.anexos.map((anexo, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg text-sm text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
-                  >
-                    <div className="w-5 h-5 bg-gray-300 rounded flex items-center justify-center text-xs font-bold text-gray-700">
-                      📄
-                    </div>
-                    {anexo}
-                  </div>
-                ))}
+              <div className="grid grid-cols-3 gap-3">
+                {divida.anexos.map((anexo, idx) => {
+                  const name = anexo.split('/').pop()?.split('?')[0] || `anexo-${idx}`;
+                  const ext = (name.split('.').pop() || '').toLowerCase();
+                  const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext);
+                  return (
+                    <a
+                      key={idx}
+                      href={anexo}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block"
+                    >
+                      {isImage ? (
+                        <div className="w-20 h-14 overflow-hidden rounded border border-gray-100">
+                          <img src={anexo} alt={name} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-20 h-14 flex items-center justify-center bg-gray-100 rounded border border-gray-100 text-xs text-gray-600 px-2 text-center">
+                          {name.length > 18 ? name.slice(0, 15) + '...' : name}
+                        </div>
+                      )}
+                    </a>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -230,7 +246,7 @@ export default function DividaDetailPanel({
               onDelete(divida.id);
               onClose();
             }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-red-300 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg font-medium transition-colors"
           >
             <Trash2 className="w-4 h-4" />
             Excluir

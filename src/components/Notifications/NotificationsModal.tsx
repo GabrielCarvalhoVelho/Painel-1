@@ -26,7 +26,7 @@ export default function NotificationsModal({ isOpen, onClose, notifications, loa
       <div className="bg-white rounded-[18px] shadow-[0_8px_24px_rgba(0,68,23,0.12)] w-full max-w-[560px]">
         <div className="flex items-start justify-between p-6 border-b border-[rgba(0,68,23,0.06)]">
           <div>
-            <h3 className="text-2xl font-bold text-[#004417]">Notificações</h3>
+            <h3 className="text-xl font-bold text-[#004417] mb-4">Notificações</h3>
             <p className="mt-1 text-sm text-[rgba(0,68,23,0.7)]">Notificações recentes do sistema. Ações rápidas estão disponíveis quando aplicável.</p>
           </div>
           <button

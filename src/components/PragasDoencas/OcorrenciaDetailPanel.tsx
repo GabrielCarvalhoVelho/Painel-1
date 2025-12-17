@@ -64,7 +64,7 @@ export default function OcorrenciaDetailPanel({
         {/* Header */}
         <div className="border-b border-gray-100 p-4 md:p-6 flex items-start justify-between">
           <div className="flex-1">
-            <h2 className="text-lg md:text-xl font-bold text-gray-900">
+            <h2 className="text-xl font-bold text-[#004417] mb-4">
               {ocorrencia.nomePraga || 'Ocorrência sem identificação'}
             </h2>
             <div className="flex gap-2 mt-2">
@@ -104,7 +104,7 @@ export default function OcorrenciaDetailPanel({
 
           {/* Informações Básicas */}
           <div>
-            <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
+            <h3 className="text-xl font-bold text-[#004417] mb-4">
               Informações Básicas
             </h3>
             <DetailField label="Talhão" value={ocorrencia.talhao} />
@@ -117,7 +117,7 @@ export default function OcorrenciaDetailPanel({
 
           {/* Observações e Sintomas */}
           <div>
-            <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
+            <h3 className="text-xl font-bold text-[#004417] mb-4">
               Observações
             </h3>
             <DetailField label="Sintomas Observados" value={ocorrencia.sintomas} />
@@ -127,7 +127,7 @@ export default function OcorrenciaDetailPanel({
           {/* Diagnóstico e Detalhes */}
           {(ocorrencia.diagnostico || ocorrencia.descricaoDetalhada) && (
             <div>
-              <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
+              <h3 className="text-xl font-bold text-[#004417] mb-4">
                 Diagnóstico
               </h3>
               <DetailField label="Confirmação" value={ocorrencia.diagnostico} />
@@ -139,7 +139,7 @@ export default function OcorrenciaDetailPanel({
           {/* Tratamento */}
           {(ocorrencia.produtosAplicados || ocorrencia.dataAplicacao || ocorrencia.recomendacoes) && (
             <div>
-              <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
+              <h3 className="text-xl font-bold text-[#004417] mb-4">
                 Tratamento
               </h3>
               <DetailField label="Produtos Aplicados" value={ocorrencia.produtosAplicados} />
@@ -151,7 +151,7 @@ export default function OcorrenciaDetailPanel({
           {/* Anexos */}
           {ocorrencia.anexos && ocorrencia.anexos.length > 0 && (
             <div>
-              <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
+              <h3 className="text-xl font-bold text-[#004417] mb-4">
                 Anexos
               </h3>
               <div className="space-y-2">

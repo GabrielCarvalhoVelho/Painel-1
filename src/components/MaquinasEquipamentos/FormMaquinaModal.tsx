@@ -185,11 +185,11 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
   };
 
   return (
-    <div className="fixed inset-0 bg-[rgba(0,68,23,0.25)] flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-[18px] shadow-[0_8px_32px_rgba(0,68,23,0.08)] w-full max-w-2xl my-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-[18px] shadow-[0_8px_32px_rgba(0,0,0,0.08)] w-full max-w-2xl my-auto">
         <div className="flex items-center justify-between p-6">
-          <h2 className="text-[20px] font-bold text-[#004417]">Cadastrar Nova Máquina/Equipamento</h2>
-          <button onClick={onClose} className="text-[#00441766] hover:text-[#004417] transition-colors">
+          <h2 className="text-[20px] font-bold text-gray-900">Cadastrar Nova Máquina/Equipamento</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -212,13 +212,13 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
           )}
 
           <div>
-            <label className="block text-[14px] font-semibold text-[#004417] mb-2">Nome da máquina</label>
+            <label className="block text-[14px] font-semibold text-gray-900 mb-2">Nome da máquina</label>
             <input
               type="text"
               value={formData.nome}
               onChange={(e) => handleInputChange('nome', e.target.value)}
-              className={`w-full px-4 py-3 rounded-[12px] bg-[#F8FCF9] text-[#004417] placeholder:text-[#00441766] focus:outline-none transition-all ${
-                errors.nome ? 'ring-2 ring-[#DC2626]' : 'ring-0 border border-[#00A65133]'
+              className={`w-full px-4 py-3 rounded-[12px] bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:outline-none transition-all ${
+                errors.nome ? 'ring-2 ring-[#DC2626]' : 'ring-0 border border-gray-200'
               }`}
               placeholder="Ex.: Trator John Deere 6110, Pulverizador Jacto"
               required
@@ -227,13 +227,13 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-[#004417] mb-2">Marca/Modelo</label>
+            <label className="block text-[14px] font-semibold text-gray-900 mb-2">Marca/Modelo</label>
             <input
               type="text"
               value={formData.marca_modelo}
               onChange={(e) => handleInputChange('marca_modelo', e.target.value)}
-              className={`w-full px-4 py-3 rounded-[12px] bg-[#F8FCF9] text-[#004417] placeholder:text-[#00441766] focus:outline-none transition-all ${
-                errors.marca_modelo ? 'ring-2 ring-[#DC2626]' : 'ring-0 border border-[#00A65133]'
+              className={`w-full px-4 py-3 rounded-[12px] bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:outline-none transition-all ${
+                errors.marca_modelo ? 'ring-2 ring-[#DC2626]' : 'ring-0 border border-gray-200'
               }`}
               placeholder="Ex.: John Deere 6110D, Massey Ferguson 4283"
               required
@@ -242,12 +242,12 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-[#004417] mb-2">Categoria</label>
+            <label className="block text-[14px] font-semibold text-gray-900 mb-2">Categoria</label>
             <select
               value={formData.categoria}
               onChange={(e) => handleInputChange('categoria', e.target.value)}
-              className={`w-full px-4 py-3 rounded-[12px] bg-[#F8FCF9] text-[#004417] placeholder:text-[#00441766] focus:outline-none transition-all ${
-                errors.categoria ? 'ring-2 ring-[#DC2626]' : 'ring-0 border border-[#00A65133]'
+              className={`w-full px-4 py-3 rounded-[12px] bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:outline-none transition-all ${
+                errors.categoria ? 'ring-2 ring-[#DC2626]' : 'ring-0 border border-gray-200'
               }`}
               required
             >
@@ -267,19 +267,19 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-[#004417] mb-2">Horímetro atual (opcional)</label>
+            <label className="block text-[14px] font-semibold text-gray-900 mb-2">Horímetro atual (opcional)</label>
             <input
               type="number"
               step="0.01"
               value={formData.horimetro_atual}
               onChange={(e) => handleInputChange('horimetro_atual', e.target.value)}
-              className="w-full px-4 py-3 rounded-[12px] bg-[#F8FCF9] text-[#004417] placeholder:text-[#00441766] transition-all border border-[#00A65133]"
+              className="w-full px-4 py-3 rounded-[12px] bg-gray-50 text-gray-900 placeholder:text-gray-400 transition-all border border-gray-200"
               placeholder="Ex.: 1500 (horas)"
             />
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-[#004417] mb-2">Valor de compra (opcional)</label>
+            <label className="block text-[14px] font-semibold text-gray-900 mb-2">Valor de compra (opcional)</label>
             <input
               type="text"
               inputMode="numeric"
@@ -300,17 +300,17 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
                   }));
                 }
               }}
-              className="w-full px-4 py-3 rounded-[12px] bg-[#F8FCF9] text-[#00A651] font-semibold placeholder:text-[#00441766] transition-all border border-[#00A65133]"
+              className="w-full px-4 py-3 rounded-[12px] bg-gray-50 text-gray-900 font-semibold placeholder:text-gray-400 transition-all border border-gray-200"
               placeholder="R$ 0,00"
             />
-            <p className="text-[13px] text-[rgba(0,68,23,0.6)] mt-2">
+            <p className="text-[13px] text-gray-600 mt-2">
               Digite apenas números. Ex: 25000000 = R$ 250.000,00 ou 12550 = R$ 125,50
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[14px] font-semibold text-[#004417] mb-2">Data de compra (opcional)</label>
+              <label className="block text-[14px] font-semibold text-gray-900 mb-2">Data de compra (opcional)</label>
               <DateInput
                 value={formData.data_compra}
                 onChange={(value) => handleInputChange('data_compra', value)}
@@ -318,7 +318,7 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
               />
             </div>
             <div>
-              <label className="block text-[14px] font-semibold text-[#004417] mb-2">Número de série (opcional)</label>
+              <label className="block text-[14px] font-semibold text-gray-900 mb-2">Número de série (opcional)</label>
               <input
                 type="text"
                 value={formData.numero_serie}
@@ -330,13 +330,13 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-[#004417] mb-2">Fornecedor</label>
+            <label className="block text-[14px] font-semibold text-gray-900 mb-2">Fornecedor</label>
             <input
               type="text"
               value={formData.fornecedor}
               onChange={(e) => handleInputChange('fornecedor', e.target.value)}
-              className={`w-full px-4 py-3 rounded-[12px] bg-[#F8FCF9] text-[#004417] placeholder:text-[#00441766] transition-all ${
-                errors.fornecedor ? 'ring-2 ring-[#DC2626]' : 'ring-0 border border-[#00A65133]'
+              className={`w-full px-4 py-3 rounded-[12px] bg-gray-50 text-gray-900 placeholder:text-gray-400 transition-all ${
+                errors.fornecedor ? 'ring-2 ring-[#DC2626]' : 'ring-0 border border-gray-200'
               }`}
               placeholder="Ex.: Concessionária John Deere Sul de Minas"
               required
@@ -345,11 +345,11 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-[#004417] mb-2">Foto da máquina (opcional)</label>
+            <label className="block text-[14px] font-semibold text-gray-900 mb-2">Foto da máquina (opcional)</label>
             <div className={`rounded-[14px] p-4 text-center transition-all flex items-center gap-4 justify-between h-[54px] ${
               errors.anexo 
                 ? 'border-2 border-[#DC2626] bg-[#FEF2F2]' 
-                : 'bg-[#F5FDF8] border-2 border-dashed border-[#00A651]'
+                : 'bg-gray-50 border-2 border-dashed border-gray-200'
             }`}>
               <input
                 type="file"
@@ -360,12 +360,12 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
               />
               <label htmlFor="file-upload-maquina" className="cursor-pointer">
                 <div className="flex items-center gap-3">
-                  <Upload className={`w-6 h-6 ${errors.anexo ? 'text-[#DC2626]' : formData.anexo ? 'text-[#00A651]' : 'text-[#00A651]'}`} />
+                  <Upload className={`w-6 h-6 ${errors.anexo ? 'text-[#DC2626]' : formData.anexo ? 'text-gray-700' : 'text-gray-400'}`} />
                   <div className="text-left">
-                    <p className={`text-[14px] ${errors.anexo ? 'text-[#DC2626]' : formData.anexo ? 'font-bold text-[#004417]' : 'text-[#00441799]'}`}>
+                    <p className={`text-[14px] ${errors.anexo ? 'text-[#DC2626]' : formData.anexo ? 'font-bold text-gray-900' : 'text-gray-500'}`}>
                       {formData.anexo ? formData.anexo.name : 'Anexar Arquivo'}
                     </p>
-                    <p className="text-[13px] text-[#00441799]">PDF, JPG, PNG, WEBP (máx. 10MB)</p>
+                    <p className="text-[13px] text-gray-500">PDF, JPG, PNG, WEBP (máx. 10MB)</p>
                   </div>
                 </div>
               </label>
@@ -374,11 +374,11 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-[#004417] mb-2">Documento da máquina (opcional)</label>
+            <label className="block text-[14px] font-semibold text-gray-900 mb-2">Documento da máquina (opcional)</label>
             <div className={`rounded-[14px] p-4 text-center transition-all flex items-center gap-4 justify-between h-[54px] ${
               errors.documento_maquina 
                 ? 'border-2 border-[#DC2626] bg-[#FEF2F2]' 
-                : 'bg-[#F5FDF8] border-2 border-dashed border-[#00A651]'
+                : 'bg-gray-50 border-2 border-dashed border-gray-200'
             }`}>
               <input
                 type="file"
@@ -389,12 +389,12 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
               />
               <label htmlFor="file-upload-documento-maquina" className="cursor-pointer">
                 <div className="flex items-center gap-3">
-                  <Upload className={`w-6 h-6 ${errors.documento_maquina ? 'text-[#DC2626]' : formData.documento_maquina ? 'text-[#00A651]' : 'text-[#00A651]'}`} />
+                  <Upload className={`w-6 h-6 ${errors.documento_maquina ? 'text-[#DC2626]' : formData.documento_maquina ? 'text-gray-700' : 'text-gray-400'}`} />
                   <div className="text-left">
-                    <p className={`text-[14px] ${errors.documento_maquina ? 'text-[#DC2626]' : formData.documento_maquina ? 'font-bold text-[#004417]' : 'text-[#00441799]'}`}>
+                    <p className={`text-[14px] ${errors.documento_maquina ? 'text-[#DC2626]' : formData.documento_maquina ? 'font-bold text-gray-900' : 'text-gray-500'}`}>
                       {formData.documento_maquina ? formData.documento_maquina.name : 'Anexar Documento'}
                     </p>
-                    <p className="text-[13px] text-[#00441799]">PDF, JPG, PNG, WEBP (máx. 10MB)</p>
+                    <p className="text-[13px] text-gray-500">PDF, JPG, PNG, WEBP (máx. 10MB)</p>
                   </div>
                 </div>
               </label>
@@ -406,7 +406,7 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 h-[48px] px-6 bg-white text-[#004417] rounded-[12px] font-semibold hover:bg-[rgba(0,166,81,0.04)] active:scale-[0.98] transition-all border border-[#00A65133]"
+              className="flex-1 h-[48px] px-6 bg-white text-gray-700 rounded-[12px] font-semibold hover:bg-gray-50 active:scale-[0.98] transition-all border border-gray-200"
             >
               Cancelar
             </button>

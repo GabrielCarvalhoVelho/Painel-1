@@ -130,7 +130,7 @@ export default function DREPanel() {
     <div className="space-y-8 pb-8">
       {/* ===== SEÇÃO 1: RESUMO EXECUTIVO ===== */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Resultados da Operação</h2>
+        <h2 className="text-xl font-bold text-[#004417] mb-4">Resultados da Operação</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard
             title="Receita Total"
@@ -166,7 +166,7 @@ export default function DREPanel() {
 
       {/* ===== SEÇÃO 2: DEMONSTRATIVO DE RESULTADOS ===== */}
       <div>
-        <h3 className="text-xl font-bold text-gray-900 mb-6">Demonstrativo de Resultados (DRE)</h3>
+        <h3 className="text-xl font-bold text-[#004417] mb-4">Demonstrativo de Resultados (DRE)</h3>
 
         {/* BLOCO A - RECEITAS */}
         <DRESection title="BLOCO A — RECEITAS" color="green">

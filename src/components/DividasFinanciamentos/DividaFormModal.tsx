@@ -154,9 +154,9 @@ export default function DividaFormModal({
         <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-100">
-            <h2 className="text-2xl font-bold text-gray-900">
-              {initialData ? 'Editar' : 'Nova'} Dívida/Financiamento
-            </h2>
+              <h2 className="text-xl font-bold text-[#004417] mb-4">
+                {initialData ? 'Editar' : 'Nova'} Dívida/Financiamento
+              </h2>
             <button
               onClick={onClose}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
