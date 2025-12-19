@@ -4,6 +4,8 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 const url = import.meta.env.VITE_SUPABASE_URL;
 const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const serviceRole = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+// Permite forçar uso da service_role no client (inseguro). Defina 'true' para ativar.
+const forceServiceRole = String(import.meta.env.VITE_FORCE_USE_SERVICE_ROLE || '').toLowerCase() === 'true';
 
 if (!url || !anon) {
   console.error('❌ Configuração do Supabase incompleta:', {
@@ -30,9 +32,16 @@ const isDevelopment = () => {
 
 const DEV_MODE = isDevelopment();
 
-// 🔑 Em desenvolvimento, use service role para bypass de RLS
-// Em produção, use anon key (RLS será aplicado baseado no JWT do n8n)
-const apiKey = DEV_MODE && serviceRole ? serviceRole : anon;
+// 🔑 Em desenvolvimento, use service role para bypass de RLS.
+// Opcional: em produção você pode forçar uso da `service_role` definindo
+// a variável `VITE_FORCE_USE_SERVICE_ROLE=true` e provendo `VITE_SUPABASE_SERVICE_ROLE_KEY`.
+// ATENÇÃO: isso expõe uma chave com poderes totais ao bundle frontend — use apenas em emergência.
+const apiKey = (DEV_MODE && serviceRole) || (forceServiceRole && serviceRole) ? serviceRole : anon;
+
+if (forceServiceRole && !serviceRole) {
+  console.error('VITE_FORCE_USE_SERVICE_ROLE=true mas VITE_SUPABASE_SERVICE_ROLE_KEY não está definida!');
+  throw new Error('Missing VITE_SUPABASE_SERVICE_ROLE_KEY while forcing service role');
+}
 
 if (!apiKey) {
   console.error('❌ Nenhuma chave API disponível!', {
@@ -46,7 +55,7 @@ if (!apiKey) {
 console.log('🔧 Supabase Client Mode:', {
   mode: import.meta.env.MODE,
   isDev: DEV_MODE,
-  usingServiceRole: DEV_MODE && !!serviceRole,
+  usingServiceRole: (DEV_MODE && !!serviceRole) || (forceServiceRole && !!serviceRole),
   hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
   keyType: DEV_MODE && serviceRole ? 'SERVICE_ROLE (⚠️ BYPASS RLS)' : 'ANON (✅ RLS ATIVO)'
 });

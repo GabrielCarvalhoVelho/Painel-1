@@ -469,11 +469,36 @@ export class AttachmentService {
 
       if (error) {
         console.error('❌ Erro na substituição:', error);
-        
-        if (error.message.includes('row-level security') || error.message.includes('RLS')) {
-          throw new Error('Erro de permissão: Configure as políticas RLS do bucket ou use a chave de serviço');
+
+        // Se for erro de RLS, tentar usar endpoint backend seguro que possua service_role
+        if (error.message && (error.message.includes('row-level security') || error.message.includes('RLS'))) {
+          console.log('⚠️ RLS detectado. Tentando substituição via endpoint backend...');
+          try {
+            const base64 = await this.fileToBase64(processedFile);
+            const backendUrl = (import.meta.env.VITE_REPLACE_ATTACHMENT_URL as string) || '/api/replace-attachment';
+            const resp = await fetch(backendUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ transactionId, fileBase64: base64, fileName })
+            });
+
+            const json = await resp.json().catch(() => ({}));
+
+            if (resp.ok && json?.success) {
+              if (json.url) {
+                await this.updateSharedAttachmentUrl(transactionId, json.url);
+                console.log('🔄 URL compartilhada atualizada via backend');
+              }
+              return true;
+            }
+
+            throw new Error(`Backend upload failed: ${json?.error || resp.statusText}`);
+          } catch (backendErr) {
+            console.error('❌ Tentativa via backend falhou:', backendErr);
+            throw new Error('Erro de permissão: Configure as políticas RLS do bucket ou use um endpoint backend com service_role');
+          }
         }
-        
+
         throw new Error(`Erro ao substituir anexo: ${error.message}`);
       }
 
@@ -705,6 +730,23 @@ export class AttachmentService {
 
       img.onerror = () => reject(new Error('Erro ao carregar imagem'));
       img.src = URL.createObjectURL(file);
+    });
+  }
+
+  /**
+   * Converte File para base64 (somente dados, sem prefixo data:)
+   */
+  private static async fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // remover prefixo data:...;base64, se presente
+        const commaIndex = result.indexOf(',');
+        resolve(commaIndex >= 0 ? result.substring(commaIndex + 1) : result);
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
     });
   }
 
