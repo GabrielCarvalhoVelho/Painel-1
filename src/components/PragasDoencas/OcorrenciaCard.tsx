@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { AuthService } from '../../services/authService';
 import { Ocorrencia } from './mockOcorrencias';
 import { ChevronRight, Edit2, CheckCircle } from 'lucide-react';
 import { formatDateBR } from '../../lib/dateUtils';
 import ImageViewerModal from './ImageViewerModal';
+import { supabase } from '../../lib/supabase';
 
 interface OcorrenciaCardProps {
   ocorrencia: Ocorrencia;
@@ -42,6 +44,51 @@ export default function OcorrenciaCard({
 }: OcorrenciaCardProps) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const fp = ocorrencia.fotoPrincipal;
+    const currentUser = AuthService.getInstance().getCurrentUser();
+    const myUserId = currentUser?.user_id;
+    if (!fp) {
+      setImageSrc(null);
+      return;
+    }
+
+    if (fp.startsWith('http') || fp.startsWith('/')) {
+      setImageSrc(fp);
+      return;
+    }
+
+    // Tenta gerar signed url localmente. Prioriza `${userId}/${fp}` quando aplicável,
+    // depois tenta o fp na raiz.
+    (async () => {
+      const candidates: string[] = [];
+      if (fp.includes('/')) candidates.push(fp);
+      else {
+        if (myUserId) candidates.push(`${myUserId}/${fp}`);
+        candidates.push(fp);
+      }
+
+      for (const candidate of candidates) {
+        try {
+          const { data, error } = await supabase.storage
+            .from('pragas_e_doencas')
+            .createSignedUrl(candidate, 60);
+          if (!error && data?.signedUrl) {
+            if (mounted) setImageSrc(data.signedUrl);
+            return;
+          }
+        } catch (err) {
+          // continue para próxima candidate
+        }
+      }
+      if (mounted) setImageSrc(null);
+    })();
+
+    return () => { mounted = false; };
+  }, [ocorrencia.fotoPrincipal]);
 
   return (
     <div className="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow">
@@ -49,9 +96,9 @@ export default function OcorrenciaCard({
       <div className="flex gap-3 mb-3">
         {/* Foto Miniatura */}
         <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 text-3xl overflow-hidden">
-          {ocorrencia.fotoPrincipal && (ocorrencia.fotoPrincipal.startsWith('http') || ocorrencia.fotoPrincipal.startsWith('/')) ? (
+          {imageSrc ? (
             <img
-              src={ocorrencia.fotoPrincipal}
+              src={imageSrc}
               alt="Foto da ocorrência"
               className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
               onClick={(e) => {
@@ -139,10 +186,10 @@ export default function OcorrenciaCard({
       )}
 
       {/* Image Viewer Modal */}
-      {ocorrencia.fotoPrincipal && (ocorrencia.fotoPrincipal.startsWith('http') || ocorrencia.fotoPrincipal.startsWith('/')) && (
+      {imageSrc && (
         <ImageViewerModal
           isOpen={isImageViewerOpen}
-          imageUrl={ocorrencia.fotoPrincipal}
+          imageUrl={imageSrc}
           onClose={() => setIsImageViewerOpen(false)}
           altText={`Foto: ${ocorrencia.nomePraga || 'Ocorrência'}`}
         />

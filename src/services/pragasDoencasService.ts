@@ -85,7 +85,19 @@ export class PragasDoencasService {
         })
       );
 
-      return ocorrenciasComTalhoes;
+      // Gerar signed URLs para foto_principal (se não for URL pública)
+      const withSigned = await Promise.all(
+        ocorrenciasComTalhoes.map(async (o) => {
+          const fp = o.foto_principal;
+          if (fp && typeof fp === 'string' && !fp.startsWith('http')) {
+            const signed = await this.getSignedUrl(fp, 60, o.user_id as string);
+            return { ...o, foto_principal: signed || o.foto_principal };
+          }
+          return o;
+        })
+      );
+
+      return withSigned;
     } catch (err) {
       console.error('Erro no PragasDoencasService.getOcorrencias:', err);
       return [];
@@ -125,8 +137,16 @@ export class PragasDoencasService {
         })
       );
 
+      // Gerar signed URL para foto_principal se necessário
+      let fotoPrincipal = data.foto_principal;
+      if (fotoPrincipal && typeof fotoPrincipal === 'string' && !fotoPrincipal.startsWith('http')) {
+        const signed = await this.getSignedUrl(fotoPrincipal, 60, data.user_id as string);
+        fotoPrincipal = signed || fotoPrincipal;
+      }
+
       return {
         ...data,
+        foto_principal: fotoPrincipal,
         talhoes_vinculados: talhoesComNomes,
       };
     } catch (err) {
@@ -135,11 +155,11 @@ export class PragasDoencasService {
     }
   }
 
-  static async uploadImage(file: File, ocorrenciaId: number): Promise<string | null> {
+  static async uploadImage(file: File, ocorrenciaId: number, userId: string): Promise<string | null> {
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${ocorrenciaId}.${fileExt}`;
-      const filePath = fileName;
+      const filePath = `${userId}/${fileName}`; // prefixa com userId para ownership-by-prefix
 
       console.log('📸 Iniciando upload da imagem:', { fileName, fileSize: file.size, fileType: file.type });
 
@@ -155,15 +175,62 @@ export class PragasDoencasService {
         return null;
       }
 
-      const { data: publicUrlData } = supabase.storage
-        .from('pragas_e_doencas')
-        .getPublicUrl(filePath);
-
-      console.log('✅ URL da imagem gerada:', publicUrlData.publicUrl);
-
-      return publicUrlData.publicUrl;
+      // Não retornar publicUrl (bucket privado). Retornar o path salvo no storage.
+      return filePath;
     } catch (err) {
       console.error('❌ Erro no upload da imagem:', err);
+      return null;
+    }
+  }
+
+  static async getSignedUrl(path: string | null | undefined, expires = 60, userId?: string): Promise<string | null> {
+    try {
+      if (!path) return null;
+      // Se já for uma URL pública, retorna como está
+      if (path.startsWith('http')) return path;
+
+      // Validar formato do path antes de chamar a API de signed url
+      // Aceitamos dois formatos principais:
+      // 1) prefixado por usuário: "<userId>/<filename.ext>"
+      // 2) arquivo na raiz gerado por WhatsApp com nome igual ao id da ocorrência: "<occurrenceId>.<ext>"
+      if (typeof path !== 'string' || !path.includes('.')) {
+        console.warn('getSignedUrl: path inválido, pulando signedUrl:', path);
+        return null;
+      }
+
+
+      const isPrefixed = path.includes('/');
+      // aceitar "123.png" ou "123" (apenas id numérico na raiz)
+      const isNumericRoot = /^[0-9]+(\.[A-Za-z0-9]+)?$/.test(path);
+      if (!isPrefixed && !isNumericRoot) {
+        console.warn('getSignedUrl: path não corresponde ao formato esperado, pulando:', path);
+        return null;
+      }
+
+      // Se estiver na raiz e tivermos userId, tente primeiro o path prefixado
+      if (!isPrefixed && userId) {
+        const prefixed = `${userId}/${path}`;
+        try {
+          const { data: prefData, error: prefError } = await supabase.storage
+            .from('pragas_e_doencas')
+            .createSignedUrl(prefixed, expires);
+          if (!prefError && prefData?.signedUrl) return prefData.signedUrl;
+        } catch (err) {
+          // ignore and try original path
+        }
+      }
+
+      const { data, error } = await supabase.storage
+        .from('pragas_e_doencas')
+        .createSignedUrl(path, expires);
+
+      if (error) {
+        console.error('Erro ao criar signedUrl:', error);
+        return null;
+      }
+      return data?.signedUrl || null;
+    } catch (err) {
+      console.error('Erro em getSignedUrl:', err);
       return null;
     }
   }
@@ -189,12 +256,12 @@ export class PragasDoencasService {
 
       if (imageFile) {
         console.log('🖼️ Processando upload de imagem para ocorrência:', ocorrenciaId);
-        const imageUrl = await this.uploadImage(imageFile, ocorrenciaId);
-        if (imageUrl) {
-          console.log('💾 Atualizando banco com URL da imagem:', imageUrl);
+        const imagePath = await this.uploadImage(imageFile, ocorrenciaId, payload.user_id as string);
+        if (imagePath) {
+          console.log('💾 Atualizando banco com path da imagem:', imagePath);
           const { error: updateError } = await supabase
             .from('pragas_e_doencas')
-            .update({ foto_principal: imageUrl })
+            .update({ foto_principal: imagePath })
             .eq('id', ocorrenciaId);
 
           if (updateError) {
@@ -203,7 +270,7 @@ export class PragasDoencasService {
             console.log('✅ foto_principal atualizada com sucesso no banco');
           }
         } else {
-          console.error('❌ Não foi possível obter URL da imagem');
+          console.error('❌ Não foi possível obter path da imagem');
         }
       }
 
@@ -233,10 +300,28 @@ export class PragasDoencasService {
   static async updateOcorrencia(
     id: number,
     changes: Partial<PragaDoenca>,
-    talhaoIds?: string[]
+    talhaoIds?: string[],
+    imageFile?: File
   ) {
     try {
       changes.updated_at = new Date().toISOString();
+
+      // Se houver novo arquivo de imagem na edição, faça upload primeiro
+      if (imageFile) {
+        try {
+          const userIdForUpload = (changes.user_id as string) || '';
+          if (!userIdForUpload) {
+            console.warn('updateOcorrencia: user_id ausente; não foi possível fazer upload da imagem');
+          } else {
+            const imagePath = await this.uploadImage(imageFile, id, userIdForUpload);
+            if (imagePath) {
+              changes.foto_principal = imagePath;
+            }
+          }
+        } catch (err) {
+          console.error('Erro ao fazer upload da nova imagem durante edição:', err);
+        }
+      }
 
       const { data, error } = await supabase
         .from('pragas_e_doencas')
@@ -273,7 +358,14 @@ export class PragasDoencasService {
         }
       }
 
-      return { data };
+      // Gerar signed URL para foto_principal do registro atualizado, se necessário
+      let fotoPrincipal = (data as any).foto_principal;
+      if (fotoPrincipal && !fotoPrincipal.startsWith('http')) {
+        const signed = await this.getSignedUrl(fotoPrincipal, 60, (data as any).user_id as string);
+        fotoPrincipal = signed || fotoPrincipal;
+      }
+
+      return { data: { ...(data as any), foto_principal: fotoPrincipal } };
     } catch (err) {
       console.error('Erro no PragasDoencasService.updateOcorrencia:', err);
       return { error: err };

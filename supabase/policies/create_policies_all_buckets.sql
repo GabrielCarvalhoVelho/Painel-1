@@ -20,36 +20,29 @@
 -- 1) Policies para buckets menos sensíveis (usar template básico)
 
 -- pragas_e_doencas
-CREATE POLICY "Allow authenticated insert into pragas_e_doencas" ON storage.objects
-FOR INSERT
-WITH CHECK (
-  auth.role() = 'authenticated' AND
-  bucket_id = 'pragas_e_doencas'
-);
+-- Removendo policies para bucket `pragas_e_doencas` (limpeza solicitada)
+DROP POLICY IF EXISTS "Allow authenticated insert into pragas_e_doencas" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated update pragas_e_doencas" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated delete pragas_e_doencas" ON storage.objects;
+DROP POLICY IF EXISTS "Allow select pragas_e_doencas" ON storage.objects;
 
-CREATE POLICY "Allow authenticated update pragas_e_doencas" ON storage.objects
-FOR UPDATE
-USING (
-  auth.role() = 'authenticated' AND
-  bucket_id = 'pragas_e_doencas'
-)
-WITH CHECK (
-  auth.role() = 'authenticated' AND
-  bucket_id = 'pragas_e_doencas'
-);
-
-CREATE POLICY "Allow authenticated delete pragas_e_doencas" ON storage.objects
-FOR DELETE
-USING (
-  auth.role() = 'authenticated' AND
-  bucket_id = 'pragas_e_doencas'
-);
-
-CREATE POLICY "Allow select pragas_e_doencas" ON storage.objects
-FOR SELECT
-USING (
-  bucket_id = 'pragas_e_doencas'
-);
+-- Policy para permitir leitura de objetos do bucket pragas_e_doencas
+-- Aceita: service_role, arquivos prefixados por userId, e arquivos na raiz cujo nome (sem extensão)
+-- corresponde ao id de uma ocorrência pertencente a auth.uid().
+-- Evita erro caso a policy já exista
+DROP POLICY IF EXISTS "Pragas: select owner-or-service-or-occurrence-id" ON storage.objects;
+CREATE POLICY "Pragas: select owner-or-service-or-occurrence-id" ON storage.objects FOR SELECT
+  USING (
+    bucket_id = 'pragas_e_doencas' AND (
+      auth.role() = 'service_role'
+      OR split_part(name, '/', 1) = auth.uid()::text
+      OR EXISTS (
+        SELECT 1 FROM public.pragas_e_doencas p
+        WHERE p.id = (substring(split_part(name, '/', 1) FROM '^(\\d+)(?:\\.|_|$)'))::int
+          AND p.user_id::text = auth.uid()::text
+      )
+    )
+  );
 
 -- atividades_agricolas
 CREATE POLICY "Allow authenticated insert into atividades_agricolas" ON storage.objects
@@ -221,6 +214,26 @@ USING (
     split_part(name, '/', 1) = auth.uid()::text
   )
 );
+
+-- ==================================================================
+-- Bloco de limpeza: remover todas as policies da tabela storage.objects
+-- Use este bloco com cuidado; ele DROPA policies existentes automaticamente.
+-- Execute no SQL Editor do Supabase para aplicar.
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN
+    SELECT pol.polname
+    FROM pg_policy pol
+    JOIN pg_class c ON pol.polrelid = c.oid
+    JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE n.nspname = 'storage' AND c.relname = 'objects'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON storage.objects;', r.polname);
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;
 
 
 -- ==================================================================

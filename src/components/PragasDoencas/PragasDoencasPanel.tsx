@@ -130,39 +130,41 @@ export default function PragasDoencasPanel() {
     setSelectedOcorrencia(null);
   };
 
-  const handleFormSubmit = async (formData: Partial<Ocorrencia>, talhaoIds: string[], imageFile?: File) => {
+  const handleFormSubmit = async (values: any, talhaoIds?: string[], imageFile?: File) => {
     if (!userId) {
       console.error('Usuário não autenticado');
       return;
     }
 
+
     if (editingOcorrencia) {
       const payload = {
         user_id: userId,
-        talhoes: formData.talhao,
-        data_da_ocorrencia: formData.dataOcorrencia,
-        fase_da_lavoura: formData.faseLavoura,
-        tipo_de_ocorrencia: formData.tipoOcorrencia,
-        nivel_da_gravidade: formData.severidade,
-        area_afetada: formData.areaAfetada,
-        sintomas_observados: formData.sintomas,
-        acao_tomada: formData.acaoTomada,
-        nome_praga: formData.nomePraga || null,
-        diagnostico: formData.diagnostico || null,
-        descricao_detalhada: formData.descricaoDetalhada || null,
-        clima_recente: formData.climaRecente || null,
-        produtos_aplicados: formData.produtosAplicados,
-        data_aplicacao: formData.dataAplicacao || null,
-        recomendacoes: formData.recomendacoes || null,
-        status: formData.status,
-        origem: formData.origem || 'Painel',
-        foto_principal: formData.fotoPrincipal,
+        talhoes: values.talhao,
+        data_da_ocorrencia: values.dataOcorrencia,
+        fase_da_lavoura: values.faseLavoura,
+        tipo_de_ocorrencia: values.tipoOcorrencia,
+        nivel_da_gravidade: values.severidade,
+        area_afetada: values.areaAfetada,
+        sintomas_observados: values.sintomas,
+        acao_tomada: values.acaoTomada,
+        nome_praga: values.nomePraga || null,
+        diagnostico: values.diagnostico || null,
+        descricao_detalhada: values.descricaoDetalhada || null,
+        clima_recente: values.climaRecente || null,
+        produtos_aplicados: values.produtosAplicados,
+        data_aplicacao: values.dataAplicacao || null,
+        recomendacoes: values.recomendacoes || null,
+        status: values.status,
+        origem: values.origem || 'Painel',
+        foto_principal: values.fotoPrincipal,
       };
 
       const { error } = await PragasDoencasService.updateOcorrencia(
         editingOcorrencia.id,
         payload,
-        talhaoIds.length > 0 ? talhaoIds : undefined
+        talhaoIds && talhaoIds.length > 0 ? talhaoIds : undefined,
+        imageFile // passar imageFile para substituição
       );
 
       if (error) {
@@ -173,27 +175,28 @@ export default function PragasDoencasPanel() {
 
       await loadOcorrencias();
       setEditingOcorrencia(null);
+
     } else {
       const payload = {
         user_id: userId,
-        talhoes: formData.talhao,
-        data_da_ocorrencia: formData.dataOcorrencia || new Date().toISOString().split('T')[0],
-        fase_da_lavoura: formData.faseLavoura || 'Vegetativo',
-        tipo_de_ocorrencia: formData.tipoOcorrencia || 'Praga',
-        nivel_da_gravidade: formData.severidade || 'Media',
-        area_afetada: formData.areaAfetada || '',
-        sintomas_observados: formData.sintomas || '',
-        acao_tomada: formData.acaoTomada || '',
-        nome_praga: formData.nomePraga || null,
-        diagnostico: formData.diagnostico || null,
-        descricao_detalhada: formData.descricaoDetalhada || null,
-        clima_recente: formData.climaRecente || null,
-        produtos_aplicados: formData.produtosAplicados || [],
-        data_aplicacao: formData.dataAplicacao || null,
-        recomendacoes: formData.recomendacoes || null,
-        status: formData.status || 'Nova',
+        talhoes: values.talhao,
+        data_da_ocorrencia: values.dataOcorrencia || new Date().toISOString().split('T')[0],
+        fase_da_lavoura: values.faseLavoura || 'Vegetativo',
+        tipo_de_ocorrencia: values.tipoOcorrencia || 'Praga',
+        nivel_da_gravidade: values.severidade || 'Media',
+        area_afetada: values.areaAfetada || '',
+        sintomas_observados: values.sintomas || '',
+        acao_tomada: values.acaoTomada || '',
+        nome_praga: values.nomePraga || null,
+        diagnostico: values.diagnostico || null,
+        descricao_detalhada: values.descricaoDetalhada || null,
+        clima_recente: values.climaRecente || null,
+        produtos_aplicados: values.produtosAplicados || [],
+        data_aplicacao: values.dataAplicacao || null,
+        recomendacoes: values.recomendacoes || null,
+        status: values.status || 'Nova',
         origem: 'Painel',
-        foto_principal: formData.fotoPrincipal || PragasDoencasService.getOcorrenciaIcon(formData.tipoOcorrencia),
+        foto_principal: values.fotoPrincipal || PragasDoencasService.getOcorrenciaIcon(values.tipoOcorrencia),
         anexos: [],
       };
 

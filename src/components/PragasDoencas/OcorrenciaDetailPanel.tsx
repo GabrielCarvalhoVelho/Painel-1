@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { AuthService } from '../../services/authService';
 import { Ocorrencia } from './mockOcorrencias';
 import { X, Edit2, CheckCircle, Trash2 } from 'lucide-react';
 import { formatDateBR } from '../../lib/dateUtils';
 import ImageViewerModal from './ImageViewerModal';
+import { supabase } from '../../lib/supabase';
 
 interface OcorrenciaDetailPanelProps {
   ocorrencia: Ocorrencia | null;
@@ -48,6 +50,49 @@ export default function OcorrenciaDetailPanel({
   onDelete,
 }: OcorrenciaDetailPanelProps) {
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const fp = ocorrencia?.fotoPrincipal;
+    const currentUser = AuthService.getInstance().getCurrentUser();
+    const myUserId = currentUser?.user_id;
+    if (!fp) {
+      setImageSrc(null);
+      return;
+    }
+
+    if (fp.startsWith('http') || fp.startsWith('/')) {
+      setImageSrc(fp);
+      return;
+    }
+
+    (async () => {
+      const candidates: string[] = [];
+      if (typeof fp === 'string' && fp.includes('/')) candidates.push(fp);
+      else {
+        if (myUserId) candidates.push(`${myUserId}/${fp}`);
+        candidates.push(fp as string);
+      }
+
+      for (const candidate of candidates) {
+        try {
+          const { data, error } = await supabase.storage
+            .from('pragas_e_doencas')
+            .createSignedUrl(candidate, 60);
+          if (!error && data?.signedUrl) {
+            if (mounted) setImageSrc(data.signedUrl);
+            return;
+          }
+        } catch (err) {
+          // continua para próxima candidate
+        }
+      }
+      if (mounted) setImageSrc(null);
+    })();
+
+    return () => { mounted = false; };
+  }, [ocorrencia]);
 
   if (!isOpen || !ocorrencia) return null;
 
@@ -88,9 +133,9 @@ export default function OcorrenciaDetailPanel({
             <div>
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Foto Principal</p>
               <div className="w-full h-40 bg-gray-100 rounded-lg flex items-center justify-center text-5xl overflow-hidden">
-                {(ocorrencia.fotoPrincipal.startsWith('http') || ocorrencia.fotoPrincipal.startsWith('/')) ? (
-                  <img
-                    src={ocorrencia.fotoPrincipal}
+                {imageSrc ? (
+                        <img
+                          src={imageSrc}
                     alt="Foto da ocorrência"
                     className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
                     onClick={() => setIsImageViewerOpen(true)}
@@ -208,10 +253,10 @@ export default function OcorrenciaDetailPanel({
       </div>
 
       {/* Image Viewer Modal */}
-      {ocorrencia.fotoPrincipal && (ocorrencia.fotoPrincipal.startsWith('http') || ocorrencia.fotoPrincipal.startsWith('/')) && (
+      {imageSrc && (
         <ImageViewerModal
           isOpen={isImageViewerOpen}
-          imageUrl={ocorrencia.fotoPrincipal}
+          imageUrl={imageSrc}
           onClose={() => setIsImageViewerOpen(false)}
           altText={`Foto: ${ocorrencia.nomePraga || 'Ocorrência'}`}
         />
