@@ -54,7 +54,8 @@ export default function OcorrenciaDetailPanel({
 
   useEffect(() => {
     let mounted = true;
-    const fp = ocorrencia?.fotoPrincipal;
+    const rawFp = ocorrencia?.fotoPrincipal;
+    const fp = typeof rawFp === 'string' ? rawFp.trim() : rawFp;
     const currentUser = AuthService.getInstance().getCurrentUser();
     const myUserId = currentUser?.user_id;
     if (!fp) {
@@ -62,7 +63,49 @@ export default function OcorrenciaDetailPanel({
       return;
     }
 
-    if (fp.startsWith('http') || fp.startsWith('/')) {
+    if (typeof fp === 'string' && fp.startsWith('http')) {
+      const publicMarker = '/storage/v1/object/public/';
+      const objMarker = '/storage/v1/object/';
+      if (fp.includes(publicMarker)) {
+        setImageSrc(fp);
+        return;
+      }
+
+      if (fp.includes(objMarker)) {
+        (async () => {
+          try {
+            const idx = fp.indexOf(objMarker) + objMarker.length;
+            const after = fp.slice(idx);
+            const parts = after.split('/');
+            if (parts.length >= 2) {
+              const key = parts.slice(1).join('/');
+              const candidates: string[] = [];
+              if (key.includes('/')) candidates.push(key);
+              else {
+                if (myUserId) candidates.push(`${myUserId}/${key}`);
+                candidates.push(key);
+              }
+
+              for (const candidate of candidates) {
+                try {
+                  const { data, error } = await supabase.storage
+                    .from('pragas_e_doencas')
+                    .createSignedUrl(candidate, 60);
+                  if (!error && data?.signedUrl) {
+                    if (mounted) setImageSrc(data.signedUrl);
+                    return;
+                  }
+                } catch (err) {
+                  // continue
+                }
+              }
+            }
+          } catch (e) {
+            // fallthrough
+          }
+        })();
+      }
+
       setImageSrc(fp);
       return;
     }
