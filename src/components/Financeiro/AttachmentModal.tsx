@@ -358,8 +358,11 @@ export default function AttachmentModal({
   const imageAttachment = attachments.find(a => a.type === 'image') || null;
   const fileAttachment = attachments.find(a => a.type === 'pdf' || a.type === 'xml' || a.type === 'file') || null;
 
-  const buildCacheBustedUrl = (url: string | undefined | null, key: number) => {
+  const buildImageSrc = (url: string | undefined | null, key: number) => {
     if (!url) return '';
+    // Não modificar blob: ou data: URLs — são geradas pelo cliente
+    if (url.startsWith('blob:') || url.startsWith('data:')) return url;
+    // Se for URL normal, adicionar cache-busting apropriado
     return url.includes('?') ? `${url}&t=${key}` : `${url}?t=${key}`;
   };
 
@@ -507,7 +510,7 @@ export default function AttachmentModal({
             <div className="flex flex-col items-center gap-2 bg-white p-3 rounded-lg border border-[rgba(0,68,23,0.06)]">
               <img
                 key={imageKey}
-                src={buildCacheBustedUrl(imageAttachment.url, imageKey)}
+                src={buildImageSrc(imageAttachment.url, imageKey)}
                 alt="Imagem anexada"
                 className="max-h-32 mb-2 rounded"
                 onLoad={() => console.log('🖼️ Imagem carregada:', imageKey)}

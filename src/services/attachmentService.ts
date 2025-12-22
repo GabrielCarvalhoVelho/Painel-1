@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import { AuthService } from './authService';
 
 // Cliente com service role para operações de storage (contorna RLS)
 // Em produção, usa anon key (requer políticas RLS corretas no Storage)
@@ -150,6 +151,61 @@ export class AttachmentService {
       console.error('❌ Erro ao extrair ID do arquivo da URL:', error);
       return null;
     }
+  }
+
+  /**
+   * Normaliza um valor armazenado em `anexo_compartilhado_url` para extrair o
+   * object path dentro do bucket. Aceita formatos:
+   * - URL completa (https://.../storage/v1/object/public/{bucket}/{path})
+   * - path com prefixo de bucket ("notas_fiscais/.../file.jpg")
+   * - path relativo ("user_id/file.jpg" ou "arquivos/file.pdf")
+   */
+  private static normalizeStoredPath(stored: string): string {
+    if (!stored) return stored;
+    const s = stored.split('?')[0];
+    // se for URL completa, tentar extrair tudo após /storage/v1/object/public/{bucket}/
+    try {
+      if (s.startsWith('http://') || s.startsWith('https://')) {
+        // aceitar URLs com /public/ e sem /public/
+        const markerPublic = `/storage/v1/object/public/${this.BUCKET_NAME}/`;
+        const markerNoPublic = `/storage/v1/object/${this.BUCKET_NAME}/`;
+        let idx = s.indexOf(markerPublic);
+        if (idx >= 0) return s.substring(idx + markerPublic.length);
+        idx = s.indexOf(markerNoPublic);
+        if (idx >= 0) return s.substring(idx + markerNoPublic.length);
+
+        // fallback: encontrar o segmento do bucket e retornar o resto, removendo duplicação se existir
+        const parts = s.split('/');
+        const bi = parts.findIndex(p => p === this.BUCKET_NAME);
+        if (bi >= 0 && parts.length > bi + 1) {
+          let rest = parts.slice(bi + 1).join('/');
+          // remover duplicação 'bucket/bucket/...' -> 'bucket/...'
+          if (rest.startsWith(`${this.BUCKET_NAME}/`)) rest = rest.substring(this.BUCKET_NAME.length + 1);
+          return rest;
+        }
+        return s.replace(/^https?:\/\//, '');
+      }
+
+      // se começar com nome do bucket, remover prefixo
+      if (s.startsWith(`${this.BUCKET_NAME}/`)) return s.substring(this.BUCKET_NAME.length + 1);
+      return s.replace(/^\/+/, '');
+    } catch (err) {
+      console.warn('⚠️ normalizeStoredPath falhou para:', stored, err);
+      return stored;
+    }
+  }
+
+  /**
+   * Constroi uma URL pública segura para um object path no Storage,
+   * codificando cada segmento do caminho para evitar caracteres inválidos
+   * e mantendo as barras entre segmentos.
+   */
+  private static buildPublicUrl(objectPath: string, bucketName?: string): string {
+    const bucket = bucketName || this.BUCKET_NAME;
+    const base = url.replace(/\/+$/, '');
+    if (!objectPath) return `${base}/storage/v1/object/public/${bucket}`;
+    const encoded = objectPath.split('/').map(seg => encodeURIComponent(seg)).join('/');
+    return `${base}/storage/v1/object/public/${bucket}/${encoded}`;
   }
 
   /**
@@ -379,6 +435,9 @@ export class AttachmentService {
 
       const fileId = await this.getStorageFileId(transactionId);
       const fileName = `${fileId}.jpg`;
+      // Prefixar com user_id para obedecer as policies (ex.: <user_id>/file.jpg)
+      const user = AuthService.getInstance().getCurrentUser();
+      const filePath = user ? `${user.user_id}/${fileName}` : fileName;
       console.log('📦 Usando ID de arquivo:', fileId);
       
       // Converter arquivo para JPG se necessário
@@ -388,7 +447,7 @@ export class AttachmentService {
       // Tentar primeiro com service role para contornar RLS
       let { data, error } = await supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
-        .upload(fileName, processedFile, {
+        .upload(filePath, processedFile, {
           cacheControl: '3600',
           upsert: true,
           contentType: 'image/jpeg'
@@ -421,11 +480,8 @@ export class AttachmentService {
 
       console.log('✅ Upload concluído:', data);
 
-      // Obter URL pública e atualizar no banco
-      const publicUrl = await this.getAttachmentUrl(transactionId);
-      if (publicUrl) {
-        await this.updateSharedAttachmentUrl(transactionId, publicUrl);
-      }
+      // armazenar path no banco (será resolvido dinamicamente ao renderizar)
+      await this.updateSharedAttachmentUrl(transactionId, filePath);
 
       return true;
     } catch (error) {
@@ -442,14 +498,15 @@ export class AttachmentService {
       console.log('🔄 Substituindo anexo:', transactionId);
       const fileId = await this.getStorageFileId(transactionId);
       const fileName = `${fileId}.jpg`;
-      
+      const user = AuthService.getInstance().getCurrentUser();
+      const filePath = user ? `${user.user_id}/${fileName}` : fileName;
       // Converter arquivo para JPG se necessário
       const processedFile = await this.processImageFile(file, fileName);
       
       // Tentar primeiro com service role
       let { data, error } = await supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
-        .update(fileName, processedFile, {
+        .update(filePath, processedFile, {
           cacheControl: '3600',
           contentType: 'image/jpeg'
         });
@@ -504,12 +561,9 @@ export class AttachmentService {
 
       console.log('✅ Substituição concluída:', data);
 
-      // Atualizar URL no banco com refresh forçado para evitar cache
-      const publicUrl = await this.getAttachmentUrl(transactionId, true);
-      if (publicUrl) {
-        await this.updateSharedAttachmentUrl(transactionId, publicUrl);
-        console.log('🔄 URL compartilhada atualizada no banco de dados');
-      }
+      // Atualizar path no banco
+      await this.updateSharedAttachmentUrl(transactionId, filePath);
+      console.log('🔄 Path compartilhado atualizado no banco de dados');
 
       return true;
     } catch (error) {
@@ -526,11 +580,25 @@ export class AttachmentService {
       console.log('🗑️ Excluindo anexo:', transactionId);
       const fileId = await this.getStorageFileId(transactionId);
       const fileName = `${fileId}.jpg`;
-      
+      // tentar obter path armazenado no banco (pode conter prefixo user_id)
+      let storedPath: string | null = null;
+      try {
+        const { data } = await supabase
+          .from('transacoes_financeiras')
+          .select('anexo_compartilhado_url')
+          .eq('id_transacao', transactionId)
+          .single();
+        if (data && data.anexo_compartilhado_url) storedPath = data.anexo_compartilhado_url;
+      } catch (err) {
+        // ignore
+      }
+
+      const pathToDelete = storedPath ? this.normalizeStoredPath(storedPath) : fileName;
+
       // Tentar primeiro com service role
       let { data, error } = await supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
-        .remove([fileName]);
+        .remove([pathToDelete]);
 
       // Fallback para cliente normal
       if (error) {
@@ -554,7 +622,7 @@ export class AttachmentService {
 
       console.log('✅ Exclusão concluída:', data);
 
-      // Limpar URL do banco
+      // Limpar path do banco
       await this.updateSharedAttachmentUrl(transactionId, null);
 
       return true;
@@ -577,13 +645,83 @@ export class AttachmentService {
       if (!forceRefresh) {
         const groupInfo = await this.getTransactionAttachmentGroup(transactionId);
         if (groupInfo?.anexo_compartilhado_url) {
-          console.log('✅ URL obtida do banco de dados (anexo compartilhado)');
-          // Adicionar novo cache-busting mesmo para URLs do banco
-          const urlBase = groupInfo.anexo_compartilhado_url.split('?')[0];
-          const timestamp = Date.now();
-          const random = Math.random().toString(36).substring(7);
-          return `${urlBase}?v=${timestamp}&r=${random}&nocache=true`;
-        }
+            console.log('✅ URL obtida do banco de dados (anexo compartilhado)');
+            // Pode ser um path armazenado (ex: "<user_id>/file.jpg") ou uma URL completa.
+            const stored = groupInfo.anexo_compartilhado_url.split('?')[0];
+            const timestamp = Date.now();
+            const random = Math.random().toString(36).substring(7);
+            // Se já for uma URL completa, retorna com cache-busting
+            if (stored.startsWith('http://') || stored.startsWith('https://')) {
+              return `${stored}?v=${timestamp}&r=${random}&nocache=true`;
+            }
+            // Caso seja um path armazenado, o bucket pode ser privado.
+            // Estratégia: 1) tentar servidor de signed-urls se configurado; 2) tentar createSignedUrl via SDK (service role) se disponível; 3) fazer download do blob via SDK e retornar blob: URL.
+            const signedServer = import.meta.env.VITE_SIGNED_URL_SERVER_URL as string | undefined;
+
+            // 1) signed-url server
+            if (signedServer) {
+              try {
+                // usar objectPath (sem prefixo de bucket) ao solicitar signed-url
+                const objectPath = this.normalizeStoredPath(stored);
+                const resp = await fetch(`${signedServer.replace(/\/+$/, '')}/signed-url`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ bucket: this.BUCKET_NAME, path: objectPath, expires: 120 })
+                });
+                const json = await resp.json().catch(() => ({}));
+                if (resp.ok && json?.signedUrl) {
+                  console.log('🔐 Obtida signedUrl via servidor:', json.signedUrl);
+                  return json.signedUrl;
+                }
+                console.warn('⚠️ signed-url server respondeu sem signedUrl:', json, resp.status);
+              } catch (err) {
+                console.warn('⚠️ Erro ao solicitar signed-url:', err);
+              }
+            }
+
+            // 2) createSignedUrl via SDK (apenas se service role estiver presente)
+            try {
+                if (serviceRole && serviceRole.length) {
+                try {
+                const objectPath = this.normalizeStoredPath(stored);
+                const { data: signedData, error: signedError } = await supabaseServiceRole.storage
+                  .from(this.BUCKET_NAME)
+                  .createSignedUrl(objectPath, 120);
+                  if (signedError) {
+                    console.warn('⚠️ createSignedUrl retornou erro:', signedError.message || signedError);
+                  }
+                  if (signedData?.signedUrl) {
+                    console.log('🔐 Obtida signedUrl via SDK:', signedData.signedUrl);
+                    return signedData.signedUrl;
+                  }
+                } catch (err) {
+                  console.warn('⚠️ Falha ao chamar createSignedUrl via serviceRole:', err);
+                }
+              }
+            } catch (err) {
+              console.warn('⚠️ Erro ao verificar serviceRole para createSignedUrl:', err);
+            }
+
+            // 3) Fallback: tentar baixar o blob via SDK (precisa de service role) e retornar URL.createObjectURL
+            try {
+              const objectPath = this.normalizeStoredPath(stored);
+              const { data: blobData, error: dlError } = await supabaseServiceRole.storage
+                  .from(this.BUCKET_NAME)
+                  .download(objectPath);
+              if (!dlError && blobData) {
+                console.log('📦 Blob obtido via SDK para preview, criando object URL');
+                const objectUrl = URL.createObjectURL(blobData as Blob);
+                return objectUrl;
+              }
+              if (dlError) console.warn('⚠️ download via SDK retornou erro:', dlError.message || dlError);
+            } catch (err) {
+              console.warn('⚠️ Erro no download via SDK:', err);
+            }
+
+            // último recurso: construir URL pública manualmente (útil em dev publique)
+            const publicUrl = this.buildPublicUrl(stored);
+            return `${publicUrl}?v=${timestamp}&r=${random}&nocache=true`;
+          }
       }
 
       const fileId = await this.getStorageFileId(transactionId);
@@ -592,15 +730,61 @@ export class AttachmentService {
       console.log('📦 Gerando URL pública para arquivo (construída):', fileName);
 
       // Construir diretamente a URL pública conhecida do Supabase Storage para buckets públicos.
-      // Evita chamadas HEAD/GET adicionais que podem resultar em 400 em alguns ambientes.
+      // Priorizar <user_id>/<fileName> (imagens dentro da pasta do usuário), depois fileName na raiz.
+      const user = AuthService.getInstance().getCurrentUser();
       const baseUrl = url.replace(/\/+$/, '');
-      const publicUrlBase = `${baseUrl}/storage/v1/object/public/${this.BUCKET_NAME}/${fileName}`;
+      const candidates = [] as string[];
+      if (user?.user_id) candidates.push(`${user.user_id}/${fileName}`);
+      candidates.push(fileName);
 
       const timestamp = Date.now();
       const random = Math.random().toString(36).substring(7);
-      const urlWithTimestamp = `${publicUrlBase}?v=${timestamp}&r=${random}&nocache=true`;
-      console.log('📎 URL construída com cache-busting:', urlWithTimestamp);
-      return urlWithTimestamp;
+
+      for (const candidate of candidates) {
+        const objectPath = candidate;
+
+        // 1) tentar obter signedUrl via SDK/service role
+        try {
+          if (serviceRole && serviceRole.length) {
+            const { data: signedData, error: signedError } = await supabaseServiceRole.storage
+              .from(this.BUCKET_NAME)
+              .createSignedUrl(objectPath, 120);
+
+            if (signedError) {
+              console.warn('⚠️ createSignedUrl erro para candidate:', objectPath, signedError.message || signedError);
+            }
+            if (signedData?.signedUrl) {
+              console.log('🔐 Obtida signedUrl via SDK para candidate:', objectPath);
+              return signedData.signedUrl;
+            }
+          }
+        } catch (err) {
+          console.warn('⚠️ createSignedUrl exception para candidate:', objectPath, err);
+        }
+
+        // 2) tentar baixar blob via service role e retornar object URL (preview local)
+        try {
+          if (serviceRole && serviceRole.length) {
+            const { data: blobData, error: dlError } = await supabaseServiceRole.storage
+              .from(this.BUCKET_NAME)
+              .download(objectPath);
+            if (!dlError && blobData) {
+              console.log('📦 Blob obtido via SDK para preview (candidate):', objectPath);
+              const objectUrl = URL.createObjectURL(blobData as Blob);
+              return objectUrl;
+            }
+            if (dlError) console.warn('⚠️ download erro para candidate:', objectPath, dlError.message || dlError);
+          }
+        } catch (err) {
+          console.warn('⚠️ download exception para candidate:', objectPath, err);
+        }
+
+        // 3) último recurso: construir URL pública conhecida do Supabase Storage
+        const publicUrlBase = this.buildPublicUrl(candidate);
+        const urlWithTimestamp = `${publicUrlBase}?v=${timestamp}&r=${random}&nocache=true`;
+        console.log('📎 URL construída com cache-busting (fallback):', urlWithTimestamp);
+        return urlWithTimestamp;
+      }
     } catch (error) {
       console.error('💥 Erro ao obter URL do anexo:', error);
       return null;
@@ -851,13 +1035,49 @@ export class AttachmentService {
   const extensionsList = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
 
   // Procurar diretamente no storage (pasta 'arquivos') por fileId e extensões suportadas
+      const user = AuthService.getInstance().getCurrentUser();
+      // Preferir procurar em <user_id>/arquivos, depois em arquivos/, depois raiz (legado)
+      const candidatePaths = [] as string[];
+      if (user?.user_id) candidatePaths.push(`${user.user_id}/${this.FILE_FOLDER}`);
+      candidatePaths.push(this.FILE_FOLDER);
+      candidatePaths.push('');
 
-      let { data, error } = await supabaseServiceRole.storage
-        .from(this.BUCKET_NAME)
-        .list(this.FILE_FOLDER, {
-          limit: 1000,
-          search: fileId
-        });
+      let data = null as any;
+      let error = null as any;
+      for (const path of candidatePaths) {
+        try {
+          const res = await supabaseServiceRole.storage
+            .from(this.BUCKET_NAME)
+            .list(path, {
+              limit: 1000,
+              search: fileId
+            });
+          data = res.data;
+          error = res.error;
+        } catch (e) {
+          data = null;
+          error = e;
+        }
+        if (!error && data) break;
+        // se erro, tentar cliente normal e quebrar se sucesso
+        if (error) {
+          try {
+            const clientRes = await supabase.storage
+              .from(this.BUCKET_NAME)
+              .list(path, {
+                limit: 1000,
+                search: fileId
+              });
+            data = clientRes.data;
+            error = clientRes.error;
+            if (!error && data) break;
+          } catch (e) {
+            // continuar para próximo path
+            data = null;
+            error = e;
+          }
+        }
+      }
 
       if (error) {
         console.log('⚠️ Erro com service role, tentando cliente normal...');
@@ -882,7 +1102,7 @@ export class AttachmentService {
 
       console.log('📁 Resultado da busca de arquivo:', {
         encontrado: hasFile,
-  arquivosProcurados: extensionsList.map(ext => `${this.FILE_FOLDER}/${fileId}.${ext}`),
+        arquivosProcurados: extensionsList.map(ext => `${this.FILE_FOLDER}/${fileId}.${ext}`),
         arquivosEncontrados: data?.map(f => f.name).join(', ') || 'nenhum'
       });
 
@@ -911,26 +1131,77 @@ export class AttachmentService {
 
   const extensionsList = isFile ? ['pdf','xml','xls','xlsx','doc','docx','csv','txt'] : ['jpg'];
 
-    for (const ext of extensionsList) {
-        const folder = isFile ? this.FILE_FOLDER : '';
+
+    // Tentar com prefixo de usuário (user_id/arquivos), em seguida arquivos/, em seguida raiz
+    const user = AuthService.getInstance().getCurrentUser();
+    const candidates: string[] = [];
+    if (isFile) {
+      if (user?.user_id) candidates.push(`${user.user_id}/${this.FILE_FOLDER}`);
+      candidates.push(this.FILE_FOLDER);
+      candidates.push('');
+    } else {
+      if (user?.user_id) candidates.push(`${user.user_id}`);
+      candidates.push('');
+    }
+
+    for (const folder of candidates) {
+      for (const ext of extensionsList) {
         const fileName = folder ? `${folder}/${fileId}.${ext}` : `${fileId}.${ext}`;
-
         console.log(`📦 Verificando arquivo: ${fileName}`);
-
-        // Construir URL pública diretamente e tentar GET (evita problemas com HEAD em alguns ambientes)
-        const baseUrl = url.replace(/\/+$/, '');
-        const publicUrl = `${baseUrl}/storage/v1/object/public/${this.BUCKET_NAME}/${fileName}`;
+        // Primeiro tentar obter a URL pública via SDK (pode respeitar as configurações do projeto)
+        let publicUrl: string;
         try {
-          const response = await fetch(publicUrl, { method: 'GET', cache: 'no-cache' });
+          const { data: pubData, error: pubErr } = await supabaseServiceRole.storage
+            .from(this.BUCKET_NAME)
+            .getPublicUrl(fileName);
+
+          if (!pubErr && pubData?.publicUrl) {
+            publicUrl = pubData.publicUrl;
+          } else {
+            // fallback para construir manualmente (pode falhar em alguns casos)
+            publicUrl = this.buildPublicUrl(fileName);
+            if (pubErr) console.warn('⚠️ getPublicUrl retornou erro ou sem publicUrl:', pubErr);
+          }
+        } catch (err) {
+          // SDK pode falhar no browser ou estar indisponível; construir manualmente
+          publicUrl = this.buildPublicUrl(fileName);
+        }
+
+        try {
+          const response = await fetch(publicUrl, { method: 'GET', cache: 'no-cache', mode: 'cors' });
           if (response.ok) {
             console.log(`✅ ${isFile ? 'Arquivo' : 'Imagem'} encontrado: ${fileName}`);
             return true;
           }
+          console.log(`ℹ️ Verificação pública retornou: ${response.status} ${response.statusText} para ${publicUrl}`);
+
+          // Se o bucket for privado ou a URL pública falhar com 400/403, tentar signed URL via SDK (service role)
+          if (response.status === 400 || response.status === 403 || response.status === 404) {
+            try {
+              const objectPath = this.normalizeStoredPath(fileName);
+              if (serviceRole && serviceRole.length) {
+                const { data: signedData, error: signedError } = await supabaseServiceRole.storage
+                  .from(this.BUCKET_NAME)
+                  .createSignedUrl(objectPath, 120);
+                if (!signedError && signedData?.signedUrl) {
+                  console.log('🔐 Verificação via signedUrl:', signedData.signedUrl);
+                  const sres = await fetch(signedData.signedUrl, { method: 'GET', cache: 'no-cache', mode: 'cors' });
+                  if (sres.ok) return true;
+                  console.log('ℹ️ signedUrl retornou:', sres.status, sres.statusText);
+                } else {
+                  console.warn('⚠️ createSignedUrl retornou erro ou sem signedUrl:', signedError);
+                }
+              }
+            } catch (err) {
+              console.warn('⚠️ Erro ao tentar createSignedUrl/fetch:', err);
+            }
+          }
         } catch (err) {
           console.warn('⚠️ Erro ao verificar URL pública (GET):', publicUrl, err);
-          // continuar tentando outras extensões
+          // continuar tentando outras extensões/folders
         }
       }
+    }
 
       console.log(`❌ Nenhum ${isFile ? 'arquivo' : 'imagem'} encontrado`);
       return false;
@@ -952,7 +1223,10 @@ export class AttachmentService {
 
       const fileId = await this.getStorageFileIdForFile(transactionId);
       const ext = this.getFileExtension(file);
-      const fileName = `${this.FILE_FOLDER}/${fileId}.${ext}`;
+      const user = AuthService.getInstance().getCurrentUser();
+      const fileName = user && user.user_id
+        ? `${user.user_id}/${this.FILE_FOLDER}/${fileId}.${ext}`
+        : `${this.FILE_FOLDER}/${fileId}.${ext}`;
 
       console.log('📦 Usando ID de arquivo:', fileId, 'extensão:', ext);
 
@@ -1008,7 +1282,10 @@ export class AttachmentService {
 
       const fileId = await this.getStorageFileIdForFile(transactionId);
       const ext = this.getFileExtension(file);
-      const fileName = `${this.FILE_FOLDER}/${fileId}.${ext}`;
+      const user = AuthService.getInstance().getCurrentUser();
+      const fileName = user && user.user_id
+        ? `${user.user_id}/${this.FILE_FOLDER}/${fileId}.${ext}`
+        : `${this.FILE_FOLDER}/${fileId}.${ext}`;
 
       let { data, error } = await supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
@@ -1058,7 +1335,14 @@ export class AttachmentService {
       const fileId = await this.getStorageFileIdForFile(transactionId);
 
       const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
-      const filesToDelete = extensions.map(ext => `${this.FILE_FOLDER}/${fileId}.${ext}`);
+      const user = AuthService.getInstance().getCurrentUser();
+      const filesToDelete = [] as string[];
+      if (user?.user_id) {
+        filesToDelete.push(...extensions.map(ext => `${user.user_id}/${this.FILE_FOLDER}/${fileId}.${ext}`));
+      }
+      // also try non-prefixed paths for legacy
+      filesToDelete.push(...extensions.map(ext => `${this.FILE_FOLDER}/${fileId}.${ext}`));
+      filesToDelete.push(...extensions.map(ext => `${fileId}.${ext}`));
 
       let { data, error } = await supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
@@ -1104,8 +1388,14 @@ export class AttachmentService {
       const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
       let downloaded = false;
 
-      for (const ext of extensions) {
-        const fileName = `${this.FILE_FOLDER}/${fileId}.${ext}`;
+      // tentar primeiro em <user_id>/arquivos, depois em arquivos/, depois raiz
+      const user = AuthService.getInstance().getCurrentUser();
+      const candidateNames: string[] = [];
+      if (user?.user_id) candidateNames.push(...extensions.map(ext => `${user.user_id}/${this.FILE_FOLDER}/${fileId}.${ext}`));
+      candidateNames.push(...extensions.map(ext => `${this.FILE_FOLDER}/${fileId}.${ext}`));
+      candidateNames.push(...extensions.map(ext => `${fileId}.${ext}`));
+
+      for (const fileName of candidateNames) {
 
         let { data, error } = await supabaseServiceRole.storage
           .from(this.BUCKET_NAME)
@@ -1158,9 +1448,14 @@ export class AttachmentService {
 
   const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
 
-      for (const ext of extensions) {
-        const fileName = `${this.FILE_FOLDER}/${fileId}.${ext}`;
+      // tentar possíveis caminhos com prefixo de usuário e fallbacks
+      const user = AuthService.getInstance().getCurrentUser();
+      const candidateNames: string[] = [];
+      if (user?.user_id) candidateNames.push(...extensions.map(ext => `${user.user_id}/${this.FILE_FOLDER}/${fileId}.${ext}`));
+      candidateNames.push(...extensions.map(ext => `${this.FILE_FOLDER}/${fileId}.${ext}`));
+      candidateNames.push(...extensions.map(ext => `${fileId}.${ext}`));
 
+      for (const fileName of candidateNames) {
         const { data } = supabaseServiceRole.storage
           .from(this.BUCKET_NAME)
           .getPublicUrl(fileName);
@@ -1176,7 +1471,7 @@ export class AttachmentService {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `arquivo_${transactionId}.${ext}`;
+        link.download = `arquivo_${transactionId}.${fileName.split('.').pop()}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -1207,14 +1502,37 @@ export class AttachmentService {
 
       // Construir URLs públicas conhecidas (sem HEAD) para buckets públicos.
       const baseUrl = url.replace(/\/+$/, '');
-      for (const ext of extensions) {
-        const fileName = `${this.FILE_FOLDER}/${fileId}.${ext}`;
-        const publicUrlBase = `${baseUrl}/storage/v1/object/public/${this.BUCKET_NAME}/${fileName}`;
+      const user = AuthService.getInstance().getCurrentUser();
+
+      // Priorizar <user_id>/arquivos, depois arquivos/, depois raiz
+      const candidateNames: string[] = [];
+      if (user?.user_id) candidateNames.push(...extensions.map(ext => `${user.user_id}/${this.FILE_FOLDER}/${fileId}.${ext}`));
+      candidateNames.push(...extensions.map(ext => `${this.FILE_FOLDER}/${fileId}.${ext}`));
+      candidateNames.push(...extensions.map(ext => `${fileId}.${ext}`));
+
+      for (const fileName of candidateNames) {
+        // Tentar criar signedUrl via SDK (se disponível) — funciona para buckets privados
+        try {
+          const objectPath = this.normalizeStoredPath(fileName);
+          if (serviceRole && serviceRole.length) {
+            const { data: signedData, error: signedError } = await supabaseServiceRole.storage
+              .from(this.BUCKET_NAME)
+              .createSignedUrl(objectPath, 120);
+            if (!signedError && signedData?.signedUrl) {
+              console.log('🔐 Obtida signedUrl para arquivo via SDK:', signedData.signedUrl);
+              return signedData.signedUrl;
+            }
+            if (signedError) console.warn('⚠️ createSignedUrl retornou erro:', signedError);
+          }
+        } catch (err) {
+          console.warn('⚠️ Falha ao tentar createSignedUrl para', fileName, err);
+        }
+
+        const publicUrlBase = this.buildPublicUrl(fileName);
         const timestamp = Date.now();
         const random = Math.random().toString(36).substring(7);
         const urlWithTimestamp = `${publicUrlBase}?v=${timestamp}&r=${random}&nocache=true`;
         console.log('📎 URL construída (possível):', urlWithTimestamp);
-        // Retornar a primeira URL construída; se não existir, o cliente receberá 404.
         return urlWithTimestamp;
       }
 
@@ -1361,19 +1679,14 @@ export class AttachmentService {
 
     console.log('✅ File uploaded to storage successfully');
 
-    const { data: publicUrlData } = supabase.storage
-      .from(this.bucketName)
-      .getPublicUrl(filePath);
-
-    const publicUrl = publicUrlData.publicUrl;
-    console.log('🔗 Public URL generated:', publicUrl);
-
+    // armazenar apenas o caminho no storage (ex: primeiro_envio/pdf/12345_abc.pdf)
+    const storedValue = filePath;
     const columnName = uploadType === 'primeiro_envio' ? 'url_primeiro_envio' : 'url_segundo_envio';
-    console.log('💾 Updating database column:', columnName);
+    console.log('💾 Atualizando coluna do banco com path:', columnName, storedValue);
 
     const { error: dbError } = await supabase
       .from(this.tableName)
-      .update({ [columnName]: publicUrl })
+      .update({ [columnName]: storedValue })
       .eq('id_maquina', maquinaId);
 
     if (dbError) {
@@ -1388,7 +1701,7 @@ export class AttachmentService {
     console.log('✅ Database updated successfully');
     console.log('🎉 Upload process completed successfully');
 
-    return { success: true, url: publicUrl, fileType: uploadType };
+    return { success: true, url: storedValue, fileType: uploadType };
 
   } catch (error) {
     console.error('💥 Unexpected error in uploadFile:', error);
@@ -1408,33 +1721,56 @@ export class AttachmentService {
 
       console.log('⬇️ Starting download for URL:', url);
 
-      const filePath = this.extractFilePathFromUrl(url);
-      if (!filePath) {
-        console.error('❌ Could not extract file path from URL');
-        return { data: null, error: 'Invalid URL format', fileType: null };
+      // tentar extrair path (quando a coluna armazena um publicUrl)
+      let filePath = this.extractFilePathFromUrl(url);
+      let fileType = this.getFileTypeFromUrl(url);
+
+      if (filePath) {
+        try {
+          const { data, error } = await supabase.storage
+            .from(this.bucketName)
+            .download(filePath);
+
+          if (error || !data) {
+            console.error('❌ Download error via storage:', error);
+            // continuar para tentativas por URL
+          } else {
+            console.log('✅ Download successful via storage, blob size:', data.size);
+            return { data, error: null, fileType };
+          }
+        } catch (err) {
+          console.error('❌ Storage download exception:', err);
+        }
       }
 
-      console.log('📁 Extracted file path:', filePath);
-
-      const fileType = this.getFileTypeFromUrl(url);
-      console.log('📄 Detected file type:', fileType);
-
-      const { data, error } = await supabase.storage
-        .from(this.bucketName)
-        .download(filePath);
-
-      if (error) {
-        console.error('❌ Download error:', error);
-        return { data: null, error: error.message, fileType: null };
+      // se for blob URL já criado no cliente
+      if (url.startsWith('blob:')) {
+        // não podemos obter o blob do browser a partir do blob: sem referência; assumir que a UI já pode usar
+        console.warn('⚠️ URL é blob:; será usada diretamente para download via link');
+        const resp = await fetch(url);
+        const blob = await resp.blob();
+        return { data: blob as unknown as Blob, error: null, fileType };
       }
 
-      if (!data) {
-        console.error('❌ No data returned from download');
-        return { data: null, error: 'No data received', fileType: null };
+      // se for uma URL HTTP (signed ou pública), buscar e retornar blob
+      if (url.startsWith('http')) {
+        try {
+          const resp = await fetch(url);
+          if (!resp.ok) {
+            throw new Error(`HTTP ${resp.status}`);
+          }
+          const blob = await resp.blob();
+          console.log('✅ Download via HTTP concluído, tamanho:', blob.size);
+          return { data: blob as unknown as Blob, error: null, fileType };
+        } catch (err) {
+          console.error('❌ Erro no fetch HTTP para download:', err);
+          return { data: null, error: (err as Error).message, fileType: null };
+        }
       }
 
-      console.log('✅ Download successful, blob size:', data.size);
-      return { data, error: null, fileType };
+      // se chegou aqui, formato desconhecido
+      console.error('❌ Could not download file: unsupported URL or path', url);
+      return { data: null, error: 'Unsupported URL or unable to download', fileType: null };
     } catch (error) {
       console.error('💥 Unexpected error downloading file:', error);
       return { data: null, error: (error as Error).message, fileType: null };
@@ -1472,12 +1808,35 @@ export class AttachmentService {
     uploadType: 'primeiro_envio' | 'segundo_envio'
   ): Promise<{ success: boolean; error?: string }> {
   try {
-    if (!url) {
-      return { success: false, error: 'No URL provided' };
+    // tentar extrair o path da URL fornecida
+    let filePath = '';
+    if (url) {
+      filePath = this.extractFilePathFromUrl(url);
     }
 
-    const filePath = this.extractFilePathFromUrl(url);
-    console.log('⚠️ File path to delete:', filePath);
+    // se não conseguir extrair, buscar o valor cru no DB (onde armazenamos o path)
+    if (!filePath) {
+      const columnName = uploadType === 'primeiro_envio' ? 'url_primeiro_envio' : 'url_segundo_envio';
+      try {
+        const { data, error } = await supabase
+          .from(this.tableName)
+          .select(columnName)
+          .eq('id_maquina', maquinaId)
+          .single();
+        if (!error && data) {
+          const raw = (data as any)[columnName];
+          if (raw) {
+            if (raw.startsWith('http')) {
+              filePath = this.extractFilePathFromUrl(raw);
+            } else {
+              filePath = raw;
+            }
+          }
+        }
+      } catch (err) {
+        // ignore and continue
+      }
+    }
 
     if (!filePath) {
       return { success: false, error: 'File path is empty or invalid for deletion' };
@@ -1642,10 +2001,76 @@ export class AttachmentService {
 
       if (result.error || !result.data) return null;
 
-      // Tipagem explícita: o resultado pode ter uma das duas propriedades
       const data = result.data as { url_primeiro_envio?: string; url_segundo_envio?: string };
-      return uploadType === 'primeiro_envio' ? (data.url_primeiro_envio ?? null) : (data.url_segundo_envio ?? null);
-  } catch {
+      const stored = uploadType === 'primeiro_envio' ? (data.url_primeiro_envio ?? null) : (data.url_segundo_envio ?? null);
+      if (!stored) return null;
+
+      // se for URL completa, tentar usar diretamente (HEAD)
+      if (stored.startsWith('http')) {
+        try {
+          const head = await fetch(stored, { method: 'HEAD', cache: 'no-cache' });
+          if (head.ok) return stored;
+        } catch (err) {
+          // continuar para tentar extrair path
+        }
+      }
+
+      // se for um path armazenado (ex: primeiro_envio/pdf/123.pdf) ou extraível da URL, normalizar
+      let path = '';
+      if (!stored.startsWith('http')) {
+        path = stored;
+      } else {
+        path = this.extractFilePathFromUrl(stored);
+      }
+
+      if (!path) return null;
+
+      // tentar public URL
+      try {
+        const { data } = supabaseServiceRole.storage.from(this.bucketName).getPublicUrl(path);
+        if (data?.publicUrl) {
+          try {
+            const head = await fetch(data.publicUrl, { method: 'HEAD', cache: 'no-cache' });
+            if (head.ok) return data.publicUrl;
+          } catch (err) {
+            // continuar para signed-url
+          }
+        }
+      } catch (err) {
+        // ignore
+      }
+
+      // tentar signed-url no server
+      const server = import.meta.env.VITE_SIGNED_URL_SERVER_URL || import.meta.env.VITE_API_URL || '';
+      if (server) {
+        try {
+          const resp = await fetch(`${server.replace(/\/$/, '')}/signed-url`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bucket: this.bucketName, path, expires: 60 })
+          });
+          if (resp.ok) {
+            const payload = await resp.json();
+            if (payload?.signedUrl) return payload.signedUrl;
+          }
+        } catch (err) {
+          // continue
+        }
+      }
+
+      // fallback: download blob e retornar URL.createObjectURL
+      try {
+        const { data: blobData, error: dlErr } = await supabaseServiceRole.storage.from(this.bucketName).download(path);
+        if (!dlErr && blobData) {
+          return URL.createObjectURL(blobData);
+        }
+      } catch (err) {
+        // ignore
+      }
+
+      return null;
+  } catch (e) {
+    console.error('Erro em getFileUrl:', e);
     return null;
   }
 }

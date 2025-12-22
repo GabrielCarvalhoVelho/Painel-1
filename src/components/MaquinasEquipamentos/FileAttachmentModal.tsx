@@ -55,6 +55,7 @@ export default function FileAttachmentModal({
   const [loading, setLoading] = useState(false);
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [previewMap, setPreviewMap] = useState<Record<string, string | null>>({});
 
   useEffect(() => {
     if (isOpen) {
@@ -69,24 +70,77 @@ export default function FileAttachmentModal({
       const attachmentInfo = await attachmentService.getAttachmentInfo(maquinaId);
       
       if (attachmentInfo) {
+        // resolver URLs armazenadas (path) para URLs utilizáveis
+        const primeiro = attachmentInfo.hasPrimeiroEnvio
+          ? await attachmentService.getFileUrl(maquinaId, 'primeiro_envio')
+          : null;
+        const segundo = attachmentInfo.hasSegundoEnvio
+          ? await attachmentService.getFileUrl(maquinaId, 'segundo_envio')
+          : null;
+
         setFileSlots([
           {
             id: 'primeiro_envio',
             label: 'Primeiro Anexo',
             hasFile: attachmentInfo.hasPrimeiroEnvio || false,
-            url: attachmentInfo.url_primeiro_envio || null,
+            url: primeiro,
             fileType: attachmentInfo.primeiroEnvioType || null,
-            fileName: getFileNameFromUrl(attachmentInfo.url_primeiro_envio || null)
+            fileName: getFileNameFromUrl(primeiro || attachmentInfo.url_primeiro_envio || null)
           },
           {
             id: 'segundo_envio',
             label: 'Segundo Anexo',
             hasFile: attachmentInfo.hasSegundoEnvio || false,
-            url: attachmentInfo.url_segundo_envio || null,
+            url: segundo,
             fileType: attachmentInfo.segundoEnvioType || null,
-            fileName: getFileNameFromUrl(attachmentInfo.url_segundo_envio || null)
+            fileName: getFileNameFromUrl(segundo || attachmentInfo.url_segundo_envio || null)
           }
         ]);
+
+        // gerar previews (miniaturas) para PDFs e imagens não públicas
+        try {
+          const map: Record<string, string | null> = {};
+          const slots = [
+            { id: 'primeiro_envio', url: primeiro, fileType: attachmentInfo.primeiroEnvioType },
+            { id: 'segundo_envio', url: segundo, fileType: attachmentInfo.segundoEnvioType }
+          ];
+
+          for (const s of slots) {
+            if (!s.url) { map[s.id] = null; continue; }
+            const isPdf = (s.fileType === 'pdf') || (s.url.toLowerCase().endsWith('.pdf'));
+            const isImage = s.fileType ? s.fileType.startsWith('image/') : /\.(jpe?g|png|webp|gif|bmp|svg|avif)$/.test(s.url.toLowerCase());
+
+            if (isImage) {
+              // imagens já são exibidas diretamente via URL; não precisamos baixar
+              map[s.id] = null;
+            } else if (isPdf) {
+              try {
+                const res = await attachmentService.downloadFile(s.url);
+                if (!res.error && res.data) {
+                  const blobUrl = URL.createObjectURL(res.data as unknown as Blob);
+                  map[s.id] = blobUrl;
+                } else {
+                  map[s.id] = null;
+                }
+              } catch (err) {
+                map[s.id] = null;
+              }
+            } else {
+              map[s.id] = null;
+            }
+          }
+
+          setPreviewMap(prev => {
+            // revogar antigos URLs que serão substituídos
+            for (const k of Object.keys(prev)) {
+              if (prev[k] && map[k] && prev[k] !== map[k]) URL.revokeObjectURL(prev[k]!);
+              if (prev[k] && !map[k]) URL.revokeObjectURL(prev[k]!);
+            }
+            return map;
+          });
+        } catch (err) {
+          console.warn('Erro ao gerar previews:', err);
+        }
       } else {
         setFileSlots([
           { id: 'primeiro_envio', label: 'Primeiro Anexo', hasFile: false, url: null, fileType: null, fileName: null },
@@ -101,6 +155,16 @@ export default function FileAttachmentModal({
     }
   };
 
+  // limpar object URLs quando o componente desmontar
+  useEffect(() => {
+    return () => {
+      for (const k of Object.keys(previewMap)) {
+        const v = previewMap[k];
+        if (v) URL.revokeObjectURL(v);
+      }
+    };
+  }, [previewMap]);
+
   const getFileNameFromUrl = (url: string | null): string | null => {
     if (!url) return null;
     try {
@@ -110,6 +174,13 @@ export default function FileAttachmentModal({
     } catch {
       return null;
     }
+  };
+
+  const buildImageSrc = (url: string | null) => {
+    if (!url) return '';
+    if (url.startsWith('blob:')) return url;
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}t=${Date.now()}`;
   };
 
   const isImageFile = (fileType: string | null) => {
@@ -436,11 +507,28 @@ export default function FileAttachmentModal({
                       if (isImage) {
                         return (
                           <img
-                            src={slot.url}
+                            src={buildImageSrc(slot.url)}
                             alt={slot.label}
                             className="max-h-40 mx-auto rounded-xl shadow-[0_1px_3px_rgba(0,68,23,0.04)]"
                           />
                         );
+                      }
+
+                      // Mostrar miniatura para PDF se disponível
+                      if (slot.fileType === 'pdf' || (slot.url && slot.url.toLowerCase().endsWith('.pdf'))) {
+                        const preview = previewMap[slot.id];
+                        if (preview) {
+                          return (
+                            <object
+                              data={preview}
+                              type="application/pdf"
+                              className="max-h-40 mx-auto w-full rounded-xl border"
+                            >
+                              <div className="p-4 text-center">Visualização em PDF indisponível</div>
+                            </object>
+                          );
+                        }
+                        // sem preview, cair para ícone
                       }
 
                       const FileIcon = getFileIcon(slot.fileType);
