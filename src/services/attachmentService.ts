@@ -488,8 +488,9 @@ export class AttachmentService {
 
       console.log('✅ Upload concluído:', data);
 
-      // armazenar path no banco (será resolvido dinamicamente ao renderizar)
-      await this.updateSharedAttachmentUrl(transactionId, filePath);
+      // armazenar apenas o fileName no banco (sem user_id)
+      // A URL será resolvida dinamicamente ao renderizar, tentando com user_id primeiro
+      await this.updateSharedAttachmentUrl(transactionId, fileName);
 
       return true;
     } catch (error) {
@@ -682,22 +683,31 @@ export class AttachmentService {
               try {
                 // usar objectPath (sem prefixo de bucket) ao solicitar signed-url
                 const objectPath = this.normalizeStoredPath(stored);
+                const user = AuthService.getInstance().getCurrentUser();
+                const pathsToTry = [objectPath];
+                if (user?.user_id && !objectPath.startsWith(user.user_id)) {
+                  pathsToTry.unshift(`${user.user_id}/${objectPath}`);
+                }
+
                 const headers: HeadersInit = { 'Content-Type': 'application/json' };
                 if (anonKey) {
                   headers['Authorization'] = `Bearer ${anonKey}`;
                 }
-                const resp = await fetch(`${signedServer.replace(/\/+$/, '')}/signed-url`, {
-                  method: 'POST',
-                  headers,
-                  body: JSON.stringify({ bucket: this.BUCKET_NAME, path: objectPath, expires: 120 })
-                });
-                const json = await resp.json().catch(() => ({}));
-                if (resp.ok && json?.signedUrl) {
-                  console.log('🔐 Obtida signedUrl via servidor:', json.signedUrl);
-                  console.log('🧭 USING_ATTACHMENT_URL_METHOD: signed-server', { transactionId, url: json.signedUrl });
-                  return json.signedUrl;
+
+                for (const tryPath of pathsToTry) {
+                  const resp = await fetch(`${signedServer.replace(/\/+$/, '')}/signed-url`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ bucket: this.BUCKET_NAME, path: tryPath, expires: 120 })
+                  });
+                  const json = await resp.json().catch(() => ({}));
+                  if (resp.ok && json?.signedUrl) {
+                    console.log('🔐 Obtida signedUrl via servidor:', json.signedUrl);
+                    console.log('🧭 USING_ATTACHMENT_URL_METHOD: signed-server', { transactionId, url: json.signedUrl });
+                    return json.signedUrl;
+                  }
                 }
-                console.warn('⚠️ signed-url server respondeu sem signedUrl:', json, resp.status);
+                console.warn('⚠️ signed-url server falhou para todos os paths tentados');
               } catch (err) {
                 console.warn('⚠️ Erro ao solicitar signed-url:', err);
               }
@@ -708,17 +718,23 @@ export class AttachmentService {
                 if (serviceRole && serviceRole.length) {
                 try {
                 const objectPath = this.normalizeStoredPath(stored);
-                const { data: signedData, error: signedError } = await supabaseServiceRole.storage
-                  .from(this.BUCKET_NAME)
-                  .createSignedUrl(objectPath, 120);
-                  if (signedError) {
-                    console.warn('⚠️ createSignedUrl retornou erro:', signedError.message || signedError);
-                  }
-                  if (signedData?.signedUrl) {
-                    console.log('🔐 Obtida signedUrl via SDK:', signedData.signedUrl);
-                    console.log('🧭 USING_ATTACHMENT_URL_METHOD: signed-sdk', { transactionId, url: signedData.signedUrl });
-                    return signedData.signedUrl;
-                  }
+                const user = AuthService.getInstance().getCurrentUser();
+                const pathsToTry = [objectPath];
+                if (user?.user_id && !objectPath.startsWith(user.user_id)) {
+                  pathsToTry.unshift(`${user.user_id}/${objectPath}`);
+                }
+
+                for (const tryPath of pathsToTry) {
+                  const { data: signedData, error: signedError } = await supabaseServiceRole.storage
+                    .from(this.BUCKET_NAME)
+                    .createSignedUrl(tryPath, 120);
+                    if (!signedError && signedData?.signedUrl) {
+                      console.log('🔐 Obtida signedUrl via SDK:', signedData.signedUrl);
+                      console.log('🧭 USING_ATTACHMENT_URL_METHOD: signed-sdk', { transactionId, url: signedData.signedUrl });
+                      return signedData.signedUrl;
+                    }
+                }
+                console.warn('⚠️ createSignedUrl falhou para todos os paths tentados');
                 } catch (err) {
                   console.warn('⚠️ Falha ao chamar createSignedUrl via serviceRole:', err);
                 }
@@ -730,16 +746,24 @@ export class AttachmentService {
             // 3) Fallback: tentar baixar o blob via SDK (precisa de service role) e retornar URL.createObjectURL
             try {
               const objectPath = this.normalizeStoredPath(stored);
-              const { data: blobData, error: dlError } = await supabaseServiceRole.storage
-                  .from(this.BUCKET_NAME)
-                  .download(objectPath);
-              if (!dlError && blobData) {
-                console.log('📦 Blob obtido via SDK para preview, criando object URL');
-                const objectUrl = URL.createObjectURL(blobData as Blob);
-                console.log('🧭 USING_ATTACHMENT_URL_METHOD: blob-object-url', { transactionId, url: objectUrl });
-                return objectUrl;
+              const user = AuthService.getInstance().getCurrentUser();
+              const pathsToTry = [objectPath];
+              if (user?.user_id && !objectPath.startsWith(user.user_id)) {
+                pathsToTry.unshift(`${user.user_id}/${objectPath}`);
               }
-              if (dlError) console.warn('⚠️ download via SDK retornou erro:', dlError.message || dlError);
+
+              for (const tryPath of pathsToTry) {
+                const { data: blobData, error: dlError } = await supabaseServiceRole.storage
+                    .from(this.BUCKET_NAME)
+                    .download(tryPath);
+                if (!dlError && blobData) {
+                  console.log('📦 Blob obtido via SDK para preview, criando object URL');
+                  const objectUrl = URL.createObjectURL(blobData as Blob);
+                  console.log('🧭 USING_ATTACHMENT_URL_METHOD: blob-object-url', { transactionId, url: objectUrl });
+                  return objectUrl;
+                }
+              }
+              console.warn('⚠️ download via SDK falhou para todos os paths tentados');
             } catch (err) {
               console.warn('⚠️ Erro no download via SDK:', err);
             }
