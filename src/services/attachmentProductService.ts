@@ -71,38 +71,67 @@ export class AttachmentProductService {
   static async listAttachments(productId: string): Promise<AttachmentFile[]> {
     const results: AttachmentFile[] = [];
 
+    // helper to obtain a usable URL for a path (public, signed or blob)
+    const resolveUrl = async (path: string) => {
+      try {
+        // try public url
+        const { data } = supabaseServiceRole.storage.from(this.BUCKET_NAME).getPublicUrl(path);
+        if (data?.publicUrl) {
+          try {
+            const head = await fetch(data.publicUrl, { method: 'HEAD', cache: 'no-cache' });
+            if (head.ok) return `${data.publicUrl}`;
+          } catch (err) {
+            // fallthrough to signed URL
+          }
+        }
+
+        // try signed URL from server
+        const server = import.meta.env.VITE_SIGNED_URL_SERVER_URL || import.meta.env.VITE_API_URL || '';
+        if (server) {
+          try {
+            const resp = await fetch(`${server.replace(/\/$/, '')}/signed-url`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ bucket: this.BUCKET_NAME, path, expires: 60 })
+            });
+            if (resp.ok) {
+              const payload = await resp.json();
+              if (payload?.signedUrl) return payload.signedUrl;
+            }
+          } catch (err) {
+            // continue to download fallback
+          }
+        }
+
+        // download fallback
+        try {
+          const { data: blobData, error: dlErr } = await supabaseServiceRole.storage.from(this.BUCKET_NAME).download(path);
+          if (!dlErr && blobData) {
+            return URL.createObjectURL(blobData);
+          }
+        } catch (err) {
+          // nothing
+        }
+
+        return null;
+      } catch (err) {
+        console.error('Erro ao resolver URL do attachment:', err);
+        return null;
+      }
+    };
+
     // Imagem
     const imagePath = this.getFilePath(productId, 'jpg');
-    const { data: imgUrl } = supabaseServiceRole
-      .storage
-      .from(this.BUCKET_NAME)
-      .getPublicUrl(imagePath);
-    if (imgUrl?.publicUrl) {
-      const head = await fetch(imgUrl.publicUrl, { method: 'HEAD', cache: 'no-cache' });
-      if (head.ok) {
-        results.push({
-          url: `${imgUrl.publicUrl}?t=${Date.now()}`,
-          type: 'image',
-          name: `${productId}.jpg`,
-        });
-      }
+    const imageUrl = await resolveUrl(imagePath);
+    if (imageUrl) {
+      results.push({ url: imageUrl, type: 'image', name: `${productId}.jpg` });
     }
 
     // PDF
     const pdfPath = this.getFilePath(productId, 'pdf');
-    const { data: pdfUrl } = supabaseServiceRole
-      .storage
-      .from(this.BUCKET_NAME)
-      .getPublicUrl(pdfPath);
-    if (pdfUrl?.publicUrl) {
-      const head = await fetch(pdfUrl.publicUrl, { method: 'HEAD', cache: 'no-cache' });
-      if (head.ok) {
-        results.push({
-          url: `${pdfUrl.publicUrl}?t=${Date.now()}`,
-          type: 'pdf',
-          name: `${productId}.pdf`,
-        });
-      }
+    const pdfUrl = await resolveUrl(pdfPath);
+    if (pdfUrl) {
+      results.push({ url: pdfUrl, type: 'pdf', name: `${productId}.pdf` });
     }
 
     return results;
@@ -111,7 +140,7 @@ export class AttachmentProductService {
   /**
    * Upload (imagem ou PDF)
    */
-  static async uploadAttachment(productId: string, file: File): Promise<string> {
+  static async uploadAttachment(productId: string, file: File): Promise<string | null> {
     try {
       console.log('⬆️ Upload de anexo para produto:', productId);
 
@@ -137,7 +166,7 @@ export class AttachmentProductService {
       }
 
       console.log('✅ Upload concluído');
-      return this.getAttachmentUrl(productId, ext) as string;
+      return await this.getAttachmentUrl(productId, ext);
     } catch (error) {
       console.error('💥 Erro no upload:', error);
       throw error;
@@ -188,16 +217,48 @@ export class AttachmentProductService {
   /**
    * Obtém URL pública
    */
-  static getAttachmentUrl(productId: string, ext: 'jpg' | 'pdf' = 'jpg'): string | null {
+  static async getAttachmentUrl(productId: string, ext: 'jpg' | 'pdf' = 'jpg'): Promise<string | null> {
+    const path = this.getFilePath(productId, ext);
     try {
-      const filePath = this.getFilePath(productId, ext);
-      const { data } = supabaseServiceRole
-        .storage
-        .from(this.BUCKET_NAME)
-        .getPublicUrl(filePath);
+      const { data } = supabaseServiceRole.storage.from(this.BUCKET_NAME).getPublicUrl(path);
+      if (data?.publicUrl) {
+        try {
+          const head = await fetch(data.publicUrl, { method: 'HEAD', cache: 'no-cache' });
+          if (head.ok) return `${data.publicUrl}`;
+        } catch (err) {
+          // continue
+        }
+      }
 
-      if (!data?.publicUrl) return null;
-      return `${data.publicUrl}?t=${Date.now()}&cache=no-cache`;
+      // signed-url server
+      const server = import.meta.env.VITE_SIGNED_URL_SERVER_URL || import.meta.env.VITE_API_URL || '';
+      if (server) {
+        try {
+          const resp = await fetch(`${server.replace(/\/$/, '')}/signed-url`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bucket: this.BUCKET_NAME, path, expires: 60 })
+          });
+          if (resp.ok) {
+            const payload = await resp.json();
+            if (payload?.signedUrl) return payload.signedUrl;
+          }
+        } catch (err) {
+          // continue to download fallback
+        }
+      }
+
+      // download fallback
+      try {
+        const { data: blobData, error: dlErr } = await supabaseServiceRole.storage.from(this.BUCKET_NAME).download(path);
+        if (!dlErr && blobData) {
+          return URL.createObjectURL(blobData);
+        }
+      } catch (err) {
+        // ignore
+      }
+
+      return null;
     } catch (error) {
       console.error('💥 Erro ao obter URL:', error);
       return null;

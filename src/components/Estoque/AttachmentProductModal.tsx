@@ -254,6 +254,13 @@ export default function AttachmentProductModal({
     return 'text-gray-600';
   };
 
+  const buildImageSrc = (url?: string) => {
+    if (!url) return '';
+    if (url.startsWith('blob:')) return url;
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}t=${imageKey}`;
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -348,14 +355,14 @@ export default function AttachmentProductModal({
 
           {attachments.find(a => a.type === 'image') && (
             <div className="flex flex-col items-center gap-2 bg-gray-50 p-3 rounded-lg border">
-              <img
-                key={imageKey}
-                src={`${attachments.find(a => a.type === 'image')?.url}&t=${imageKey}`}
-                alt="Imagem anexada"
-                className="max-h-32 mb-2 rounded border"
-                onLoad={() => console.log('🖼️ Imagem carregada:', imageKey)}
-                onError={(e) => console.error('❌ Erro ao carregar imagem:', e)}
-              />
+                <img
+                  key={imageKey}
+                  src={buildImageSrc(attachments.find(a => a.type === 'image')?.url)}
+                  alt="Imagem anexada"
+                  className="max-h-32 mb-2 rounded border"
+                  onLoad={() => console.log('🖼️ Imagem carregada:', imageKey)}
+                  onError={(e) => console.error('❌ Erro ao carregar imagem:', e)}
+                />
               <div className="flex gap-2 mb-2">
                 <button
                   className="bg-[#f3f4f6] text-[#092f20] px-2 py-1 rounded hover:bg-[#e5e7eb] flex items-center gap-1 transition-colors"
