@@ -1,3 +1,12 @@
+import { supabase } from '../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+import { AuthService } from './authService';
+
+// ...existing code...
+
+export class AttachmentService {
+  // ...existing code...
+
   /**
    * Obtém a URL de visualização do anexo financeiro (padrão Manejo Agrícola)
    * Tenta: 1) URL pública (HEAD), 2) signed-url backend, 3) blob fallback
@@ -70,6 +79,8 @@
       return null;
     }
   }
+  // ...existing code...
+}
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { AuthService } from './authService';
