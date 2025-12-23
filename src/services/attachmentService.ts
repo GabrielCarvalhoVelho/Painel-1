@@ -41,10 +41,10 @@ export interface FileDownloadResult {
 /**
  * Informações resumidas sobre anexos financeiros
  */
-export interface AttachmentInfo {
-  id: string;
-  url_primeiro_envio?: string | null;
-  url_segundo_envio?: string | null;
+          userId ? `${userId}/${fileName}` : fileName, // 1. userId/filename
+          userId ? `${userId}/imagens/${fileName}` : `imagens/${fileName}`, // 2. userId/imagens/filename
+          `imagens/${fileName}`, // 3. imagens/filename
+          fileName, // 4. filename (raiz)
   hasPrimeiroEnvio?: boolean;
   hasSegundoEnvio?: boolean;
   hasAnyFiles?: boolean;
@@ -2261,7 +2261,16 @@ export class AttachmentService {
       const userPath = user ? `${user.user_id}` : '';
       const fileName = `${fileId}.jpg`;
       // Tenta com user_id no path (padrão atual)
-      const pathsToTry = userPath ? [`${userPath}/${fileName}`, fileName] : [fileName];
+      // Tenta todos os caminhos possíveis para imagens
+      const pathsToTry = [];
+      if (userPath) {
+        pathsToTry.push(
+          `${userPath}/${fileName}`,
+          `${userPath}/imagens/${fileName}`,
+          `imagens/${fileName}`
+        );
+      }
+      pathsToTry.push(fileName);
       for (const objectPath of pathsToTry) {
         // 1. Tenta URL pública
         const publicUrl = this.buildPublicUrl(objectPath, this.BUCKET_NAME);
