@@ -101,21 +101,18 @@ export default function AttachmentModal({
 
       const files: AttachmentFile[] = [];
 
-      const imageExists = await AttachmentService.hasAttachment(transactionId);
-      console.log('📸 Imagem existe?', imageExists);
-
-      if (imageExists) {
-        const imageUrl = await AttachmentService.getAttachmentUrl(transactionId, forceRefresh);
-        console.log('🔗 URL da imagem obtida:', imageUrl);
-        if (imageUrl) {
-          files.push({
-            url: imageUrl,
-            type: 'image',
-            name: `${transactionId}.jpg`
-          });
-        }
+      // NOVO: usa método padronizado igual Manejo Agrícola
+      const imageUrl = await AttachmentService.getAttachmentUrlFinanceiro(transactionId, forceRefresh);
+      console.log('🔗 [Financeiro] URL da imagem obtida:', imageUrl);
+      if (imageUrl) {
+        files.push({
+          url: imageUrl,
+          type: 'image',
+          name: `${transactionId}.jpg`
+        });
       }
 
+      // Mantém lógica de arquivo extra (pdf, xml, etc)
       const fileExists = await AttachmentService.hasFileAttachment(transactionId);
       console.log('📄 Arquivo existe?', fileExists);
 

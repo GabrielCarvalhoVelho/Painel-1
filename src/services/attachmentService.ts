@@ -1,3 +1,75 @@
+  /**
+   * Obtém a URL de visualização do anexo financeiro (padrão Manejo Agrícola)
+   * Tenta: 1) URL pública (HEAD), 2) signed-url backend, 3) blob fallback
+   */
+  static async getAttachmentUrlFinanceiro(transactionId: string, forceRefresh = false): Promise<string | null> {
+    try {
+      console.log('🔗 [Financeiro] Obtendo URL do anexo:', transactionId, forceRefresh ? '(refresh forçado)' : '');
+
+      // 1. Tenta URL pública (HEAD)
+      const fileId = await this.getStorageFileId(transactionId);
+      const fileName = `${fileId}.jpg`;
+      const publicUrl = this.buildPublicUrl(fileName);
+      try {
+        const headResp = await fetch(publicUrl, { method: 'HEAD', cache: 'no-cache' });
+        if (headResp.ok) {
+          const timestamp = Date.now();
+          const random = Math.random().toString(36).substring(7);
+          const urlWithTimestamp = `${publicUrl}?v=${timestamp}&r=${random}`;
+          console.log('📎 [Financeiro] URL pública válida:', urlWithTimestamp);
+          return urlWithTimestamp;
+        } else {
+          console.log('⚠️ [Financeiro] HEAD público falhou:', headResp.status, publicUrl);
+        }
+      } catch (err) {
+        console.log('⚠️ [Financeiro] Erro no HEAD público:', err);
+      }
+
+      // 2. Tenta signed-url backend
+      try {
+        const server = import.meta.env.VITE_SIGNED_URL_SERVER_URL || import.meta.env.VITE_API_URL || '';
+        if (server) {
+          const resp = await fetch(`${server.replace(/\/$/, '')}/signed-url`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bucket: this.BUCKET_NAME, path: fileName, expires: 60 })
+          });
+          if (resp.ok) {
+            const payload = await resp.json();
+            if (payload?.signedUrl) {
+              console.log('🔐 [Financeiro] Obtido signedUrl do servidor');
+              return payload.signedUrl;
+            }
+          } else {
+            console.log('⚠️ [Financeiro] Signed-url server retornou erro', resp.status);
+          }
+        } else {
+          console.log('⚠️ [Financeiro] VITE_SIGNED_URL_SERVER_URL não configurado');
+        }
+      } catch (err) {
+        console.error('💥 [Financeiro] Erro ao solicitar signed URL ao servidor:', err);
+      }
+
+      // 3. Fallback: download blob
+      try {
+        let { data, error } = await supabaseServiceRole.storage
+          .from(this.BUCKET_NAME)
+          .download(fileName);
+        if (!error && data) {
+          const url = URL.createObjectURL(data);
+          console.log('📦 [Financeiro] Obtido blob URL via download fallback');
+          return url;
+        }
+      } catch (err) {
+        console.log('⚠️ [Financeiro] Falha no download fallback:', err);
+      }
+
+      return null;
+    } catch (error) {
+      console.error('💥 [Financeiro] Erro ao obter URL do anexo:', error);
+      return null;
+    }
+  }
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { AuthService } from './authService';
