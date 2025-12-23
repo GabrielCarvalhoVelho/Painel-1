@@ -41,13 +41,10 @@ export interface FileDownloadResult {
 /**
  * Informações resumidas sobre anexos financeiros
  */
-              userId ? `${userId}/${fileName}` : fileName, // 1. userId/filename
-              userId ? `${userId}/imagens/${fileName}` : `imagens/${fileName}`, // 2. userId/imagens/filename
-              `imagens/${fileName}`, // 3. imagens/filename
-              fileName, // 4. filename (raiz)
-  fileCount?: number;
-  primeiroEnvioType?: string | null;
-  segundoEnvioType?: string | null;
+                  userId ? `${userId}/${fileName}` : fileName, // 1. userId/filename
+                  userId ? `${userId}/imagens/${fileName}` : `imagens/${fileName}`, // 2. userId/imagens/filename
+                  `imagens/${fileName}`, // 3. imagens/filename
+                  fileName, // 4. filename (raiz)
 }
 
 export class AttachmentService {
