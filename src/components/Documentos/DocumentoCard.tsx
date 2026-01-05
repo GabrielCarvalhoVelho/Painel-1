@@ -1,6 +1,13 @@
-import { Documento } from './mockDocumentos';
-import { FileText, FileJson, Image, ChevronRight, Trash2, Edit2 } from 'lucide-react';
-import { formatDateBR } from '../../lib/dateUtils';
+import { Documento } from "./mockDocumentos";
+import {
+  FileText,
+  FileJson,
+  Image,
+  ChevronRight,
+  Trash2,
+  Edit2,
+} from "lucide-react";
+import { formatDateBR } from "../../lib/dateUtils";
 
 interface DocumentoCardProps {
   documento: Documento;
@@ -11,31 +18,31 @@ interface DocumentoCardProps {
 
 const getIconByFormat = (formato: string) => {
   const type = formato.toUpperCase();
-  if (type === 'PDF') return '📄';
-  if (['JPG', 'PNG', 'GIF', 'WEBP'].includes(type)) return '🖼️';
-  if (['DOC', 'DOCX'].includes(type)) return '📝';
-  if (['XLS', 'XLSX'].includes(type)) return '📊';
-  return '📎';
+  if (type === "PDF") return "📄";
+  if (["JPG", "PNG", "GIF", "WEBP"].includes(type)) return "🖼️";
+  if (["DOC", "DOCX"].includes(type)) return "📝";
+  if (["XLS", "XLSX"].includes(type)) return "📊";
+  return "📎";
 };
 
 const getTypeColor = (tipo: string) => {
   switch (tipo) {
-    case 'Pessoal':
-      return 'bg-purple-100 text-purple-800';
-    case 'Cadastro da fazenda':
-      return 'bg-green-100 text-green-800';
-    case 'Contratos':
-      return 'bg-blue-100 text-blue-800';
-    case 'Comprovantes de pagamento':
-      return 'bg-amber-100 text-amber-800';
-    case 'Ambiental / ESG / EUDR':
-      return 'bg-teal-100 text-teal-800';
-    case 'Técnico':
-      return 'bg-orange-100 text-orange-800';
-    case 'Outros':
-      return 'bg-gray-100 text-gray-800';
+    case "Pessoal":
+      return "bg-purple-100 text-purple-800";
+    case "Cadastro da fazenda":
+      return "bg-green-100 text-green-800";
+    case "Contratos":
+      return "bg-blue-100 text-blue-800";
+    case "Comprovantes de pagamento":
+      return "bg-amber-100 text-amber-800";
+    case "Ambiental / ESG / EUDR":
+      return "bg-teal-100 text-teal-800";
+    case "Técnico":
+      return "bg-orange-100 text-orange-800";
+    case "Outros":
+      return "bg-gray-100 text-gray-800";
     default:
-      return 'bg-gray-100 text-gray-800';
+      return "bg-gray-100 text-gray-800";
   }
 };
 
@@ -67,20 +74,26 @@ export default function DocumentoCard({
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow h-full">
       {/* Header com ícone e nome */}
       <div className="flex gap-3 mb-3">
-        <div className="text-3xl flex-shrink-0">{getIconByFormat(documento.formato)}</div>
+        <div className="text-3xl flex-shrink-0">
+          {getIconByFormat(documento.formato)}
+        </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-bold text-gray-900 truncate" title={documento.nomeArquivo}>
+          <h3
+            className="text-sm font-bold text-gray-900 truncate"
+            title={documento.nomeArquivo}
+          >
             {documento.nomeArquivo}
           </h3>
-          <p className="text-xs text-gray-500 mt-1">
-            {documento.tamanho} • {documento.formato}
-          </p>
         </div>
       </div>
 
       {/* Tipo de documento */}
       <div className="mb-3">
-        <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getTypeColor(documento.tipo)}`}>
+        <span
+          className={`inline-block px-2 py-1 rounded text-xs font-medium ${getTypeColor(
+            documento.tipo
+          )}`}
+        >
           {documento.tipo}
         </span>
       </div>
@@ -98,8 +111,12 @@ export default function DocumentoCard({
 
         {/* Status de validade */}
         {documento.validade && (
-          <div className={`flex items-center gap-2 font-medium ${expired ? 'text-red-600' : 'text-green-600'}`}>
-            <span>{expired ? '🔴 Expirado' : '✅ Válido'}</span>
+          <div
+            className={`flex items-center gap-2 font-medium ${
+              expired ? "text-red-600" : "text-green-600"
+            }`}
+          >
+            <span>{expired ? "🔴 Expirado" : "✅ Válido"}</span>
             <span>
               {expired
                 ? `Expirou em ${formatDateBR(documento.validade)}`
