@@ -16,6 +16,7 @@ export default function DocumentosPanel() {
   );
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [documentoParaEditar, setDocumentoParaEditar] = useState<Documento | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState<{
     isOpen: boolean;
@@ -62,8 +63,13 @@ export default function DocumentosPanel() {
   };
 
   const handleEdit = (id: number) => {
-    console.log("✏️ Editar metadados do documento:", id);
-    // Em uma implementação real, abriria um modal de edição
+    const doc = documentos.find((d) => d.id === id);
+    if (doc) {
+      console.log("✏️ Editar metadados do documento:", id);
+      setDocumentoParaEditar(doc);
+      setIsUploadOpen(true);
+      setIsDetailOpen(false);
+    }
   };
 
   const handleDeleteRequest = (id: number) => {
@@ -113,10 +119,23 @@ export default function DocumentosPanel() {
     // Em uma implementação real, faria download do arquivo
   };
 
-  const handleUpload = (novoDocumento: Documento) => {
-    console.log("[DocumentosPanel] Adicionando novo documento à lista:", novoDocumento);
-    setDocumentos((prev) => [novoDocumento, ...prev]);
-    setFilteredDocumentos((prev) => [novoDocumento, ...prev]);
+  const handleUpload = (documento: Documento) => {
+    if (documentoParaEditar) {
+      console.log("[DocumentosPanel] Atualizando documento na lista:", documento);
+      setDocumentos((prev) =>
+        prev.map((d) => (d.id === documento.id ? documento : d))
+      );
+      setFilteredDocumentos((prev) =>
+        prev.map((d) => (d.id === documento.id ? documento : d))
+      );
+      if (selectedDocumento?.id === documento.id) {
+        setSelectedDocumento(documento);
+      }
+    } else {
+      console.log("[DocumentosPanel] Adicionando novo documento à lista:", documento);
+      setDocumentos((prev) => [documento, ...prev]);
+      setFilteredDocumentos((prev) => [documento, ...prev]);
+    }
   };
 
   return (
@@ -243,8 +262,12 @@ export default function DocumentosPanel() {
       {/* Upload Modal */}
       <UploadDocumentoModal
         isOpen={isUploadOpen}
-        onClose={() => setIsUploadOpen(false)}
+        onClose={() => {
+          setIsUploadOpen(false);
+          setDocumentoParaEditar(null);
+        }}
         onUploaded={handleUpload}
+        documentoParaEditar={documentoParaEditar}
       />
     </div>
   );

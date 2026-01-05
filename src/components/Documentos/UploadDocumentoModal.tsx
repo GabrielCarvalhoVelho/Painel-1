@@ -8,6 +8,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onUploaded: (documento: Documento) => void;
+  documentoParaEditar?: Documento | null;
 }
 
 const TIPOS_DOCUMENTO = [
@@ -66,6 +67,7 @@ export default function UploadDocumentoModal({
   isOpen,
   onClose,
   onUploaded,
+  documentoParaEditar,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
@@ -82,6 +84,41 @@ export default function UploadDocumentoModal({
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [arquivoAtualUrl, setArquivoAtualUrl] = useState<string | null>(null);
+
+  const isEditMode = !!documentoParaEditar;
+
+  useEffect(() => {
+    if (documentoParaEditar && isOpen) {
+      const safraValue = documentoParaEditar.safra || "";
+      const isSafraCustomizada = safraValue && !["Safra atual", "Safra anterior"].includes(safraValue);
+
+      setFormData({
+        tipo: documentoParaEditar.tipo || "",
+        titulo: documentoParaEditar.titulo || "",
+        safra: isSafraCustomizada ? "Outro ano" : safraValue,
+        anoCustomizado: isSafraCustomizada ? safraValue : "",
+        area: documentoParaEditar.tema || "",
+        observacao: documentoParaEditar.observacao || "",
+        anexo: null,
+      });
+      setArquivoAtualUrl(documentoParaEditar.arquivo_url || null);
+      setFilePreview(null);
+    } else if (!isOpen) {
+      setFormData({
+        tipo: "",
+        titulo: "",
+        safra: "",
+        anoCustomizado: "",
+        area: "",
+        observacao: "",
+        anexo: null,
+      });
+      setArquivoAtualUrl(null);
+      setFilePreview(null);
+      setErrors({});
+    }
+  }, [documentoParaEditar, isOpen]);
 
   if (!isOpen) return null;
 
@@ -131,7 +168,7 @@ export default function UploadDocumentoModal({
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.anexo) {
+    if (!isEditMode && !formData.anexo) {
       newErrors.anexo = "O anexo é obrigatório";
     }
     setErrors(newErrors);
@@ -144,8 +181,6 @@ export default function UploadDocumentoModal({
 
     setIsSubmitting(true);
     try {
-      console.log("[UploadDocumentoModal] Iniciando upload...");
-
       const authService = AuthService.getInstance();
       const currentUser = authService.getCurrentUser();
 
@@ -153,36 +188,69 @@ export default function UploadDocumentoModal({
         throw new Error("Usuário não autenticado");
       }
 
-      if (!formData.anexo) {
-        throw new Error("Nenhum arquivo selecionado");
-      }
-
-      console.log("[UploadDocumentoModal] Fazendo upload do arquivo:", formData.anexo.name);
-      const arquivoUrl = await DocumentosService.uploadFile(formData.anexo, currentUser.user_id);
-
-      console.log("[UploadDocumentoModal] Arquivo enviado, criando registro no banco...");
       const safraFinal = formData.safra === "Outro ano" ? formData.anoCustomizado : formData.safra;
 
-      const novoDocumento = await DocumentosService.create({
-        user_id: currentUser.user_id,
-        arquivo_url: arquivoUrl,
-        tipo: formData.tipo || "Outros",
-        titulo: formData.titulo || formData.anexo.name,
-        safra: safraFinal || undefined,
-        tema: formData.area || undefined,
-        observacao: formData.observacao || undefined,
-        status: "Novo",
-      });
+      if (isEditMode && documentoParaEditar) {
+        console.log("[UploadDocumentoModal] Modo de edição - Atualizando documento...");
 
-      if (!novoDocumento) {
-        throw new Error("Erro ao criar documento no banco de dados");
+        let arquivoUrl = arquivoAtualUrl;
+
+        if (formData.anexo) {
+          console.log("[UploadDocumentoModal] Fazendo upload do novo arquivo:", formData.anexo.name);
+          arquivoUrl = await DocumentosService.uploadFile(formData.anexo, currentUser.user_id);
+        }
+
+        const documentoAtualizado = await DocumentosService.update(documentoParaEditar.id, {
+          tipo: formData.tipo || "Outros",
+          titulo: formData.titulo || (formData.anexo?.name) || documentoParaEditar.titulo,
+          safra: safraFinal || undefined,
+          tema: formData.area || undefined,
+          observacao: formData.observacao || undefined,
+          arquivo_url: arquivoUrl || undefined,
+        });
+
+        if (!documentoAtualizado) {
+          throw new Error("Erro ao atualizar documento no banco de dados");
+        }
+
+        console.log("[UploadDocumentoModal] ✓ Documento atualizado com sucesso:", documentoAtualizado);
+
+        onUploaded(documentoAtualizado);
+        setToastMessage("Documento atualizado com sucesso!");
+        setShowToast(true);
+      } else {
+        console.log("[UploadDocumentoModal] Modo de criação - Iniciando upload...");
+
+        if (!formData.anexo) {
+          throw new Error("Nenhum arquivo selecionado");
+        }
+
+        console.log("[UploadDocumentoModal] Fazendo upload do arquivo:", formData.anexo.name);
+        const arquivoUrl = await DocumentosService.uploadFile(formData.anexo, currentUser.user_id);
+
+        console.log("[UploadDocumentoModal] Arquivo enviado, criando registro no banco...");
+
+        const novoDocumento = await DocumentosService.create({
+          user_id: currentUser.user_id,
+          arquivo_url: arquivoUrl,
+          tipo: formData.tipo || "Outros",
+          titulo: formData.titulo || formData.anexo.name,
+          safra: safraFinal || undefined,
+          tema: formData.area || undefined,
+          observacao: formData.observacao || undefined,
+          status: "Novo",
+        });
+
+        if (!novoDocumento) {
+          throw new Error("Erro ao criar documento no banco de dados");
+        }
+
+        console.log("[UploadDocumentoModal] ✓ Documento cadastrado com sucesso:", novoDocumento);
+
+        onUploaded(novoDocumento);
+        setToastMessage("Documento enviado com sucesso!");
+        setShowToast(true);
       }
-
-      console.log("[UploadDocumentoModal] ✓ Documento cadastrado com sucesso:", novoDocumento);
-
-      onUploaded(novoDocumento);
-      setToastMessage("Documento enviado com sucesso!");
-      setShowToast(true);
 
       setFormData({
         tipo: "",
@@ -198,9 +266,9 @@ export default function UploadDocumentoModal({
         onClose();
       }, 500);
     } catch (error) {
-      console.error("[UploadDocumentoModal] ✗ Erro ao enviar documento:", error);
+      console.error("[UploadDocumentoModal] ✗ Erro ao processar documento:", error);
       alert(
-        error instanceof Error ? error.message : "Erro ao enviar documento."
+        error instanceof Error ? error.message : "Erro ao processar documento."
       );
     } finally {
       setIsSubmitting(false);
@@ -233,7 +301,7 @@ export default function UploadDocumentoModal({
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-100">
             <h2 className="text-xl font-bold text-[#004417]">
-              Upload de Documento
+              {isEditMode ? "Editar Documento" : "Upload de Documento"}
             </h2>
             <button onClick={handleClose}>
               <X className="w-5 h-5 text-[#004417]" />
@@ -241,16 +309,17 @@ export default function UploadDocumentoModal({
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            {/* Upload de Arquivo (obrigatório) */}
+            {/* Upload de Arquivo */}
             <div>
               <label className="block text-sm font-medium text-[#004417] mb-1">
-                Anexar arquivo <span className="text-[#F7941F]">*</span>
+                Anexar arquivo {!isEditMode && <span className="text-[#F7941F]">*</span>}
+                {isEditMode && <span className="text-[rgba(0,68,23,0.4)]">(opcional - deixe em branco para manter o arquivo atual)</span>}
               </label>
               <div
                 className={`border-2 border-dashed rounded-[12px] p-6 text-center transition-colors ${
                   errors.anexo
                     ? "border-[#F7941F] bg-[#F7941F]/5"
-                    : formData.anexo
+                    : formData.anexo || (isEditMode && arquivoAtualUrl)
                     ? "border-[#00A651] bg-[#00A651]/5"
                     : "border-[rgba(0,68,23,0.12)] hover:border-[rgba(0,166,81,0.3)]"
                 }`}
@@ -295,6 +364,23 @@ export default function UploadDocumentoModal({
                     >
                       Remover arquivo
                     </button>
+                  </div>
+                ) : isEditMode && arquivoAtualUrl ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-20 h-20 rounded-lg bg-[rgba(0,166,81,0.1)] border-2 border-[#00A651] flex items-center justify-center">
+                      <FileText className="w-10 h-10 text-[#00A651]" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-bold text-[#004417]">
+                        Arquivo atual mantido
+                      </p>
+                      <p className="text-xs text-[rgba(0,68,23,0.6)] mt-1">
+                        {documentoParaEditar?.titulo || "Arquivo existente"}
+                      </p>
+                    </div>
+                    <label htmlFor="documento-upload" className="text-xs text-[#00A651] hover:text-[#008a44] font-medium transition-colors cursor-pointer">
+                      Substituir arquivo
+                    </label>
                   </div>
                 ) : (
                   <label htmlFor="documento-upload" className="cursor-pointer">
@@ -437,12 +523,12 @@ export default function UploadDocumentoModal({
                 {isSubmitting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Enviando...</span>
+                    <span>{isEditMode ? "Salvando..." : "Enviando..."}</span>
                   </>
                 ) : (
                   <>
                     <Save className="w-4 h-4" />
-                    <span>Enviar Documento</span>
+                    <span>{isEditMode ? "Salvar Alterações" : "Enviar Documento"}</span>
                   </>
                 )}
               </button>
