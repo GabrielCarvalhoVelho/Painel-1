@@ -207,7 +207,7 @@ export default function DocumentoDetailPanel({
                 />
               )}
               <MetadataField label="Safra" value={documento.safra} />
-              <MetadataField label="Tema" value={documento.tema} />
+              <MetadataField label="Categoria" value={documento.tema} />
             </div>
 
             {/* Observação */}
