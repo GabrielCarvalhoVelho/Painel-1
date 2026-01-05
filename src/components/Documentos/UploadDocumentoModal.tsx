@@ -1,5 +1,5 @@
-import React, { useState, useRef } from "react";
-import { X, Save, Upload, FileText } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { X, Save, Upload, FileText, File, Image } from "lucide-react";
 import SuccessToast from "../common/SuccessToast";
 import { DocumentosService, Documento } from "../../services/documentosService";
 import { AuthService } from "../../services/authService";
@@ -81,8 +81,22 @@ export default function UploadDocumentoModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [filePreview, setFilePreview] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  const generateFilePreview = (file: File) => {
+    const isImage = file.type.startsWith("image/");
+    if (isImage) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setFilePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setFilePreview(null);
+    }
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -91,7 +105,6 @@ export default function UploadDocumentoModal({
 
   const handleFileChange = (file: File | null) => {
     if (file) {
-      // Validar tamanho
       const sizeMB = file.size / (1024 * 1024);
       if (sizeMB > MAX_FILE_SIZE_MB) {
         setErrors((prev) => ({
@@ -100,6 +113,9 @@ export default function UploadDocumentoModal({
         }));
         return;
       }
+      generateFilePreview(file);
+    } else {
+      setFilePreview(null);
     }
     setFormData((prev) => ({ ...prev, anexo: file }));
     if (errors.anexo) setErrors((prev) => ({ ...prev, anexo: "" }));
@@ -107,6 +123,7 @@ export default function UploadDocumentoModal({
 
   const handleRemoveFile = () => {
     setFormData((prev) => ({ ...prev, anexo: null }));
+    setFilePreview(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -249,18 +266,32 @@ export default function UploadDocumentoModal({
                   id="documento-upload"
                 />
                 {formData.anexo ? (
-                  <div className="flex flex-col items-center">
-                    <FileText className="w-10 h-10 text-[#00A651] mb-2" />
-                    <p className="text-sm font-bold text-[#004417] mb-1">
-                      {formData.anexo.name}
-                    </p>
-                    <p className="text-xs text-[rgba(0,68,23,0.6)] mb-3">
-                      {(formData.anexo.size / 1024).toFixed(1)} KB
-                    </p>
+                  <div className="flex flex-col items-center gap-3">
+                    {filePreview ? (
+                      <div className="w-24 h-24 rounded-lg overflow-hidden border-2 border-[#00A651] flex items-center justify-center bg-white">
+                        <img
+                          src={filePreview}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 rounded-lg bg-[rgba(0,166,81,0.1)] border-2 border-[#00A651] flex items-center justify-center">
+                        <FileText className="w-10 h-10 text-[#00A651]" />
+                      </div>
+                    )}
+                    <div className="text-center">
+                      <p className="text-sm font-bold text-[#004417] break-words max-w-xs">
+                        {formData.anexo.name}
+                      </p>
+                      <p className="text-xs text-[rgba(0,68,23,0.6)] mt-1">
+                        {(formData.anexo.size / 1024).toFixed(1)} KB
+                      </p>
+                    </div>
                     <button
                       type="button"
                       onClick={handleRemoveFile}
-                      className="text-xs text-[#F7941F] hover:text-[#e08419] font-medium"
+                      className="text-xs text-[#F7941F] hover:text-[#e08419] font-medium transition-colors"
                     >
                       Remover arquivo
                     </button>
