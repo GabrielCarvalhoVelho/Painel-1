@@ -3,6 +3,7 @@ import { mockDocumentos, Documento } from "./mockDocumentos";
 import DocumentoCard from "./DocumentoCard";
 import DocumentoDetailPanel from "./DocumentoDetailPanel";
 import DocumentosSearchBar from "./DocumentosSearchBar";
+import UploadDocumentoModal from "./UploadDocumentoModal";
 import { Upload } from "lucide-react";
 
 export default function DocumentosPanel() {
@@ -13,6 +14,7 @@ export default function DocumentosPanel() {
     null
   );
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
 
   const handleViewDetails = (id: number) => {
     const doc = documentos.find((d) => d.id === id);
@@ -44,6 +46,12 @@ export default function DocumentosPanel() {
     // Em uma implementação real, faria download do arquivo
   };
 
+  const handleUpload = (novoDocumento: Documento) => {
+    setDocumentos((prev) => [novoDocumento, ...prev]);
+    setFilteredDocumentos((prev) => [novoDocumento, ...prev]);
+    console.log("📤 Documento enviado:", novoDocumento);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -52,9 +60,8 @@ export default function DocumentosPanel() {
           <h1 className="text-xl font-bold text-[#004417]">Documentos</h1>
         </div>
         <button
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-[#00A651] hover:bg-[#008c44] text-white rounded-lg font-medium transition-colors cursor-not-allowed opacity-50"
-          disabled
-          title="Upload será implementado em breve"
+          onClick={() => setIsUploadOpen(true)}
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-[#00A651] hover:bg-[#008c44] text-white rounded-lg font-medium transition-colors"
         >
           <Upload className="w-5 h-5" />
           Upload
@@ -121,6 +128,13 @@ export default function DocumentosPanel() {
         }}
         onEdit={handleEdit}
         onDelete={handleDelete}
+      />
+
+      {/* Upload Modal */}
+      <UploadDocumentoModal
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        onUploaded={handleUpload}
       />
     </div>
   );
