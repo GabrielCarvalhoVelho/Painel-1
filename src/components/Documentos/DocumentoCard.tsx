@@ -86,7 +86,6 @@ export default function DocumentoCard({
           >
             {documento.titulo || 'Documento sem título'}
           </h3>
-          <p className="text-xs text-gray-500">{fileExtension}</p>
         </div>
       </div>
 
