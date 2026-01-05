@@ -120,7 +120,7 @@ export default function DocumentoCard({
 
         {documento.tema && (
           <div className="flex items-center gap-2 text-gray-600">
-            <span className="font-medium">Tema:</span>
+            <span className="font-medium">Categoria:</span>
             <span>{documento.tema}</span>
           </div>
         )}
