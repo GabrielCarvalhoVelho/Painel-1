@@ -105,22 +105,6 @@ export default function DocumentoCard({
           <span>{formatDateBR(documento.dataRecebimento)}</span>
         </div>
 
-        {/* Status de validade */}
-        {documento.validade && (
-          <div
-            className={`flex items-center gap-2 font-medium ${
-              expired ? "text-red-600" : "text-green-600"
-            }`}
-          >
-            <span>{expired ? "🔴 Expirado" : "✅ Válido"}</span>
-            <span>
-              {expired
-                ? `Expirou em ${formatDateBR(documento.validade)}`
-                : `Expira em ${daysLeft} dias`}
-            </span>
-          </div>
-        )}
-
         {/* Descrição curta */}
         {documento.descricao && (
           <div className="text-gray-600 line-clamp-2">
