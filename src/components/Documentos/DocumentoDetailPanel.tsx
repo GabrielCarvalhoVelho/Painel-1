@@ -121,7 +121,7 @@ export default function DocumentoDetailPanel({
 
       {/* Panel */}
       <div
-        className={`fixed right-0 top-0 h-full w-full md:w-96 bg-white shadow-2xl z-50 flex flex-col overflow-hidden transition-transform duration-300 ${
+        className={`fixed right-0 top-0 bottom-0 w-full md:w-96 bg-white shadow-2xl z-50 flex flex-col overflow-hidden transition-transform duration-300 ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
