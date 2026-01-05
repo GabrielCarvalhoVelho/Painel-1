@@ -4,7 +4,7 @@ import DocumentoCard from "./DocumentoCard";
 import DocumentoDetailPanel from "./DocumentoDetailPanel";
 import DocumentosSearchBar from "./DocumentosSearchBar";
 import UploadDocumentoModal from "./UploadDocumentoModal";
-import { Upload } from "lucide-react";
+import { Upload, AlertCircle } from "lucide-react";
 
 export default function DocumentosPanel() {
   const [documentos, setDocumentos] = useState<Documento[]>(mockDocumentos);
@@ -15,6 +15,11 @@ export default function DocumentosPanel() {
   );
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    isOpen: boolean;
+    documentoId: number | null;
+    documentoNome: string;
+  }>({ isOpen: false, documentoId: null, documentoNome: "" });
 
   const handleViewDetails = (id: number) => {
     const doc = documentos.find((d) => d.id === id);
@@ -30,15 +35,31 @@ export default function DocumentosPanel() {
     // Em uma implementação real, abriria um modal de edição
   };
 
-  const handleDelete = (id: number) => {
+  const handleDeleteRequest = (id: number) => {
+    const doc = documentos.find((d) => d.id === id);
+    setDeleteConfirm({
+      isOpen: true,
+      documentoId: id,
+      documentoNome: doc?.nomeArquivo || "documento",
+    });
+  };
+
+  const handleDeleteConfirm = () => {
+    if (deleteConfirm.documentoId === null) return;
+    
+    const id = deleteConfirm.documentoId;
     console.log("🗑️ Deletar documento:", id);
-    // Em uma implementação real, removeria o documento
     setDocumentos((prev) => prev.filter((d) => d.id !== id));
     setFilteredDocumentos((prev) => prev.filter((d) => d.id !== id));
     if (selectedDocumento?.id === id) {
       setIsDetailOpen(false);
       setSelectedDocumento(null);
     }
+    setDeleteConfirm({ isOpen: false, documentoId: null, documentoNome: "" });
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirm({ isOpen: false, documentoId: null, documentoNome: "" });
   };
 
   const handleDownload = (id: number) => {
@@ -54,6 +75,38 @@ export default function DocumentosPanel() {
 
   return (
     <div className="space-y-6">
+      {/* Modal de Confirmação de Exclusão */}
+      {deleteConfirm.isOpen && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/40">
+          <div className="bg-white rounded-xl shadow-lg max-w-sm w-full p-6 flex flex-col items-center mx-4">
+            <AlertCircle className="w-8 h-8 text-[#F7941F] mb-3" />
+            <h3 className="text-lg font-bold text-[#004417] mb-2 text-center">
+              Excluir documento?
+            </h3>
+            <p className="text-sm text-center mb-2 text-[#004417]/80">
+              <span className="font-semibold">{deleteConfirm.documentoNome}</span>
+            </p>
+            <p className="text-sm text-center mb-4 text-[#004417]/70">
+              Atenção: ao confirmar, o documento será excluído de forma definitiva do Painel da Fazenda. Deseja continuar?
+            </p>
+            <div className="flex gap-3 mt-2 w-full">
+              <button
+                className="flex-1 px-4 py-2 rounded-lg bg-white border border-[rgba(0,68,23,0.12)] text-[#004417] hover:bg-[rgba(0,68,23,0.03)] font-medium transition-colors"
+                onClick={handleDeleteCancel}
+              >
+                Cancelar
+              </button>
+              <button
+                className="flex-1 px-4 py-2 rounded-lg bg-[#F7941F]/10 text-[#F7941F] hover:bg-[#F7941F]/20 font-medium transition-colors"
+                onClick={handleDeleteConfirm}
+              >
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -83,7 +136,7 @@ export default function DocumentosPanel() {
               documento={documento}
               onViewDetails={handleViewDetails}
               onEdit={handleEdit}
-              onDelete={handleDelete}
+              onDelete={handleDeleteRequest}
             />
           ))
         ) : (
@@ -105,7 +158,7 @@ export default function DocumentosPanel() {
               documento={documento}
               onViewDetails={handleViewDetails}
               onEdit={handleEdit}
-              onDelete={handleDelete}
+              onDelete={handleDeleteRequest}
             />
           ))
         ) : (
@@ -127,7 +180,7 @@ export default function DocumentosPanel() {
           setSelectedDocumento(null);
         }}
         onEdit={handleEdit}
-        onDelete={handleDelete}
+        onDelete={handleDeleteRequest}
       />
 
       {/* Upload Modal */}
