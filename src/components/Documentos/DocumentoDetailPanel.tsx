@@ -16,10 +16,6 @@ const isImageFile = (extension: string): boolean => {
   return ["JPG", "JPEG", "PNG", "GIF", "WEBP", "BMP"].includes(extension.toUpperCase());
 };
 
-const isPdfFile = (extension: string): boolean => {
-  return extension.toUpperCase() === "PDF";
-};
-
 // Detecta se está no WebView do WhatsApp ou outro in-app browser
 const isInAppBrowser = (): boolean => {
   if (typeof navigator === 'undefined') return false;
@@ -94,7 +90,6 @@ export default function DocumentoDetailPanel({
   const fileExtension = getFileExtension(documento.arquivo_url);
   const icon = getPreviewIcon(fileExtension);
   const isImage = isImageFile(fileExtension);
-  const isPdf = isPdfFile(fileExtension);
 
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
@@ -103,6 +98,8 @@ export default function DocumentoDetailPanel({
   const [isDownloading, setIsDownloading] = useState(false);
   const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null);
   const [showPdfViewer, setShowPdfViewer] = useState(false);
+  const [showBrowserWarning, setShowBrowserWarning] = useState(false);
+  const [pendingDownloadUrl, setPendingDownloadUrl] = useState<string | null>(null);
 
   // Carrega preview da imagem quando o painel abre
   useEffect(() => {
@@ -133,10 +130,12 @@ export default function DocumentoDetailPanel({
       setShowFullscreenModal(false);
       setPdfViewerUrl(null);
       setShowPdfViewer(false);
+      setShowBrowserWarning(false);
+      setPendingDownloadUrl(null);
     };
   }, [isOpen, documento.arquivo_url, isImage]);
 
-  // Download de arquivos não-imagem via signed URL (sem expor a URL)
+  // Download de arquivos não-imagem via signed URL
   const handleDownload = async () => {
     if (!documento.arquivo_url) return;
 
@@ -149,15 +148,15 @@ export default function DocumentoDetailPanel({
         return;
       }
 
-      // Se for PDF e estiver em in-app browser, abre o viewer interno
-      if (isPdf && isInAppBrowser()) {
-        setPdfViewerUrl(signedUrl);
-        setShowPdfViewer(true);
+      // Se estiver em in-app browser (WhatsApp, Instagram, etc), mostra aviso
+      if (isInAppBrowser()) {
+        setPendingDownloadUrl(signedUrl);
+        setShowBrowserWarning(true);
         setIsDownloading(false);
         return;
       }
 
-      // Tenta download via fetch + blob (funciona na maioria dos navegadores)
+      // Tenta download via fetch + blob
       try {
         const response = await fetch(signedUrl);
         if (!response.ok) throw new Error('Fetch failed');
@@ -175,15 +174,9 @@ export default function DocumentoDetailPanel({
         
         setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
       } catch {
-        // Fallback: abre em nova aba (vai mostrar URL, mas é o último recurso)
-        // Para PDFs, abre o viewer interno
-        if (isPdf) {
-          setPdfViewerUrl(signedUrl);
-          setShowPdfViewer(true);
-        } else {
-          // Para outros arquivos, tenta abrir diretamente
-          window.open(signedUrl, '_blank');
-        }
+        // Fallback: mostra aviso para abrir no navegador
+        setPendingDownloadUrl(signedUrl);
+        setShowBrowserWarning(true);
       }
       
     } catch (error) {
@@ -193,6 +186,79 @@ export default function DocumentoDetailPanel({
       setIsDownloading(false);
     }
   };
+
+  // Abre URL no navegador externo (funciona melhor que window.open em alguns casos)
+  const openInExternalBrowser = () => {
+    if (!pendingDownloadUrl) return;
+    
+    // Tenta forçar abertura no navegador externo
+    const link = document.createElement('a');
+    link.href = pendingDownloadUrl;
+    link.target = '_system'; // Para Cordova/apps híbridos
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Fecha o modal após um delay
+    setTimeout(() => {
+      setShowBrowserWarning(false);
+      setPendingDownloadUrl(null);
+    }, 1000);
+  };
+
+  // Modal de aviso para abrir no navegador
+  if (showBrowserWarning && pendingDownloadUrl) {
+    return (
+      <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl">
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">🌐</span>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
+              Abrir no navegador
+            </h3>
+            <p className="text-sm text-gray-600">
+              Para baixar este arquivo, você precisa abrir no navegador do seu celular (Safari ou Chrome).
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              onClick={openInExternalBrowser}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#004417] hover:bg-[#003015] text-white rounded-lg font-medium transition-colors text-sm"
+            >
+              Abrir no navegador
+            </button>
+            
+            <button
+              onClick={() => {
+                // Copia o link
+                if (navigator.clipboard && pendingDownloadUrl) {
+                  navigator.clipboard.writeText(pendingDownloadUrl);
+                  alert('Link copiado! Cole no navegador para baixar.');
+                }
+              }}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors text-sm"
+            >
+              Copiar link
+            </button>
+            
+            <button
+              onClick={() => {
+                setShowBrowserWarning(false);
+                setPendingDownloadUrl(null);
+              }}
+              className="w-full px-4 py-2 text-gray-500 hover:text-gray-700 font-medium transition-colors text-sm"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Modal visualizador de PDF
   if (showPdfViewer && pdfViewerUrl) {
