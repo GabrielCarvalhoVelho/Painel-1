@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Filter, ArrowUpDown } from "lucide-react";
+import { Search, Filter, ArrowUpDown, X } from "lucide-react";
 import { Documento } from "./mockDocumentos";
 
 interface DocumentosSearchBarProps {
@@ -35,12 +35,16 @@ export default function DocumentosSearchBar({
   const [ordenacao, setOrdenacao] = useState<OrdenacaoData>("alfabetica");
   const [showFilters, setShowFilters] = useState(false);
 
-  const applyFilters = () => {
+  const applyFilters = (
+    search: string = searchTerm,
+    type: TipoDocumento | "" = selectedType,
+    ordem: OrdenacaoData = ordenacao
+  ) => {
     let filtered = [...documentos];
 
     // Busca por título, tipo ou observação
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
+    if (search.trim()) {
+      const term = search.toLowerCase();
       filtered = filtered.filter(
         (doc) =>
           (doc.titulo && doc.titulo.toLowerCase().includes(term)) ||
@@ -52,18 +56,18 @@ export default function DocumentosSearchBar({
     }
 
     // Filtro por tipo
-    if (selectedType) {
-      filtered = filtered.filter((doc) => doc.tipo === selectedType);
+    if (type) {
+      filtered = filtered.filter((doc) => doc.tipo === type);
     }
 
     // Ordenação por data
-    if (ordenacao === "recentes") {
+    if (ordem === "recentes") {
       filtered.sort((a, b) => {
         const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
         const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
         return dateB - dateA; // Mais recentes primeiro
       });
-    } else if (ordenacao === "antigos") {
+    } else if (ordem === "antigos") {
       filtered.sort((a, b) => {
         const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
         const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
@@ -87,17 +91,24 @@ export default function DocumentosSearchBar({
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchTerm(value);
-    setTimeout(() => applyFilters(), 0);
+    applyFilters(value, selectedType, ordenacao);
   };
 
   const handleTypeChange = (type: TipoDocumento | "") => {
     setSelectedType(type);
-    setTimeout(() => applyFilters(), 0);
+    applyFilters(searchTerm, type, ordenacao);
   };
 
   const handleOrdenacaoChange = (ordem: OrdenacaoData) => {
     setOrdenacao(ordem);
-    setTimeout(() => applyFilters(), 0);
+    applyFilters(searchTerm, selectedType, ordem);
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setSelectedType("");
+    setOrdenacao("alfabetica");
+    applyFilters("", "", "alfabetica");
   };
 
   const hasActiveFilters = searchTerm.trim() || selectedType || ordenacao !== "alfabetica";
@@ -208,6 +219,19 @@ export default function DocumentosSearchBar({
               </button>
             </div>
           </div>
+
+          {/* Botão Limpar Filtros */}
+          {hasActiveFilters && (
+            <div className="pt-2 border-t border-gray-200">
+              <button
+                onClick={handleClearFilters}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-[#F7941F] hover:bg-[#F7941F]/10 rounded-lg transition-colors font-medium"
+              >
+                <X className="w-4 h-4" />
+                Limpar filtros
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
