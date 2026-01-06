@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Documento } from "./mockDocumentos";
-import { X, Download, Edit2, Trash2, ExternalLink, Smartphone } from "lucide-react";
+import { X, Download, Edit2, Trash2, Loader2 } from "lucide-react";
 import { formatDateBR } from "../../lib/dateUtils";
+import { DocumentosService } from "../../services/documentosService";
 
 interface DocumentoDetailPanelProps {
   documento: Documento | null;
@@ -10,18 +12,28 @@ interface DocumentoDetailPanelProps {
   onDelete: (id: number) => void;
 }
 
-// Detecta se está em navegador in-app (WhatsApp, Instagram, Facebook, etc.)
-const isInAppBrowser = (): boolean => {
-  if (typeof navigator === 'undefined') return false;
-  const ua = navigator.userAgent || navigator.vendor || '';
-  // WhatsApp, Facebook, Instagram, Messenger, LinkedIn, Twitter, Snapchat, TikTok
-  return /FBAN|FBAV|Instagram|WhatsApp|Messenger|LinkedIn|Twitter|Snapchat|TikTok|Line\//i.test(ua);
-};
-
 // Detecta se é dispositivo móvel
 const isMobileDevice = (): boolean => {
   if (typeof navigator === 'undefined') return false;
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
+// Tipos MIME por extensão
+const getMimeType = (extension: string): string => {
+  const mimeTypes: Record<string, string> = {
+    'PDF': 'application/pdf',
+    'JPG': 'image/jpeg',
+    'JPEG': 'image/jpeg',
+    'PNG': 'image/png',
+    'GIF': 'image/gif',
+    'WEBP': 'image/webp',
+    'BMP': 'image/bmp',
+    'DOC': 'application/msword',
+    'DOCX': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'XLS': 'application/vnd.ms-excel',
+    'XLSX': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  };
+  return mimeTypes[extension] || 'application/octet-stream';
 };
 
 const getFileExtension = (arquivoUrl?: string): string => {
@@ -105,59 +117,58 @@ export default function DocumentoDetailPanel({
   const icon = getPreviewIcon(fileExtension);
   const isImage = ["JPG", "JPEG", "PNG", "GIF", "WEBP", "BMP"].includes(fileExtension);
 
+  const [isDownloading, setIsDownloading] = useState(false);
+
   const handleDownload = async () => {
     if (!documento.arquivo_url) return;
 
-    const inApp = isInAppBrowser();
-    const mobile = isMobileDevice();
+    setIsDownloading(true);
 
-    // 🔧 Estratégia 1: Navegador in-app → abrir direto (usuário salva manualmente)
-    if (inApp) {
-      // Tenta abrir no navegador padrão do sistema (funciona em alguns casos)
-      const intentUrl = `intent://${documento.arquivo_url.replace(/^https?:\/\//, '')}#Intent;scheme=https;action=android.intent.action.VIEW;end`;
-      
-      // Fallback: abre direto e instrui o usuário
-      window.location.href = documento.arquivo_url;
-      return;
-    }
-
-    // 🔧 Estratégia 2: Mobile (navegador normal) → link direto com download
-    if (mobile) {
-      const link = document.createElement('a');
-      link.href = documento.arquivo_url;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      // Força download se possível
-      link.setAttribute('download', documento.titulo || `documento.${fileExtension.toLowerCase()}`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      return;
-    }
-
-    // 🔧 Estratégia 3: Desktop → fetch + blob (mais confiável)
     try {
-      const response = await fetch(documento.arquivo_url);
-      if (!response.ok) throw new Error('Falha no fetch');
+      // 1. Obtém URL assinada (temporária, segura)
+      const signedUrl = await DocumentosService.getSignedUrl(documento.arquivo_url, 300); // 5 minutos
       
+      if (!signedUrl) {
+        console.error('Falha ao obter URL assinada');
+        alert('Não foi possível preparar o download. Tente novamente.');
+        setIsDownloading(false);
+        return;
+      }
+
+      // 2. Faz fetch do conteúdo via signed URL
+      const response = await fetch(signedUrl);
+      if (!response.ok) throw new Error('Falha ao baixar arquivo');
+
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = documento.titulo || `documento.${fileExtension.toLowerCase()}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      const mimeType = getMimeType(fileExtension);
+      const typedBlob = new Blob([blob], { type: mimeType });
+
+      // 3. Cria URL local (blob:// - não expõe bucket)
+      const blobUrl = URL.createObjectURL(typedBlob);
+
+      // 4. Estratégia de download por tipo de arquivo
+      if (isMobileDevice()) {
+        // Mobile: abre em nova aba (blob URL é seguro)
+        window.open(blobUrl, '_blank');
+        // Limpa após delay para dar tempo de carregar
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+      } else {
+        // Desktop: força download
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = documento.titulo || `documento.${fileExtension.toLowerCase()}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+      }
     } catch (error) {
       console.error('Erro ao baixar arquivo:', error);
-      // Fallback final: abre em nova aba
-      window.open(documento.arquivo_url, '_blank');
+      alert('Erro ao baixar o arquivo. Verifique sua conexão e tente novamente.');
+    } finally {
+      setIsDownloading(false);
     }
   };
-
-  // Verifica se está em navegador in-app para mostrar instrução
-  const showInAppWarning = isInAppBrowser();
 
   return (
     <>
@@ -274,32 +285,15 @@ export default function DocumentoDetailPanel({
 
         {/* Footer com botões */}
         <div className="border-t border-gray-200 p-4 md:p-6 space-y-2">
-          {/* Aviso para navegador in-app (WhatsApp) */}
-          {showInAppWarning && documento.arquivo_url && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-2">
-              <div className="flex items-start gap-2">
-                <Smartphone className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                <div className="text-xs text-amber-800">
-                  <p className="font-semibold">Abrindo pelo WhatsApp?</p>
-                  <p className="mt-1">
-                    {isImage 
-                      ? "Toque em \"Abrir Arquivo\", depois pressione e segure a imagem para salvar."
-                      : "Toque em \"Abrir Arquivo\" para visualizar. O arquivo abrirá no navegador."}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-          
           <button
             onClick={handleDownload}
-            disabled={!documento.arquivo_url}
+            disabled={!documento.arquivo_url || isDownloading}
             className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-700 rounded-lg font-medium transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {showInAppWarning ? (
+            {isDownloading ? (
               <>
-                <ExternalLink className="w-4 h-4" />
-                Abrir Arquivo
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Preparando...
               </>
             ) : (
               <>
