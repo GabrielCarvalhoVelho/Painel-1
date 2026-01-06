@@ -120,7 +120,7 @@ export default function DocumentoDetailPanel({
     };
   }, [isOpen, documento.arquivo_url, isImage]);
 
-  // Download de arquivos não-imagem via signed URL
+  // Download de arquivos não-imagem via signed URL (sem expor a URL)
   const handleDownload = async () => {
     if (!documento.arquivo_url) return;
 
@@ -133,12 +133,30 @@ export default function DocumentoDetailPanel({
         return;
       }
 
-      // Abre a signed URL em nova aba (URL temporária, não expõe bucket)
-      window.open(signedUrl, '_blank');
+      // Baixa o arquivo via fetch e cria blob URL local (não expõe bucket)
+      const response = await fetch(signedUrl);
+      if (!response.ok) {
+        throw new Error('Erro ao baixar arquivo');
+      }
+      
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Cria link temporário para download
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = documento.titulo || `documento.${fileExtension.toLowerCase()}`;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Limpa o blob URL após um tempo
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
       
     } catch (error) {
       console.error('Erro ao baixar:', error);
-      alert('Erro ao baixar o arquivo.');
+      alert('Erro ao baixar o arquivo. Tente novamente.');
     } finally {
       setIsDownloading(false);
     }
