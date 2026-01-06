@@ -147,7 +147,7 @@ export default function DividaDetailPanel({
           {divida.observacoes && (
             <div>
               <h3 className="text-[16px] font-bold text-[#004417] mb-3">Observações</h3>
-              <p className="text-[13px] font-medium text-[#004417] bg-[rgba(0,68,23,0.02)] p-3 rounded-lg border border-[rgba(0,68,23,0.08)]">
+              <p className="text-[13px] font-medium text-[#004417] bg-[rgba(0,68,23,0.02)] p-3 rounded-lg">
                 {divida.observacoes}
               </p>
             </div>
@@ -160,7 +160,7 @@ export default function DividaDetailPanel({
             <div>
               <h3 className="text-[16px] font-bold text-[#004417] mb-3">Cronograma de Pagamento</h3>
               {((divida.pagamento_parcelado?.numParcelas ?? 0) > 0) && ((divida.pagamento_parcelado?.valorParcela ?? 0) > 0) && (
-                <div className="bg-[rgba(0,68,23,0.02)] p-3 rounded-lg space-y-2 mb-3 border border-[rgba(0,68,23,0.08)]">
+                <div className="bg-[rgba(0,68,23,0.02)] p-3 rounded-lg space-y-2 mb-3">
                   <p className="text-[13px] font-semibold text-[#004417]">
                     <strong>Parcelado:</strong> {divida.pagamento_parcelado.numParcelas} parcelas de R${' '}
                     {divida.pagamento_parcelado.valorParcela.toLocaleString('pt-BR', {
@@ -175,7 +175,7 @@ export default function DividaDetailPanel({
                 </div>
               )}
               {((divida.pagamento_parcela?.valor ?? 0) > 0) && (
-                <div className="bg-[rgba(0,68,23,0.02)] p-3 rounded-lg space-y-2 mb-3 border border-[rgba(0,68,23,0.08)]">
+                <div className="bg-[rgba(0,68,23,0.02)] p-3 rounded-lg space-y-2 mb-3">
                   <p className="text-[13px] font-semibold text-[#004417]">
                     <strong>Parcela Única:</strong> R${' '}
                     {divida.pagamento_parcela.valor.toLocaleString('pt-BR', {
@@ -190,7 +190,7 @@ export default function DividaDetailPanel({
                 </div>
               )}
               {((divida.pagamento_producao?.quantidadeSacas ?? 0) > 0) && (
-                <div className="bg-[rgba(0,68,23,0.02)] p-3 rounded-lg space-y-2 border border-[rgba(0,68,23,0.08)]">
+                <div className="bg-[rgba(0,68,23,0.02)] p-3 rounded-lg space-y-2">
                   <p className="text-[13px] font-semibold text-[#004417]">
                     <strong>Com Produção:</strong> {divida.pagamento_producao.quantidadeSacas} sacas de{' '}
                     {divida.pagamento_producao.produto}
@@ -228,11 +228,11 @@ export default function DividaDetailPanel({
                       className="block"
                     >
                       {isImage ? (
-                        <div className="w-20 h-14 overflow-hidden rounded border border-[rgba(0,68,23,0.08)]">
+                        <div className="w-20 h-14 overflow-hidden rounded">
                           <img src={anexo} alt={name} className="w-full h-full object-cover" />
                         </div>
                       ) : (
-                        <div className="w-20 h-14 flex items-center justify-center bg-[rgba(0,68,23,0.02)] rounded border border-[rgba(0,68,23,0.08)] text-xs text-[#004417] px-2 text-center font-medium">
+                        <div className="w-20 h-14 flex items-center justify-center bg-[rgba(0,68,23,0.02)] rounded text-xs text-[#004417] px-2 text-center font-medium">
                           {name.length > 18 ? name.slice(0, 15) + '...' : name}
                         </div>
                       )}
@@ -261,7 +261,7 @@ export default function DividaDetailPanel({
               onLiquidar(divida.id);
               onClose();
             }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-[#F7941F] bg-orange-50 hover:bg-orange-100 text-[#F7941F] rounded-lg font-medium transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-orange-50 hover:bg-orange-100 text-[#F7941F] rounded-lg font-medium transition-colors"
           >
             <CheckCircle className="w-4 h-4" />
             Liquidar
@@ -271,7 +271,7 @@ export default function DividaDetailPanel({
               onDelete(divida.id);
               onClose();
             }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-[rgba(0,68,23,0.08)] bg-[rgba(0,68,23,0.02)] hover:bg-[rgba(0,68,23,0.08)] text-[#004417] rounded-lg font-medium transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[rgba(0,68,23,0.02)] hover:bg-[rgba(0,68,23,0.08)] text-[#004417] rounded-lg font-medium transition-colors"
           >
             <Trash2 className="w-4 h-4" />
             Excluir

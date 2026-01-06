@@ -14,11 +14,11 @@ const getSituacaoBadgeColor = (situacao: string) => {
     case 'Ativa':
       return 'bg-orange-50 text-[#F7941F]';
     case 'Liquidada':
-      return 'bg-green-50 text-[#00A651] border border-green-200';
+      return 'bg-green-50 text-[#00A651]';
     case 'Renegociada':
-      return 'bg-gray-100 text-gray-700 border border-gray-300';
+      return 'bg-gray-100 text-gray-700';
     default:
-      return 'bg-gray-100 text-gray-800 border border-gray-200';
+      return 'bg-gray-100 text-gray-800';
   }
 };
 
@@ -72,7 +72,7 @@ export default function DividaCard({
           <p className="text-[13px] text-[rgba(0,68,23,0.75)] font-medium uppercase tracking-wide mb-3">Forma de Pagamento</p>
 
           {divida.forma_pagamento && (
-            <div className="mb-2 p-2 bg-[rgba(0,68,23,0.02)] rounded-lg border border-[rgba(0,68,23,0.08)]">
+            <div className="mb-2 p-2 bg-[rgba(0,68,23,0.02)] rounded-lg">
               <p className="text-[13px] text-[#004417] font-medium">
                 {divida.forma_pagamento}
               </p>
@@ -80,7 +80,7 @@ export default function DividaCard({
           )}
 
           {divida.pagamento_parcelado?.numParcelas > 0 && divida.pagamento_parcelado?.valorParcela > 0 && (
-            <div className="mb-2 p-2 bg-[rgba(0,68,23,0.02)] rounded-lg border border-[rgba(0,68,23,0.08)]">
+            <div className="mb-2 p-2 bg-[rgba(0,68,23,0.02)] rounded-lg">
               <p className="text-[13px] text-[#004417] font-medium">
                 {divida.pagamento_parcelado.numParcelas}x R$ {divida.pagamento_parcelado.valorParcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
@@ -88,7 +88,7 @@ export default function DividaCard({
           )}
 
           {divida.pagamento_parcela?.valor > 0 && (
-            <div className="mb-2 p-2 bg-[rgba(0,68,23,0.02)] rounded-lg border border-[rgba(0,68,23,0.08)]">
+            <div className="mb-2 p-2 bg-[rgba(0,68,23,0.02)] rounded-lg">
               <p className="text-[13px] text-[#004417] font-medium">
                 Parcela Única: R$ {divida.pagamento_parcela.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
@@ -96,7 +96,7 @@ export default function DividaCard({
           )}
 
           {divida.pagamento_producao?.quantidadeSacas > 0 && (
-            <div className="p-2 bg-[rgba(0,68,23,0.02)] rounded-lg border border-[rgba(0,68,23,0.08)]">
+            <div className="p-2 bg-[rgba(0,68,23,0.02)] rounded-lg">
               <p className="text-[13px] text-[#004417] font-medium">
                 {divida.pagamento_producao.quantidadeSacas} sacas de {divida.pagamento_producao.produto}
               </p>
@@ -109,7 +109,7 @@ export default function DividaCard({
       <div className="flex gap-2">
         <button
           onClick={() => onViewDetails(divida.id)}
-          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-100 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-700 transition-colors"
         >
           Ver detalhes
           <ChevronRight className="w-4 h-4" />
