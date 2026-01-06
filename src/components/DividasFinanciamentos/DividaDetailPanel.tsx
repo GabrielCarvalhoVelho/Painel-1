@@ -16,13 +16,13 @@ interface DividaDetailPanelProps {
 const getSituacaoBadgeColor = (situacao: string) => {
   switch (situacao) {
     case 'Ativa':
-      return 'bg-blue-50 text-gray-700';
+      return 'bg-[rgba(0,68,23,0.08)] text-[#004417] font-semibold';
     case 'Liquidada':
-      return 'bg-green-50 text-[#00A651]';
+      return 'bg-[#00A651] bg-opacity-20 text-[#004417] font-semibold';
     case 'Renegociada':
-      return 'bg-orange-50 text-[#F7941F]';
+      return 'bg-[rgba(0,68,23,0.08)] text-[#004417] font-semibold';
     default:
-      return 'bg-gray-100 text-gray-800 border border-gray-200';
+      return 'bg-[rgba(0,68,23,0.08)] text-[#004417] font-semibold';
   }
 };
 
@@ -271,7 +271,7 @@ export default function DividaDetailPanel({
               onDelete(divida.id);
               onClose();
             }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg font-medium transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-[rgba(0,68,23,0.08)] bg-[rgba(0,68,23,0.02)] hover:bg-[rgba(0,68,23,0.08)] text-[#004417] rounded-lg font-medium transition-colors"
           >
             <Trash2 className="w-4 h-4" />
             Excluir
