@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Documento } from "./mockDocumentos";
-import { X, Download, Edit2, Trash2, Loader2, ImageIcon } from "lucide-react";
+import { X, Download, Edit2, Trash2, Loader2, ImageIcon, ZoomIn } from "lucide-react";
 import { formatDateBR } from "../../lib/dateUtils";
 import { DocumentosService } from "../../services/documentosService";
 
@@ -88,6 +88,7 @@ export default function DocumentoDetailPanel({
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [showFullscreenModal, setShowFullscreenModal] = useState(false);
 
   // Carrega preview da imagem quando o painel abre
   useEffect(() => {
@@ -115,6 +116,7 @@ export default function DocumentoDetailPanel({
     return () => {
       setImagePreviewUrl(null);
       setImageError(false);
+      setShowFullscreenModal(false);
     };
   }, [isOpen, documento.arquivo_url, isImage]);
 
@@ -123,6 +125,7 @@ export default function DocumentoDetailPanel({
 
     setIsDownloading(true);
     try {
+      // Sempre busca uma nova signed URL para o download
       const signedUrl = await DocumentosService.getSignedUrl(documento.arquivo_url, 600);
       
       if (!signedUrl) {
@@ -130,7 +133,7 @@ export default function DocumentoDetailPanel({
         return;
       }
 
-      // Abre a signed URL em nova aba - funciona em qualquer navegador/WebView
+      // Abre a signed URL em nova aba
       window.open(signedUrl, '_blank');
       
     } catch (error) {
@@ -140,6 +143,66 @@ export default function DocumentoDetailPanel({
       setIsDownloading(false);
     }
   };
+
+  // Modal Fullscreen para imagens
+  if (showFullscreenModal && imagePreviewUrl) {
+    return (
+      <div 
+        className="fixed inset-0 bg-black/95 z-[100] flex flex-col"
+        onClick={() => setShowFullscreenModal(false)}
+      >
+        {/* Header do modal */}
+        <div className="flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent">
+          <p className="text-white text-sm font-medium truncate flex-1 mr-4">
+            {documento.titulo || 'Imagem'}
+          </p>
+          <button
+            onClick={() => setShowFullscreenModal(false)}
+            className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
+          >
+            <X className="w-5 h-5 text-white" />
+          </button>
+        </div>
+
+        {/* Imagem centralizada */}
+        <div 
+          className="flex-1 flex items-center justify-center p-4 overflow-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <img
+            src={imagePreviewUrl}
+            alt={documento.titulo || 'Documento'}
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+            style={{ touchAction: 'pinch-zoom' }}
+          />
+        </div>
+
+        {/* Footer com botão de download */}
+        <div className="p-4 bg-gradient-to-t from-black/80 to-transparent">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDownload();
+            }}
+            disabled={isDownloading}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#004417] hover:bg-[#003015] text-white rounded-lg font-medium transition-colors text-sm disabled:opacity-50"
+          >
+            {isDownloading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Preparando...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                Baixar Imagem
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -177,7 +240,10 @@ export default function DocumentoDetailPanel({
         <div className="flex-1 overflow-y-auto p-4 md:p-6">
           {/* Preview */}
           {isImage ? (
-            <div className="bg-gray-100 rounded-lg border border-gray-200 mb-6 overflow-hidden">
+            <div 
+              className="bg-gray-100 rounded-lg border border-gray-200 mb-6 overflow-hidden cursor-pointer relative group"
+              onClick={() => imagePreviewUrl && setShowFullscreenModal(true)}
+            >
               {imageLoading ? (
                 <div className="flex items-center justify-center h-64">
                   <Loader2 className="w-8 h-8 text-[#004417] animate-spin" />
@@ -188,12 +254,20 @@ export default function DocumentoDetailPanel({
                   <p className="text-sm">Não foi possível carregar a imagem</p>
                 </div>
               ) : imagePreviewUrl ? (
-                <img
-                  src={imagePreviewUrl}
-                  alt={documento.titulo || 'Imagem do documento'}
-                  className="w-full h-auto max-h-[400px] object-contain bg-gray-50"
-                  onError={() => setImageError(true)}
-                />
+                <>
+                  <img
+                    src={imagePreviewUrl}
+                    alt={documento.titulo || 'Imagem do documento'}
+                    className="w-full h-auto max-h-[300px] object-contain bg-gray-50"
+                    onError={() => setImageError(true)}
+                  />
+                  {/* Overlay com ícone de zoom */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-full p-3 shadow-lg">
+                      <ZoomIn className="w-6 h-6 text-[#004417]" />
+                    </div>
+                  </div>
+                </>
               ) : (
                 <div className="flex items-center justify-center h-64">
                   <ImageIcon className="w-12 h-12 text-gray-400" />
