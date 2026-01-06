@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Documento } from "./mockDocumentos";
-import { X, Download, Edit2, Trash2, Loader2, ZoomIn, Copy, Check } from "lucide-react";
+import { X, Download, Edit2, Trash2, Loader2 } from "lucide-react";
 import { formatDateBR } from "../../lib/dateUtils";
 import { DocumentosService } from "../../services/documentosService";
 
@@ -11,12 +11,6 @@ interface DocumentoDetailPanelProps {
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
 }
-
-// Detecta se é dispositivo móvel
-const isMobileDevice = (): boolean => {
-  if (typeof navigator === 'undefined') return false;
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-};
 
 const getFileExtension = (arquivoUrl?: string): string => {
   if (!arquivoUrl) return "FILE";
@@ -84,34 +78,10 @@ export default function DocumentoDetailPanel({
 
   const fileExtension = getFileExtension(documento.arquivo_url);
   const icon = getPreviewIcon(fileExtension);
-  const isImage = ["JPG", "JPEG", "PNG", "GIF", "WEBP", "BMP"].includes(fileExtension);
 
   const [isDownloading, setIsDownloading] = useState(false);
-  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
-  const [linkCopied, setLinkCopied] = useState(false);
 
-  // Para IMAGENS no mobile: abre em tela cheia para "pressionar e segurar"
-  const handleOpenImage = async () => {
-    if (!documento.arquivo_url) return;
-    
-    setIsDownloading(true);
-    try {
-      const signedUrl = await DocumentosService.getSignedUrl(documento.arquivo_url, 600);
-      if (signedUrl) {
-        setFullscreenImage(signedUrl);
-      } else {
-        alert('Não foi possível carregar a imagem.');
-      }
-    } catch (error) {
-      console.error('Erro:', error);
-      alert('Erro ao carregar imagem.');
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
-  // Para OUTROS ARQUIVOS: redireciona para signed URL
-  const handleDownloadFile = async () => {
+  const handleDownload = async () => {
     if (!documento.arquivo_url) return;
 
     setIsDownloading(true);
@@ -123,30 +93,8 @@ export default function DocumentoDetailPanel({
         return;
       }
 
-      // Desktop: tenta download via fetch + blob
-      if (!isMobileDevice()) {
-        try {
-          const response = await fetch(signedUrl);
-          if (response.ok) {
-            const blob = await response.blob();
-            const blobUrl = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = blobUrl;
-            link.download = documento.titulo || `documento.${fileExtension.toLowerCase()}`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-            return;
-          }
-        } catch (e) {
-          console.log('Blob download falhou, usando redirect');
-        }
-      }
-
-      // Mobile/Fallback: redireciona para a signed URL
-      // O navegador/WebView vai tentar abrir ou baixar nativamente
-      window.location.href = signedUrl;
+      // Abre a signed URL em nova aba - funciona em qualquer navegador/WebView
+      window.open(signedUrl, '_blank');
       
     } catch (error) {
       console.error('Erro ao baixar:', error);
@@ -155,64 +103,6 @@ export default function DocumentoDetailPanel({
       setIsDownloading(false);
     }
   };
-
-  // Copia link para área de transferência
-  const handleCopyLink = async () => {
-    if (!documento.arquivo_url) return;
-    
-    try {
-      const signedUrl = await DocumentosService.getSignedUrl(documento.arquivo_url, 600);
-      if (signedUrl && navigator.clipboard) {
-        await navigator.clipboard.writeText(signedUrl);
-        setLinkCopied(true);
-        setTimeout(() => setLinkCopied(false), 3000);
-      }
-    } catch (error) {
-      console.error('Erro ao copiar:', error);
-    }
-  };
-
-  // Modal de imagem fullscreen
-  if (fullscreenImage) {
-    return (
-      <div className="fixed inset-0 bg-black z-[100] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 bg-black/80">
-          <p className="text-white text-sm font-medium truncate flex-1 mr-4">
-            {documento.titulo || 'Imagem'}
-          </p>
-          <button
-            onClick={() => setFullscreenImage(null)}
-            className="p-2 bg-white/20 rounded-full"
-          >
-            <X className="w-5 h-5 text-white" />
-          </button>
-        </div>
-
-        {/* Imagem */}
-        <div className="flex-1 flex items-center justify-center p-4 overflow-auto">
-          <img
-            src={fullscreenImage}
-            alt={documento.titulo || 'Documento'}
-            className="max-w-full max-h-full object-contain"
-            style={{ touchAction: 'manipulation' }}
-          />
-        </div>
-
-        {/* Instrução */}
-        <div className="p-4 bg-black/80">
-          <div className="bg-white/10 rounded-lg p-3 text-center">
-            <p className="text-white text-sm font-medium">
-              📲 Pressione e segure a imagem para salvar
-            </p>
-            <p className="text-white/70 text-xs mt-1">
-              Ou use o menu do navegador (⋮) → "Salvar imagem"
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -256,7 +146,7 @@ export default function DocumentoDetailPanel({
                 Arquivo {fileExtension}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {isImage ? 'Toque em "Ver Imagem" para visualizar' : 'Toque em "Baixar" para abrir'}
+                Toque em "Baixar" para abrir
               </p>
             </div>
           </div>
@@ -305,60 +195,20 @@ export default function DocumentoDetailPanel({
 
         {/* Footer com botões */}
         <div className="border-t border-gray-200 p-4 md:p-6 space-y-2">
-          {/* Botão principal - diferente para imagem vs outros */}
-          {isImage ? (
-            <button
-              onClick={handleOpenImage}
-              disabled={!documento.arquivo_url || isDownloading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#004417] hover:bg-[#003015] text-white rounded-lg font-medium transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isDownloading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Carregando...
-                </>
-              ) : (
-                <>
-                  <ZoomIn className="w-4 h-4" />
-                  Ver Imagem (para salvar)
-                </>
-              )}
-            </button>
-          ) : (
-            <button
-              onClick={handleDownloadFile}
-              disabled={!documento.arquivo_url || isDownloading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#004417] hover:bg-[#003015] text-white rounded-lg font-medium transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isDownloading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Preparando...
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4" />
-                  {documento.arquivo_url ? 'Baixar Arquivo' : 'Arquivo indisponível'}
-                </>
-              )}
-            </button>
-          )}
-
-          {/* Botão copiar link - alternativa */}
           <button
-            onClick={handleCopyLink}
-            disabled={!documento.arquivo_url}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-700 rounded-lg font-medium transition-colors text-xs disabled:opacity-50"
+            onClick={handleDownload}
+            disabled={!documento.arquivo_url || isDownloading}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#004417] hover:bg-[#003015] text-white rounded-lg font-medium transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {linkCopied ? (
+            {isDownloading ? (
               <>
-                <Check className="w-4 h-4 text-green-600" />
-                Link copiado! Cole no navegador.
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Preparando...
               </>
             ) : (
               <>
-                <Copy className="w-4 h-4" />
-                Copiar link (alternativa)
+                <Download className="w-4 h-4" />
+                {documento.arquivo_url ? 'Baixar' : 'Arquivo indisponível'}
               </>
             )}
           </button>
