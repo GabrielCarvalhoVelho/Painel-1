@@ -30,8 +30,8 @@ const DetailField = ({ label, value }: { label: string; value?: string | number 
   if (!value) return null;
   return (
     <div className="mb-4">
-      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">{label}</p>
-      <p className="text-sm text-gray-900">{value}</p>
+      <p className="text-[13px] text-[rgba(0,68,23,0.75)] font-medium uppercase tracking-wide mb-1">{label}</p>
+      <p className="text-[13px] font-semibold text-[#004417]">{value}</p>
     </div>
   );
 };
@@ -92,16 +92,16 @@ export default function DividaDetailPanel({
       {/* Panel */}
       <div className="fixed right-0 top-0 bottom-0 w-96 bg-white shadow-2xl z-50 flex flex-col overflow-hidden animate-in slide-in-from-right-96">
         {/* Header */}
-        <div className="border-b border-gray-200 p-6 flex items-center justify-between">
+        <div className="border-b border-[rgba(0,68,23,0.08)] p-6 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-[#004417] mb-4">{divida.nome}</h2>
-            <p className="text-sm text-gray-600 mt-1">{divida.credor}</p>
+            <p className="text-[13px] text-[rgba(0,68,23,0.75)] font-medium mt-1">{divida.credor}</p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-[rgba(0,68,23,0.08)] rounded-lg transition-colors"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-[#004417]" />
           </button>
         </div>
 
@@ -147,7 +147,7 @@ export default function DividaDetailPanel({
           {divida.observacoes && (
             <div>
               <h3 className="text-[16px] font-bold text-[#004417] mb-3">Observações</h3>
-              <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+              <p className="text-[13px] font-medium text-[#004417] bg-[rgba(0,68,23,0.02)] p-3 rounded-lg border border-[rgba(0,68,23,0.08)]">
                 {divida.observacoes}
               </p>
             </div>
@@ -160,48 +160,48 @@ export default function DividaDetailPanel({
             <div>
               <h3 className="text-[16px] font-bold text-[#004417] mb-3">Cronograma de Pagamento</h3>
               {((divida.pagamento_parcelado?.numParcelas ?? 0) > 0) && ((divida.pagamento_parcelado?.valorParcela ?? 0) > 0) && (
-                <div className="bg-gray-50 p-3 rounded-lg space-y-2 mb-3">
-                  <p className="text-sm text-gray-700">
+                <div className="bg-[rgba(0,68,23,0.02)] p-3 rounded-lg space-y-2 mb-3 border border-[rgba(0,68,23,0.08)]">
+                  <p className="text-[13px] font-semibold text-[#004417]">
                     <strong>Parcelado:</strong> {divida.pagamento_parcelado.numParcelas} parcelas de R${' '}
                     {divida.pagamento_parcelado.valorParcela.toLocaleString('pt-BR', {
                       minimumFractionDigits: 2,
                     })}
                   </p>
                   {divida.pagamento_parcelado.primeiradata && (
-                    <p className="text-sm text-gray-600">
+                    <p className="text-[13px] text-[rgba(0,68,23,0.75)]">
                       Primeira parcela: {formatDateBR(divida.pagamento_parcelado.primeiradata)}
                     </p>
                   )}
                 </div>
               )}
               {((divida.pagamento_parcela?.valor ?? 0) > 0) && (
-                <div className="bg-gray-50 p-3 rounded-lg space-y-2 mb-3">
-                  <p className="text-sm text-gray-700">
+                <div className="bg-[rgba(0,68,23,0.02)] p-3 rounded-lg space-y-2 mb-3 border border-[rgba(0,68,23,0.08)]">
+                  <p className="text-[13px] font-semibold text-[#004417]">
                     <strong>Parcela Única:</strong> R${' '}
                     {divida.pagamento_parcela.valor.toLocaleString('pt-BR', {
                       minimumFractionDigits: 2,
                     })}
                   </p>
                   {divida.pagamento_parcela.data && (
-                    <p className="text-sm text-gray-600">
+                    <p className="text-[13px] text-[rgba(0,68,23,0.75)]">
                       Data: {formatDateBR(divida.pagamento_parcela.data)}
                     </p>
                   )}
                 </div>
               )}
               {((divida.pagamento_producao?.quantidadeSacas ?? 0) > 0) && (
-                <div className="bg-gray-50 p-3 rounded-lg space-y-2">
-                  <p className="text-sm text-gray-700">
+                <div className="bg-[rgba(0,68,23,0.02)] p-3 rounded-lg space-y-2 border border-[rgba(0,68,23,0.08)]">
+                  <p className="text-[13px] font-semibold text-[#004417]">
                     <strong>Com Produção:</strong> {divida.pagamento_producao.quantidadeSacas} sacas de{' '}
                     {divida.pagamento_producao.produto}
                   </p>
                   {((divida.pagamento_producao?.precoPorSaca ?? 0) > 0) && (
-                    <p className="text-sm text-gray-600">
+                    <p className="text-[13px] text-[rgba(0,68,23,0.75)]">
                       Preço: R$ {divida.pagamento_producao.precoPorSaca.toLocaleString('pt-BR')} / saca
                     </p>
                   )}
                   {divida.pagamento_producao.dataPeriodo && (
-                    <p className="text-sm text-gray-600">
+                    <p className="text-[13px] text-[rgba(0,68,23,0.75)]">
                       Período: {formatDateBR(divida.pagamento_producao.dataPeriodo)}
                     </p>
                   )}
@@ -228,11 +228,11 @@ export default function DividaDetailPanel({
                       className="block"
                     >
                       {isImage ? (
-                        <div className="w-20 h-14 overflow-hidden rounded border border-gray-100">
+                        <div className="w-20 h-14 overflow-hidden rounded border border-[rgba(0,68,23,0.08)]">
                           <img src={anexo} alt={name} className="w-full h-full object-cover" />
                         </div>
                       ) : (
-                        <div className="w-20 h-14 flex items-center justify-center bg-gray-100 rounded border border-gray-100 text-xs text-gray-600 px-2 text-center">
+                        <div className="w-20 h-14 flex items-center justify-center bg-[rgba(0,68,23,0.02)] rounded border border-[rgba(0,68,23,0.08)] text-xs text-[#004417] px-2 text-center font-medium">
                           {name.length > 18 ? name.slice(0, 15) + '...' : name}
                         </div>
                       )}
@@ -245,7 +245,7 @@ export default function DividaDetailPanel({
         </div>
 
         {/* Footer com botões */}
-        <div className="border-t border-gray-100 p-4 space-y-2">
+        <div className="border-t border-[rgba(0,68,23,0.08)] p-4 space-y-2">
           <button
             onClick={() => {
               onEdit(divida.id);

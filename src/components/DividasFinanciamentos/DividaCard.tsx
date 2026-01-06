@@ -26,8 +26,8 @@ const renderField = (label: string, value?: string | number | null) => {
   if (!value) return null;
   return (
     <div className="mb-3">
-      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">{label}</p>
-      <p className="text-sm text-gray-900">{value}</p>
+      <p className="text-[13px] text-[rgba(0,68,23,0.75)] font-medium uppercase tracking-wide mb-1">{label}</p>
+      <p className="text-[13px] font-semibold text-[#004417]">{value}</p>
     </div>
   );
 };
@@ -43,8 +43,8 @@ export default function DividaCard({
       {/* Header com título e badge */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
-          <h3 className="text-lg font-bold text-gray-900">{divida.nome}</h3>
-          <p className="text-sm text-gray-600 mt-1">{divida.credor}</p>
+          <h3 className="text-lg font-bold text-[#004417]">{divida.nome}</h3>
+          <p className="text-[13px] text-[rgba(0,68,23,0.75)] font-medium mt-1">{divida.credor}</p>
         </div>
         <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap ml-2 ${getSituacaoBadgeColor(divida.situacao)}`}>
           {divida.situacao}
@@ -52,7 +52,7 @@ export default function DividaCard({
       </div>
 
       {/* Campos exibidos (ocultando os vazios) */}
-      <div className="space-y-2 mb-5 pb-4 border-b border-gray-100">
+      <div className="space-y-2 mb-5 pb-4 border-b border-[rgba(0,68,23,0.08)]">
         {renderField('Tipo', divida.tipo)}
         {renderField('Data da Contratação', divida.data_contratacao ? format(parseISO(divida.data_contratacao), 'dd/MM/yyyy') : undefined)}
         {renderField('Valor Contratado', `R$ ${divida.valor_contratado.toLocaleString('pt-BR')}`)}
@@ -68,36 +68,36 @@ export default function DividaCard({
         divida.pagamento_parcelado?.numParcelas ||
         divida.pagamento_parcela?.valor ||
         divida.pagamento_producao?.quantidadeSacas) && (
-        <div className="mb-5 pb-4 border-b border-gray-100">
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">Forma de Pagamento</p>
+        <div className="mb-5 pb-4 border-b border-[rgba(0,68,23,0.08)]">
+          <p className="text-[13px] text-[rgba(0,68,23,0.75)] font-medium uppercase tracking-wide mb-3">Forma de Pagamento</p>
 
           {divida.forma_pagamento && (
-            <div className="mb-2 p-2 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-600 font-medium">
+            <div className="mb-2 p-2 bg-[rgba(0,68,23,0.02)] rounded-lg border border-[rgba(0,68,23,0.08)]">
+              <p className="text-[13px] text-[#004417] font-medium">
                 {divida.forma_pagamento}
               </p>
             </div>
           )}
 
           {divida.pagamento_parcelado?.numParcelas > 0 && divida.pagamento_parcelado?.valorParcela > 0 && (
-            <div className="mb-2 p-2 bg-gray-100 rounded-lg">
-              <p className="text-xs text-gray-700 font-medium">
+            <div className="mb-2 p-2 bg-[rgba(0,68,23,0.02)] rounded-lg border border-[rgba(0,68,23,0.08)]">
+              <p className="text-[13px] text-[#004417] font-medium">
                 {divida.pagamento_parcelado.numParcelas}x R$ {divida.pagamento_parcelado.valorParcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
             </div>
           )}
 
           {divida.pagamento_parcela?.valor > 0 && (
-            <div className="mb-2 p-2 bg-green-50 rounded-lg">
-              <p className="text-xs text-green-600 font-medium">
+            <div className="mb-2 p-2 bg-[rgba(0,68,23,0.02)] rounded-lg border border-[rgba(0,68,23,0.08)]">
+              <p className="text-[13px] text-[#004417] font-medium">
                 Parcela Única: R$ {divida.pagamento_parcela.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
             </div>
           )}
 
           {divida.pagamento_producao?.quantidadeSacas > 0 && (
-            <div className="p-2 bg-orange-50 rounded-lg">
-              <p className="text-xs text-orange-600 font-medium">
+            <div className="p-2 bg-[rgba(0,68,23,0.02)] rounded-lg border border-[rgba(0,68,23,0.08)]">
+              <p className="text-[13px] text-[#004417] font-medium">
                 {divida.pagamento_producao.quantidadeSacas} sacas de {divida.pagamento_producao.produto}
               </p>
             </div>
