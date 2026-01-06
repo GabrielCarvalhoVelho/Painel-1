@@ -32,10 +32,33 @@ export default function DocumentosSearchBar({
   const [selectedType, setSelectedType] = useState<TipoDocumento | "">("");
   const [showFilters, setShowFilters] = useState(false);
 
-  const applyFilters = () => {
-    let filtered = [...documentos];
 
-    // Busca por título, tipo ou observação
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+
+    let filtered = [...documentos];
+    if (value.trim()) {
+      const term = value.toLowerCase();
+      filtered = filtered.filter(
+        (doc) =>
+          (doc.titulo && doc.titulo.toLowerCase().includes(term)) ||
+          (doc.tipo && doc.tipo.toLowerCase().includes(term)) ||
+          (doc.observacao && doc.observacao.toLowerCase().includes(term)) ||
+          (doc.safra && doc.safra.toLowerCase().includes(term)) ||
+          (doc.tema && doc.tema.toLowerCase().includes(term))
+      );
+    }
+    if (selectedType) {
+      filtered = filtered.filter((doc) => doc.tipo === selectedType);
+    }
+    onFilterChange(filtered);
+  };
+
+  const handleTypeChange = (type: TipoDocumento | "") => {
+    setSelectedType(type);
+
+    let filtered = [...documentos];
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
@@ -47,25 +70,10 @@ export default function DocumentosSearchBar({
           (doc.tema && doc.tema.toLowerCase().includes(term))
       );
     }
-
-    // Filtro por tipo
-    if (selectedType) {
-      filtered = filtered.filter((doc) => doc.tipo === selectedType);
+    if (type) {
+      filtered = filtered.filter((doc) => doc.tipo === type);
     }
-
     onFilterChange(filtered);
-  };
-
-  // Chamar applyFilters sempre que algum filtro muda
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    setTimeout(() => applyFilters(), 0);
-  };
-
-  const handleTypeChange = (type: TipoDocumento | "") => {
-    setSelectedType(type);
-    setTimeout(() => applyFilters(), 0);
   };
 
   const hasActiveFilters = searchTerm.trim() || selectedType;
