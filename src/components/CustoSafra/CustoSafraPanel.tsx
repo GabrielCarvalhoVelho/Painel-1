@@ -181,7 +181,7 @@ if (produtividadeFazenda !== null && produtividadeFazenda !== undefined) {
       <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] p-6">
         {/* Productivity Fields - unified visual group */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white p-4 rounded-xl border border-[rgba(0,68,23,0.08)] flex items-start gap-4">
+          <div className="bg-white p-4 rounded-xl flex items-start gap-4">
             <BarChart className="w-6 h-6 text-[#00A651] flex-shrink-0 mt-1" />
             <div>
               <div className="text-sm font-semibold text-[#004417]">Produtividade da Fazenda</div>
@@ -190,7 +190,7 @@ if (produtividadeFazenda !== null && produtividadeFazenda !== undefined) {
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-[rgba(0,68,23,0.08)] flex items-start gap-4">
+          <div className="bg-white p-4 rounded-xl flex items-start gap-4">
             <TrendingUp className="w-6 h-6 text-[#CADB2A] flex-shrink-0 mt-1" />
             <div>
               <div className="text-sm font-semibold text-[#004417]">Produtividade Média Brasil</div>
@@ -199,7 +199,7 @@ if (produtividadeFazenda !== null && produtividadeFazenda !== undefined) {
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-[rgba(0,68,23,0.08)] flex items-start gap-4">
+          <div className="bg-white p-4 rounded-xl flex items-start gap-4">
             <Percent className="w-6 h-6 text-[#00A651] flex-shrink-0 mt-1" />
             <div>
               <div className="text-sm font-semibold text-[#004417]">Comparação</div>
