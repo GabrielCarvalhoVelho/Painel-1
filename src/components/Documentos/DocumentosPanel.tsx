@@ -45,8 +45,13 @@ export default function DocumentosPanel() {
       console.log(`[DocumentosPanel] ✓ ${docs.length} documentos carregados`);
 
       // Ordena alfabeticamente por título (estado padrão sem filtros)
+      // Documentos sem título usam "Documento sem título" para ordenação correta
       const docsOrdenados = [...docs].sort((a, b) => 
-        (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR', { sensitivity: 'base' })
+        (a.titulo || 'Documento sem título').localeCompare(
+          b.titulo || 'Documento sem título', 
+          'pt-BR', 
+          { sensitivity: 'base' }
+        )
       );
 
       setDocumentos(docsOrdenados);
