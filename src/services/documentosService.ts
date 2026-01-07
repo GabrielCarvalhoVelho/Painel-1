@@ -261,4 +261,105 @@ export class DocumentosService {
       return `${(sizeInBytes / (1024 * 1024)).toFixed(1)} MB`;
     }
   }
+
+  /**
+   * Envia documento para o WhatsApp do usuário via webhook n8n
+   * @param documentoId - ID do documento no banco
+   * @param telefone - Telefone do usuário em formato E.164 (ex: 5511999999999)
+   * @returns Objeto com success, message e error
+   */
+  static async sendToWhatsApp(
+    documentoId: number,
+    telefone: string
+  ): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      console.log('[Documentos][WhatsApp] Iniciando envio do documento:', documentoId);
+
+      const documento = await this.getById(documentoId);
+      if (!documento?.arquivo_url) {
+        return { success: false, error: 'Documento sem arquivo anexado' };
+      }
+
+      // Gera URL assinada válida por 1 hora
+      const signedUrl = await this.getSignedUrl(documento.arquivo_url, 3600);
+      if (!signedUrl) {
+        return { success: false, error: 'Falha ao gerar URL do arquivo' };
+      }
+
+      // Em desenvolvimento, usa proxy do Vite para contornar CORS
+      // Em produção, usa URL direta do webhook
+      const isDev = import.meta.env.MODE === 'development' || 
+                    (typeof window !== 'undefined' && 
+                     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'));
+      
+      let webhookUrl: string;
+      if (isDev) {
+        // Proxy configurado no vite.config.ts: /api/whatsapp → https://zedasafra.app.n8n.cloud/webhook
+        webhookUrl = '/api/whatsapp/enviar-documento-whatsapp';
+      } else {
+        webhookUrl = import.meta.env.VITE_WHATSAPP_WEBHOOK_URL;
+        if (!webhookUrl) {
+          console.error('[Documentos][WhatsApp] VITE_WHATSAPP_WEBHOOK_URL não configurada');
+          return { success: false, error: 'Serviço de WhatsApp não configurado' };
+        }
+      }
+
+      // Extrai informações do arquivo
+      const fileName = documento.arquivo_url.split('/').pop() || 'documento';
+      const extension = fileName.split('.').pop()?.toLowerCase() || '';
+      const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension);
+
+      const payload = {
+        telefone: telefone.replace(/\D/g, ''),
+        arquivo_url: signedUrl,
+        titulo: documento.titulo || 'Documento',
+        tipo_arquivo: isImage ? 'image' : 'document',
+        mime_type: isImage ? `image/${extension === 'jpg' ? 'jpeg' : extension}` : 'application/octet-stream',
+        nome_arquivo: fileName
+      };
+
+      console.log('[Documentos][WhatsApp] Chamando webhook:', webhookUrl);
+      console.log('[Documentos][WhatsApp] Payload:', JSON.stringify(payload, null, 2));
+
+      const resp = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      console.log('[Documentos][WhatsApp] Response status:', resp.status, resp.statusText);
+      
+      const responseText = await resp.text();
+      console.log('[Documentos][WhatsApp] Response body (raw):', responseText);
+      
+      let json: any = {};
+      try {
+        json = responseText ? JSON.parse(responseText) : {};
+      } catch (parseErr) {
+        console.error('[Documentos][WhatsApp] Erro ao parsear JSON:', parseErr);
+        console.log('[Documentos][WhatsApp] Response não é JSON válido');
+      }
+
+      if (resp.ok && json?.success) {
+        console.log('[Documentos][WhatsApp] ✓ Documento enviado com sucesso');
+        return { success: true, message: 'Documento enviado para seu WhatsApp!' };
+      }
+
+      console.error('[Documentos][WhatsApp] Falha no webhook:');
+      console.error('  - Status:', resp.status, resp.statusText);
+      console.error('  - Response:', json);
+      console.error('  - resp.ok:', resp.ok);
+      console.error('  - json.success:', json?.success);
+      
+      // Se o status for 2xx mas não tiver success:true, pode ser que o n8n retornou algo diferente
+      if (resp.ok) {
+        console.warn('[Documentos][WhatsApp] Webhook retornou 2xx mas sem success:true. Verificar formato de resposta do n8n.');
+      }
+      
+      return { success: false, error: json?.error || json?.message || `Erro ${resp.status}: ${resp.statusText}` };
+    } catch (err) {
+      console.error('[Documentos][WhatsApp] Erro:', err);
+      return { success: false, error: 'Erro de conexão. Tente novamente.' };
+    }
+  }
 }
