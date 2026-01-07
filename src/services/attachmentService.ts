@@ -1434,12 +1434,54 @@ export class AttachmentService {
   static async downloadFileAttachment(transactionId: string): Promise<void> {
     try {
       console.log('⬇️ Fazendo download do arquivo:', transactionId);
-      const fileId = await this.getStorageFileIdForFile(transactionId);
 
+      const { data: txData, error: txError } = await supabase
+        .from('transacoes_financeiras')
+        .select('anexo_arquivo_url')
+        .eq('id_transacao', transactionId)
+        .maybeSingle();
+
+      if (txError) {
+        console.error('❌ Erro ao buscar path do banco:', txError);
+      }
+
+      const storedPath = txData?.anexo_arquivo_url;
+
+      console.log('📊 [Download File] Path salvo no banco:', storedPath || 'N/A');
+
+      if (storedPath) {
+        console.log('📍 [Download File] Usando path do banco:', storedPath);
+
+        const { data, error } = await supabase.storage
+          .from(this.BUCKET_NAME)
+          .download(storedPath);
+
+        if (!error && data) {
+          console.log('📦 Blob recebido:', data.size, 'bytes, tipo:', data.type);
+
+          const fileExtension = storedPath.split('.').pop() || 'pdf';
+          const url = URL.createObjectURL(data);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `arquivo_${transactionId}.${fileExtension}`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+
+          console.log('✅ Download concluído via path do banco');
+          return;
+        } else {
+          console.log('⚠️ Erro ao baixar via path do banco:', error);
+        }
+      }
+
+      console.log('🔄 Path não encontrado no banco, tentando fallback...');
+
+      const fileId = await this.getStorageFileIdForFile(transactionId);
       const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
       let downloaded = false;
 
-      // tentar primeiro em <user_id>/arquivos, depois em arquivos/, depois raiz
       const user = AuthService.getInstance().getCurrentUser();
       const candidateNames: string[] = [];
       if (user?.user_id) candidateNames.push(...extensions.map(ext => `${user.user_id}/${this.FILE_FOLDER}/${fileId}.${ext}`));
@@ -1447,27 +1489,18 @@ export class AttachmentService {
       candidateNames.push(...extensions.map(ext => `${fileId}.${ext}`));
 
       for (const fileName of candidateNames) {
-
-        let { data, error } = await supabaseServiceRole.storage
+        const { data, error } = await supabase.storage
           .from(this.BUCKET_NAME)
           .download(fileName);
-
-        if (error) {
-          console.log(`⚠️ Tentando download de ${ext} com cliente normal...`);
-          const result = await supabase.storage
-            .from(this.BUCKET_NAME)
-            .download(fileName);
-          data = result.data;
-          error = result.error;
-        }
 
         if (!error && data) {
           console.log('📦 Blob recebido:', data.size, 'bytes, tipo:', data.type);
 
+          const fileExtension = fileName.split('.').pop() || 'pdf';
           const url = URL.createObjectURL(data);
           const link = document.createElement('a');
           link.href = url;
-          link.download = `arquivo_${transactionId}.${ext}`;
+          link.download = `arquivo_${transactionId}.${fileExtension}`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
@@ -1480,8 +1513,7 @@ export class AttachmentService {
       }
 
       if (!downloaded) {
-        console.log('🔄 Tentando download via URL pública...');
-        await this.downloadFileViaPublicUrl(transactionId);
+        throw new Error('Arquivo não encontrado');
       }
     } catch (error) {
       console.error('💥 Erro no download:', error);
