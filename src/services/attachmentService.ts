@@ -559,51 +559,57 @@ export class AttachmentService {
   static async deleteAttachment(transactionId: string): Promise<boolean> {
     try {
       console.log('🗑️ Excluindo anexo:', transactionId);
-      const fileId = await this.getStorageFileId(transactionId);
-      const fileName = `${fileId}.jpg`;
-      // tentar obter path armazenado no banco (pode conter prefixo user_id)
-      let storedPath: string | null = null;
-      try {
-        const { data } = await supabase
-          .from('transacoes_financeiras')
-          .select('anexo_compartilhado_url')
-          .eq('id_transacao', transactionId)
-          .single();
-        if (data && data.anexo_compartilhado_url) storedPath = data.anexo_compartilhado_url;
-      } catch (err) {
-        // ignore
+
+      const { data: txData, error: txError } = await supabase
+        .from('transacoes_financeiras')
+        .select('anexo_compartilhado_url')
+        .eq('id_transacao', transactionId)
+        .maybeSingle();
+
+      if (txError) {
+        console.error('❌ Erro ao buscar path do banco:', txError);
       }
 
-      const pathToDelete = storedPath ? this.normalizeStoredPath(storedPath) : fileName;
+      const storedPath = txData?.anexo_compartilhado_url;
 
-      // Tentar primeiro com service role
-      let { data, error } = await supabaseServiceRole.storage
-        .from(this.BUCKET_NAME)
-        .remove([pathToDelete]);
+      console.log('📊 [Delete Image] Path salvo no banco:', storedPath || 'N/A');
 
-      // Fallback para cliente normal
-      if (error) {
-        console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
-        const result = await supabase.storage
+      if (storedPath) {
+        const pathToDelete = this.normalizeStoredPath(storedPath);
+        console.log('📍 [Delete Image] Usando path normalizado:', pathToDelete);
+
+        const { data, error } = await supabase.storage
           .from(this.BUCKET_NAME)
           .remove([pathToDelete]);
-        data = result.data;
-        error = result.error;
+
+        if (error) {
+          console.error('❌ Erro ao excluir via path do banco:', error);
+          throw new Error(`Erro ao excluir anexo: ${error.message}`);
+        }
+
+        console.log('✅ Exclusão concluída via path do banco');
+
+        await this.updateSharedAttachmentUrl(transactionId, null);
+
+        return true;
       }
+
+      console.log('🔄 Path não encontrado no banco, tentando fallback...');
+
+      const fileId = await this.getStorageFileId(transactionId);
+      const fileName = `${fileId}.jpg`;
+
+      const { data, error } = await supabase.storage
+        .from(this.BUCKET_NAME)
+        .remove([fileName]);
 
       if (error) {
         console.error('❌ Erro na exclusão:', error);
-        
-        if (error.message.includes('row-level security') || error.message.includes('RLS')) {
-          throw new Error('Erro de permissão: Configure as políticas RLS do bucket ou use a chave de serviço');
-        }
-        
         throw new Error(`Erro ao excluir anexo: ${error.message}`);
       }
 
-      console.log('✅ Exclusão concluída:', data);
+      console.log('✅ Exclusão concluída via fallback');
 
-      // Limpar path do banco
       await this.updateSharedAttachmentUrl(transactionId, null);
 
       return true;
@@ -1377,42 +1383,68 @@ export class AttachmentService {
   static async deleteFileAttachment(transactionId: string): Promise<boolean> {
     try {
       console.log('🗑️ Excluindo arquivo:', transactionId);
-      const fileId = await this.getStorageFileIdForFile(transactionId);
 
+      const { data: txData, error: txError } = await supabase
+        .from('transacoes_financeiras')
+        .select('anexo_arquivo_url')
+        .eq('id_transacao', transactionId)
+        .maybeSingle();
+
+      if (txError) {
+        console.error('❌ Erro ao buscar path do banco:', txError);
+      }
+
+      const storedPath = txData?.anexo_arquivo_url;
+
+      console.log('📊 [Delete File] Path salvo no banco:', storedPath || 'N/A');
+
+      if (storedPath) {
+        console.log('📍 [Delete File] Usando path do banco:', storedPath);
+
+        let { data, error } = await supabase.storage
+          .from(this.BUCKET_NAME)
+          .remove([storedPath]);
+
+        if (error) {
+          console.error('❌ Erro ao excluir via path do banco:', error);
+          throw new Error(`Erro ao excluir arquivo: ${error.message}`);
+        }
+
+        console.log('✅ Exclusão concluída via path do banco');
+
+        await supabase
+          .from('transacoes_financeiras')
+          .update({ anexo_arquivo_url: null })
+          .eq('id_transacao', transactionId);
+
+        console.log('📝 [File Delete] Path removido do banco');
+
+        return true;
+      }
+
+      console.log('🔄 Path não encontrado no banco, tentando fallback...');
+
+      const fileId = await this.getStorageFileIdForFile(transactionId);
       const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
       const user = AuthService.getInstance().getCurrentUser();
       const filesToDelete = [] as string[];
+
       if (user?.user_id) {
         filesToDelete.push(...extensions.map(ext => `${user.user_id}/${this.FILE_FOLDER}/${fileId}.${ext}`));
       }
-      // also try non-prefixed paths for legacy
       filesToDelete.push(...extensions.map(ext => `${this.FILE_FOLDER}/${fileId}.${ext}`));
       filesToDelete.push(...extensions.map(ext => `${fileId}.${ext}`));
 
-      let { data, error } = await supabaseServiceRole.storage
+      let { data, error } = await supabase.storage
         .from(this.BUCKET_NAME)
         .remove(filesToDelete);
 
       if (error) {
-        console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
-        const result = await supabase.storage
-          .from(this.BUCKET_NAME)
-          .remove(filesToDelete);
-        data = result.data;
-        error = result.error;
-      }
-
-      if (error) {
         console.error('❌ Erro na exclusão:', error);
-
-        if (error.message.includes('row-level security') || error.message.includes('RLS')) {
-          throw new Error('Erro de permissão: Configure as políticas RLS do bucket ou use a chave de serviço');
-        }
-
         throw new Error(`Erro ao excluir arquivo: ${error.message}`);
       }
 
-      console.log('✅ Exclusão concluída (storage direto):', data);
+      console.log('✅ Exclusão concluída via fallback');
 
       await supabase
         .from('transacoes_financeiras')

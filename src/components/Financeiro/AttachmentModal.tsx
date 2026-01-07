@@ -477,10 +477,17 @@ export default function AttachmentModal({
           <div className="bg-white rounded-xl shadow-lg max-w-sm w-full p-6 flex flex-col items-center">
             <AlertCircle className="w-8 h-8 text-[#F7941F] mb-2" />
             <p className="text-base text-center mb-4 text-[#004417] font-medium">
-              {confirmState.type === 'delete-image' && groupInfo?.tem_grupo
-                ? `Atenção: Este anexo é compartilhado com ${groupInfo.numero_parcelas} parcela${groupInfo.numero_parcelas > 1 ? 's' : ''}. Ao confirmar, o arquivo${confirmState.type.startsWith('replace') ? ' atual' : ''} será excluído de forma definitiva do Painel da Fazenda e do nosso banco de dados, afetando todas as parcelas. Deseja continuar?`
-                : `Atenção: ao confirmar, o arquivo${confirmState.type.startsWith('replace') ? ' atual' : ''} será excluído de forma definitiva do Painel da Fazenda e do nosso banco de dados. Deseja continuar?`
-              }
+              {(() => {
+                const isReplace = confirmState.type.startsWith('replace');
+                const isGroup = groupInfo?.tem_grupo;
+                const parcelasText = isGroup ? `${groupInfo.numero_parcelas} parcela${groupInfo.numero_parcelas > 1 ? 's' : ''}` : '';
+
+                if (isGroup) {
+                  return `Atenção: Este anexo é compartilhado com ${parcelasText}. Ao confirmar, o arquivo${isReplace ? ' atual' : ''} será excluído de forma definitiva do Painel da Fazenda e do nosso banco de dados, afetando todas as parcelas. Deseja continuar?`;
+                } else {
+                  return `Atenção: ao confirmar, o arquivo${isReplace ? ' atual' : ''} será excluído de forma definitiva do Painel da Fazenda e do nosso banco de dados. Deseja continuar?`;
+                }
+              })()}
             </p>
             <div className="flex gap-4 mt-2">
               <button
