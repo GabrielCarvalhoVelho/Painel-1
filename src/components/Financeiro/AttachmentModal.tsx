@@ -64,7 +64,8 @@ export default function AttachmentModal({
   const [fileKey, setFileKey] = useState<number>(Date.now());
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
+  const [isSendingImage, setIsSendingImage] = useState(false);
+  const [isSendingFile, setIsSendingFile] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -155,18 +156,19 @@ export default function AttachmentModal({
     }
   };
 
-  const handleEnviarWhatsApp = async (attachmentUrl: string, fileName: string) => {
-    setIsSendingWhatsApp(true);
+  const handleEnviarWhatsApp = async (attachmentUrl: string, fileName: string, type: 'image' | 'file') => {
+    const setLoading = type === 'image' ? setIsSendingImage : setIsSendingFile;
+    setLoading(true);
     try {
       const userId = AuthService.getInstance().getCurrentUser()?.user_id;
       if (!userId) {
-        setIsSendingWhatsApp(false);
+        setLoading(false);
         return;
       }
 
       const usuario = await UserService.getUserById(userId);
       if (!usuario?.telefone) {
-        setIsSendingWhatsApp(false);
+        setLoading(false);
         return;
       }
 
@@ -183,11 +185,11 @@ export default function AttachmentModal({
         nome_arquivo: fileName
       };
 
-      const isDev = import.meta.env.MODE === 'development' || 
-                    (typeof window !== 'undefined' && 
+      const isDev = import.meta.env.MODE === 'development' ||
+                    (typeof window !== 'undefined' &&
                      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'));
-      
-      const webhookUrl = isDev 
+
+      const webhookUrl = isDev
         ? '/api/whatsapp/enviar-documento-whatsapp'
         : import.meta.env.VITE_WHATSAPP_WEBHOOK_URL;
 
@@ -204,7 +206,7 @@ export default function AttachmentModal({
     } catch (error) {
       console.error('Erro ao enviar WhatsApp:', error);
     } finally {
-      setIsSendingWhatsApp(false);
+      setLoading(false);
     }
   };
 
@@ -590,11 +592,11 @@ export default function AttachmentModal({
                 <button
                   className="bg-[#25D366] hover:bg-[#128C7E] text-white px-2 py-1 rounded flex items-center gap-1 transition-colors disabled:opacity-50"
                   onClick={() => {
-                    if (imageAttachment) handleEnviarWhatsApp(imageAttachment.url, `${transactionId}.jpg`);
+                    if (imageAttachment) handleEnviarWhatsApp(imageAttachment.url, `${transactionId}.jpg`, 'image');
                   }}
-                  disabled={isSendingWhatsApp || loading}
+                  disabled={isSendingImage || loading}
                 >
-                  {isSendingWhatsApp ? (
+                  {isSendingImage ? (
                     <><Loader2 className="w-4 h-4 animate-spin" /> Enviando...</>
                   ) : (
                     <><WhatsAppIcon /> Enviar Imagem</>
@@ -657,11 +659,11 @@ export default function AttachmentModal({
                 <button
                   className="bg-[#25D366] hover:bg-[#128C7E] text-white px-2 py-1 rounded flex items-center gap-1 transition-colors disabled:opacity-50"
                   onClick={() => {
-                    if (fileAttachment) handleEnviarWhatsApp(fileAttachment.url, fileAttachment.name);
+                    if (fileAttachment) handleEnviarWhatsApp(fileAttachment.url, fileAttachment.name, 'file');
                   }}
-                  disabled={isSendingWhatsApp || loading}
+                  disabled={isSendingFile || loading}
                 >
-                  {isSendingWhatsApp ? (
+                  {isSendingFile ? (
                     <><Loader2 className="w-4 h-4 animate-spin" /> Enviando...</>
                   ) : (
                     <><WhatsAppIcon /> Enviar Arquivo</>
