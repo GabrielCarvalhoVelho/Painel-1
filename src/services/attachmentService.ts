@@ -469,7 +469,7 @@ export class AttachmentService {
         console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
         const result = await supabase.storage
           .from(this.BUCKET_NAME)
-          .upload(fileName, processedFile, {
+          .upload(filePath, processedFile, {
             cacheControl: '3600',
             upsert: true,
             contentType: 'image/jpeg'
@@ -528,7 +528,7 @@ export class AttachmentService {
         console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
         const result = await supabase.storage
           .from(this.BUCKET_NAME)
-          .update(fileName, processedFile, {
+          .update(filePath, processedFile, {
             cacheControl: '3600',
             contentType: 'image/jpeg'
           });
@@ -617,7 +617,7 @@ export class AttachmentService {
         console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
         const result = await supabase.storage
           .from(this.BUCKET_NAME)
-          .remove([fileName]);
+          .remove([pathToDelete]);
         data = result.data;
         error = result.error;
       }
