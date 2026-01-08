@@ -26,7 +26,8 @@ interface ActivityAttachmentModalProps {
 }
 
 export type AttachmentFile = {
-  url: string;
+  url: string; // URL para exibição (pode ser blob URL)
+  storageUrl?: string; // URL real do Supabase Storage (para envio externo)
   type: 'image' | 'pdf' | 'xml' | 'file';
   name: string;
 };
@@ -76,16 +77,19 @@ export default function ActivityAttachmentModal({
 
       const files: AttachmentFile[] = [];
 
-      const imageUrl = await ActivityAttachmentService.getAttachmentUrl(activityId, forceRefresh);
-      console.log('📸 URL da imagem:', imageUrl);
+      const imageUrlResult = await ActivityAttachmentService.getAttachmentUrl(activityId, forceRefresh);
+      console.log('📸 Resultado da URL da imagem:', imageUrlResult);
 
-      if (imageUrl) {
+      if (imageUrlResult) {
         files.push({
-          url: imageUrl,
+          url: imageUrlResult.displayUrl,
+          storageUrl: imageUrlResult.storageUrl || undefined,
           type: 'image',
           name: `${activityId}.jpg`
         });
         console.log('✅ Imagem adicionada à lista de anexos');
+        console.log('   - displayUrl:', imageUrlResult.displayUrl);
+        console.log('   - storageUrl:', imageUrlResult.storageUrl);
       }
 
       const fileUrl = await ActivityAttachmentService.getFileAttachmentUrl(activityId, forceRefresh);
@@ -506,10 +510,12 @@ export default function ActivityAttachmentModal({
                   onClick={() => {
                     console.log('🔘 [ManejoAgricola] Botão Enviar Imagem clicado');
                     console.log('📸 [ManejoAgricola] imageAttachment:', imageAttachment);
-                    console.log('🔗 [ManejoAgricola] URL da imagem:', imageAttachment?.url);
+                    console.log('🔗 [ManejoAgricola] displayUrl:', imageAttachment?.url);
+                    console.log('🌐 [ManejoAgricola] storageUrl:', imageAttachment?.storageUrl);
                     if (imageAttachment) {
-                      console.log('✅ [ManejoAgricola] Chamando handleEnviarWhatsApp...');
-                      handleEnviarWhatsApp(imageAttachment.url, `${activityId}.jpg`, 'image');
+                      const urlToSend = imageAttachment.storageUrl || imageAttachment.url;
+                      console.log('✅ [ManejoAgricola] Enviando URL:', urlToSend);
+                      handleEnviarWhatsApp(urlToSend, `${activityId}.jpg`, 'image');
                     } else {
                       console.error('❌ [ManejoAgricola] imageAttachment não encontrado!');
                     }

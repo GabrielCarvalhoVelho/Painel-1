@@ -134,7 +134,7 @@ export class ActivityAttachmentService {
     }
   }
 
-  static async getAttachmentUrl(activityId: string, forceRefresh = false): Promise<string | null> {
+  static async getAttachmentUrl(activityId: string, forceRefresh = false): Promise<{ displayUrl: string; storageUrl: string | null } | null> {
     try {
       console.log('🔗 Obtendo URL da imagem:', activityId, forceRefresh ? '(refresh forçado)' : '');
 
@@ -161,7 +161,7 @@ export class ActivityAttachmentService {
             const random = Math.random().toString(36).substring(7);
             const urlWithTimestamp = `${cleanUrl}?v=${timestamp}&r=${random}`;
             console.log('📎 URL gerada do storage (verificada):', urlWithTimestamp);
-            return urlWithTimestamp;
+            return { displayUrl: urlWithTimestamp, storageUrl: cleanUrl };
           }
         } catch (err) {
           console.log('⚠️ Erro ao checar existência da imagem via HEAD:', err);
@@ -182,7 +182,7 @@ export class ActivityAttachmentService {
             const payload = await resp.json();
             if (payload?.signedUrl) {
               console.log('🔐 Obtido signedUrl do servidor para imagem');
-              return payload.signedUrl;
+              return { displayUrl: payload.signedUrl, storageUrl: payload.signedUrl };
             }
           } else {
             console.log('⚠️ Signed-url server retornou erro', resp.status);
@@ -204,7 +204,10 @@ export class ActivityAttachmentService {
         if (!dlErr && blobData) {
           const url = URL.createObjectURL(blobData);
           console.log('📦 Obtido blob URL via download fallback para imagem');
-          return url;
+          // Tenta obter a public URL mesmo que não esteja acessível, para uso futuro
+          const { data: publicData } = supabase.storage.from(this.BUCKET_NAME).getPublicUrl(fileName);
+          const storageUrl = publicData?.publicUrl?.split('?')[0] || null;
+          return { displayUrl: url, storageUrl };
         }
       } catch (err) {
         console.log('⚠️ Falha no download fallback da imagem:', err);
