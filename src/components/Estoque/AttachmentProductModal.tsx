@@ -100,17 +100,27 @@ export default function AttachmentProductModal({
   };
 
   const handleEnviarWhatsApp = async (attachmentUrl: string, fileName: string, type: 'image' | 'file') => {
+    console.log('[Estoque] Iniciando envio WhatsApp:', { type, fileName, attachmentUrl });
     const setLoadingState = type === 'image' ? setIsSendingImage : setIsSendingFile;
     setLoadingState(true);
     try {
-      const userId = AuthService.getInstance().getCurrentUser()?.user_id;
+      console.log('[Estoque] Obtendo usuário atual...');
+      const currentUser = AuthService.getInstance().getCurrentUser();
+      console.log('[Estoque] Usuário atual:', currentUser);
+      const userId = currentUser?.user_id;
+
       if (!userId) {
+        console.error('[Estoque][WhatsApp] userId não encontrado:', { currentUser });
         setLoadingState(false);
         return;
       }
 
+      console.log('[Estoque] Buscando dados do usuário com ID:', userId);
       const usuario = await UserService.getUserById(userId);
+      console.log('[Estoque] Dados do usuário:', usuario);
+
       if (!usuario?.telefone) {
+        console.error('[Estoque][WhatsApp] Telefone do usuário não encontrado:', { usuario });
         setLoadingState(false);
         return;
       }
@@ -128,26 +138,42 @@ export default function AttachmentProductModal({
         nome_arquivo: fileName
       };
 
+      console.log('[Estoque] Payload preparado:', payload);
+
       const isDev = import.meta.env.MODE === 'development' ||
                     (typeof window !== 'undefined' &&
                      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'));
 
+      console.log('[Estoque] Environment:', { isDev, mode: import.meta.env.MODE });
+
       const webhookUrl = isDev
         ? '/api/whatsapp/enviar-documento-whatsapp'
         : import.meta.env.VITE_WHATSAPP_WEBHOOK_URL;
+
+      console.log('[Estoque] Webhook URL:', webhookUrl);
 
       if (!webhookUrl) {
         console.error('[Estoque][WhatsApp] Webhook URL não configurada');
         return;
       }
 
-      await fetch(webhookUrl, {
+      console.log('[Estoque] Enviando para webhook...');
+      const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+
+      console.log('[Estoque] Resposta do webhook:', { status: response.status, statusText: response.statusText });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Estoque] Erro na resposta do webhook:', { status: response.status, error: errorText });
+      } else {
+        console.log('[Estoque] Envio WhatsApp concluído com sucesso!');
+      }
     } catch (error) {
-      console.error('Erro ao enviar WhatsApp:', error);
+      console.error('[Estoque] Erro ao enviar WhatsApp:', error);
     } finally {
       setLoadingState(false);
     }
