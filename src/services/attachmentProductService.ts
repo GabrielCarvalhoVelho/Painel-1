@@ -16,7 +16,8 @@ if (!url || !storageKey) {
 const supabaseServiceRole = createClient(url, storageKey);
 
 export type AttachmentFile = {
-  url: string;
+  url: string; // URL para exibição (pode ser blob URL)
+  storageUrl?: string; // URL real do Supabase Storage (para envio externo)
   type: 'image' | 'pdf';
   name: string;
 };
@@ -71,70 +72,128 @@ export class AttachmentProductService {
   static async listAttachments(productId: string): Promise<AttachmentFile[]> {
     const results: AttachmentFile[] = [];
 
-    // helper to obtain a usable URL for a path (public, signed or blob)
-    const resolveUrl = async (path: string) => {
+    // helper to obtain URLs for a path (returns { displayUrl, storageUrl })
+    const resolveUrls = async (path: string): Promise<{ displayUrl: string | null; storageUrl: string | null }> => {
       try {
-        // try public url
+        let displayUrl: string | null = null;
+        let storageUrl: string | null = null;
+
+        // Try public URL first
         const { data } = supabaseServiceRole.storage.from(this.BUCKET_NAME).getPublicUrl(path);
         if (data?.publicUrl) {
           try {
             const head = await fetch(data.publicUrl, { method: 'HEAD', cache: 'no-cache' });
-            if (head.ok) return `${data.publicUrl}`;
+            if (head.ok) {
+              displayUrl = data.publicUrl;
+              storageUrl = data.publicUrl;
+              return { displayUrl, storageUrl };
+            }
           } catch (err) {
             // fallthrough to signed URL
           }
         }
 
-        // try signed URL from server
+        // Try signed URL from server
         const server = import.meta.env.VITE_SIGNED_URL_SERVER_URL || import.meta.env.VITE_API_URL || '';
         if (server) {
           try {
             const resp = await fetch(`${server.replace(/\/$/, '')}/signed-url`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ bucket: this.BUCKET_NAME, path, expires: 60 })
+              body: JSON.stringify({ bucket: this.BUCKET_NAME, path, expires: 3600 })
             });
             if (resp.ok) {
               const payload = await resp.json();
-              if (payload?.signedUrl) return payload.signedUrl;
+              if (payload?.signedUrl) {
+                displayUrl = payload.signedUrl;
+                storageUrl = payload.signedUrl;
+                return { displayUrl, storageUrl };
+              }
             }
           } catch (err) {
-            // continue to download fallback
+            console.error('Erro ao obter signed URL:', err);
           }
         }
 
-        // download fallback
+        // Download fallback (blob URL for display, but try to get storage URL for external sharing)
         try {
           const { data: blobData, error: dlErr } = await supabaseServiceRole.storage.from(this.BUCKET_NAME).download(path);
           if (!dlErr && blobData) {
-            return URL.createObjectURL(blobData);
+            displayUrl = URL.createObjectURL(blobData);
+            // Ainda tenta obter storageUrl mesmo com fallback de blob
+            storageUrl = await this.getStorageUrlOnly(path);
+            return { displayUrl, storageUrl };
           }
         } catch (err) {
-          // nothing
+          console.error('Erro no download fallback:', err);
         }
 
-        return null;
+        return { displayUrl: null, storageUrl: null };
       } catch (err) {
-        console.error('Erro ao resolver URL do attachment:', err);
-        return null;
+        console.error('Erro ao resolver URLs do attachment:', err);
+        return { displayUrl: null, storageUrl: null };
       }
     };
 
     // Imagem
     const imagePath = this.getFilePath(productId, 'jpg');
-    const imageUrl = await resolveUrl(imagePath);
-    if (imageUrl) {
-      results.push({ url: imageUrl, type: 'image', name: `${productId}.jpg` });
+    const imageUrls = await resolveUrls(imagePath);
+    if (imageUrls.displayUrl) {
+      results.push({
+        url: imageUrls.displayUrl,
+        storageUrl: imageUrls.storageUrl || undefined,
+        type: 'image',
+        name: `${productId}.jpg`
+      });
     }
 
     // PDF
     const pdfPath = this.getFilePath(productId, 'pdf');
-    const pdfUrl = await resolveUrl(pdfPath);
-    if (pdfUrl) {
-      results.push({ url: pdfUrl, type: 'pdf', name: `${productId}.pdf` });
+    const pdfUrls = await resolveUrls(pdfPath);
+    if (pdfUrls.displayUrl) {
+      results.push({
+        url: pdfUrls.displayUrl,
+        storageUrl: pdfUrls.storageUrl || undefined,
+        type: 'pdf',
+        name: `${productId}.pdf`
+      });
     }
 
     return results;
+  }
+
+  /**
+   * Obtém apenas a URL de storage (não blob) para compartilhamento externo
+   */
+  private static async getStorageUrlOnly(path: string): Promise<string | null> {
+    try {
+      // Tenta signed URL primeiro
+      const server = import.meta.env.VITE_SIGNED_URL_SERVER_URL || import.meta.env.VITE_API_URL || '';
+      if (server) {
+        try {
+          const resp = await fetch(`${server.replace(/\/$/, '')}/signed-url`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bucket: this.BUCKET_NAME, path, expires: 3600 })
+          });
+          if (resp.ok) {
+            const payload = await resp.json();
+            if (payload?.signedUrl) {
+              return payload.signedUrl;
+            }
+          }
+        } catch (err) {
+          console.error('Erro ao obter signed URL only:', err);
+        }
+      }
+
+      // Fallback: tenta URL pública
+      const { data } = supabaseServiceRole.storage.from(this.BUCKET_NAME).getPublicUrl(path);
+      return data?.publicUrl || null;
+    } catch (err) {
+      console.error('Erro ao obter storage URL:', err);
+      return null;
+    }
   }
 
   /**

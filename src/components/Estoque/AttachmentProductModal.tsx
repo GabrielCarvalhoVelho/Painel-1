@@ -62,15 +62,30 @@ export default function AttachmentProductModal({
   const checkAttachments = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Verificando anexos para produto:', productId);
+      console.log('🔄 [Estoque] Verificando anexos para produto:', productId);
       const files = await AttachmentProductService.listAttachments(productId);
+      console.log('📋 [Estoque] Anexos encontrados:', files);
+
+      // Log detalhado de cada anexo
+      files.forEach((file, idx) => {
+        console.log(`📎 [Estoque] Anexo ${idx + 1}:`, {
+          type: file.type,
+          name: file.name,
+          url: file.url,
+          storageUrl: file.storageUrl,
+          isBlob: file.url.startsWith('blob:'),
+          hasStorageUrl: !!file.storageUrl,
+          storageUrlIsValid: file.storageUrl && !file.storageUrl.startsWith('blob:')
+        });
+      });
+
       setAttachments(files);
 
       if (files.length > 0) {
         setImageKey(Date.now());
       }
     } catch (error) {
-      console.error('❌ Erro ao verificar anexos:', error);
+      console.error('❌ [Estoque] Erro ao verificar anexos:', error);
       setMessage({ type: 'error', text: 'Erro ao verificar anexos' });
     } finally {
       setLoading(false);
@@ -99,11 +114,23 @@ export default function AttachmentProductModal({
     }
   };
 
-  const handleEnviarWhatsApp = async (attachmentUrl: string, fileName: string, type: 'image' | 'file') => {
-    console.log('[Estoque] Iniciando envio WhatsApp:', { type, fileName, attachmentUrl });
+  const handleEnviarWhatsApp = async (attachment: AttachmentFile, type: 'image' | 'file') => {
+    console.log('[Estoque] Iniciando envio WhatsApp:', { type, fileName: attachment.name, url: attachment.url, storageUrl: attachment.storageUrl });
     const setLoadingState = type === 'image' ? setIsSendingImage : setIsSendingFile;
     setLoadingState(true);
     try {
+      // Usa storageUrl se disponível (URL externa), senão usa url (pode ser blob)
+      const urlToSend = attachment.storageUrl || attachment.url;
+      console.log('[Estoque] URL a ser enviada:', urlToSend);
+
+      // Validação: não envia se for blob URL
+      if (urlToSend.startsWith('blob:')) {
+        console.error('[Estoque][WhatsApp] URL blob detectada! Não é possível enviar URL local via WhatsApp');
+        setMessage({ type: 'error', text: 'Erro ao obter URL externa do anexo. Por favor, tente novamente.' });
+        setLoadingState(false);
+        return;
+      }
+
       console.log('[Estoque] Obtendo usuário atual...');
       const currentUser = AuthService.getInstance().getCurrentUser();
       console.log('[Estoque] Usuário atual:', currentUser);
@@ -125,17 +152,17 @@ export default function AttachmentProductModal({
         return;
       }
 
-      const urlWithoutQuery = attachmentUrl.split('?')[0];
+      const urlWithoutQuery = urlToSend.split('?')[0];
       const extension = (urlWithoutQuery.split('.').pop() || '').toLowerCase();
       const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension);
 
       const payload = {
         telefone: usuario.telefone.replace(/\D/g, ''),
-        arquivo_url: attachmentUrl,
+        arquivo_url: urlToSend,
         titulo: productName || 'Anexo do Produto',
         tipo_arquivo: isImage ? 'image' : 'document',
         mime_type: isImage ? `image/${extension === 'jpg' ? 'jpeg' : extension}` : 'application/octet-stream',
-        nome_arquivo: fileName
+        nome_arquivo: attachment.name
       };
 
       console.log('[Estoque] Payload preparado:', payload);
@@ -460,7 +487,7 @@ export default function AttachmentProductModal({
                   className="bg-[#25D366] hover:bg-[#128C7E] text-white px-2 py-1 rounded flex items-center gap-1 transition-colors disabled:opacity-50"
                   onClick={() => {
                     const imageAttachment = attachments.find(a => a.type === 'image');
-                    if (imageAttachment) handleEnviarWhatsApp(imageAttachment.url, `${productId}.jpg`, 'image');
+                    if (imageAttachment) handleEnviarWhatsApp(imageAttachment, 'image');
                   }}
                   disabled={isSendingImage || loading}
                 >
@@ -526,8 +553,7 @@ export default function AttachmentProductModal({
                   onClick={() => {
                     const fileAttachment = attachments.find(a => a.type === 'pdf' || a.type === 'xml' || a.type === 'file');
                     if (fileAttachment) {
-                      const extension = fileAttachment.name.split('.').pop() || 'pdf';
-                      handleEnviarWhatsApp(fileAttachment.url, `${productId}.${extension}`, 'file');
+                      handleEnviarWhatsApp(fileAttachment, 'file');
                     }
                   }}
                   disabled={isSendingFile || loading}
