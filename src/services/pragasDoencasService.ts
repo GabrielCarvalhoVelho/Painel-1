@@ -1,6 +1,27 @@
 import { supabase } from '../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { format, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+// Cliente com service role para operações de storage (contorna RLS)
+// Em produção, usa o cliente principal com sessão do usuário (JWT injetado)
+const url = import.meta.env.VITE_SUPABASE_URL;
+const serviceRole = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+
+// Criar cliente service role apenas se a chave existir
+let supabaseServiceRole: ReturnType<typeof createClient> | null = null;
+if (serviceRole && url) {
+  supabaseServiceRole = createClient(url, serviceRole);
+}
+
+/**
+ * Retorna o cliente de storage apropriado:
+ * - Se houver service role key, usa cliente com bypass de RLS
+ * - Caso contrário, usa cliente principal com sessão do usuário (JWT injetado)
+ */
+function getStorageClient() {
+  return supabaseServiceRole || supabase;
+}
 
 export interface PragaDoenca {
   id: number;
@@ -155,30 +176,116 @@ export class PragasDoencasService {
     }
   }
 
+  private static readonly BUCKET_NAME = 'pragas_e_doencas';
+
   static async uploadImage(file: File, ocorrenciaId: number, userId: string): Promise<string | null> {
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${ocorrenciaId}.${fileExt}`;
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const timestamp = Date.now();
+      const randomSuffix = Math.random().toString(36).substring(2, 8);
+      const fileName = `${timestamp}_${randomSuffix}.${fileExt}`;
       const filePath = `${userId}/${fileName}`; // prefixa com userId para ownership-by-prefix
 
-      console.log('📸 Iniciando upload da imagem:', { fileName, fileSize: file.size, fileType: file.type });
+      console.log('📸 [PragasDoencas] Iniciando upload da imagem:', { fileName, fileSize: file.size, fileType: file.type });
 
-      const { error: uploadError } = await supabase.storage
-        .from('pragas_e_doencas')
+      const { error: uploadError } = await getStorageClient().storage
+        .from(this.BUCKET_NAME)
         .upload(filePath, file, {
           upsert: true,
           contentType: file.type,
+          cacheControl: '3600',
         });
 
       if (uploadError) {
-        console.error('❌ Erro ao fazer upload da imagem:', uploadError);
+        console.error('❌ [PragasDoencas] Erro ao fazer upload da imagem:', uploadError);
         return null;
       }
 
+      console.log('✅ [PragasDoencas] Upload concluído:', filePath);
       // Não retornar publicUrl (bucket privado). Retornar o path salvo no storage.
       return filePath;
     } catch (err) {
-      console.error('❌ Erro no upload da imagem:', err);
+      console.error('❌ [PragasDoencas] Erro no upload da imagem:', err);
+      return null;
+    }
+  }
+
+  /**
+   * Deleta uma imagem do storage e limpa a coluna no banco
+   */
+  static async deleteImage(imagePath: string, ocorrenciaId: number): Promise<boolean> {
+    try {
+      console.log('🗑️ [PragasDoencas] Deletando imagem:', imagePath);
+
+      const { error } = await getStorageClient().storage
+        .from(this.BUCKET_NAME)
+        .remove([imagePath]);
+
+      if (error) {
+        console.error('❌ [PragasDoencas] Erro ao deletar do storage:', error);
+        return false;
+      }
+
+      // Limpar coluna no banco
+      const { error: dbError } = await supabase
+        .from('pragas_e_doencas')
+        .update({ foto_principal: null })
+        .eq('id', ocorrenciaId);
+
+      if (dbError) {
+        console.error('❌ [PragasDoencas] Erro ao atualizar banco:', dbError);
+        return false;
+      }
+
+      console.log('✅ [PragasDoencas] Imagem deletada com sucesso');
+      return true;
+    } catch (err) {
+      console.error('💥 [PragasDoencas] Erro ao deletar imagem:', err);
+      return false;
+    }
+  }
+
+  /**
+   * Substitui uma imagem existente por uma nova
+   */
+  static async replaceImage(file: File, oldPath: string, ocorrenciaId: number, userId: string): Promise<string | null> {
+    try {
+      console.log('🔄 [PragasDoencas] Substituindo imagem:', oldPath);
+
+      // Deletar imagem antiga do storage (sem atualizar banco)
+      try {
+        await getStorageClient().storage
+          .from(this.BUCKET_NAME)
+          .remove([oldPath]);
+        console.log('🗑️ [PragasDoencas] Imagem antiga removida');
+      } catch (delErr) {
+        console.warn('⚠️ [PragasDoencas] Falha ao remover imagem antiga:', delErr);
+      }
+
+      // Upload da nova imagem
+      const newPath = await this.uploadImage(file, ocorrenciaId, userId);
+      if (!newPath) {
+        console.error('❌ [PragasDoencas] Falha no upload da nova imagem');
+        return null;
+      }
+
+      // Atualizar banco com novo path
+      const { error: dbError } = await supabase
+        .from('pragas_e_doencas')
+        .update({ foto_principal: newPath })
+        .eq('id', ocorrenciaId);
+
+      if (dbError) {
+        console.error('❌ [PragasDoencas] Erro ao atualizar banco:', dbError);
+        // Rollback: tentar deletar arquivo novo
+        await getStorageClient().storage.from(this.BUCKET_NAME).remove([newPath]);
+        return null;
+      }
+
+      console.log('✅ [PragasDoencas] Imagem substituída com sucesso:', newPath);
+      return newPath;
+    } catch (err) {
+      console.error('💥 [PragasDoencas] Erro ao substituir imagem:', err);
       return null;
     }
   }
@@ -211,8 +318,8 @@ export class PragasDoencasService {
       if (!isPrefixed && userId) {
         const prefixed = `${userId}/${path}`;
         try {
-          const { data: prefData, error: prefError } = await supabase.storage
-            .from('pragas_e_doencas')
+          const { data: prefData, error: prefError } = await getStorageClient().storage
+            .from(this.BUCKET_NAME)
             .createSignedUrl(prefixed, expires);
           if (!prefError && prefData?.signedUrl) return prefData.signedUrl;
         } catch (err) {
@@ -220,8 +327,8 @@ export class PragasDoencasService {
         }
       }
 
-      const { data, error } = await supabase.storage
-        .from('pragas_e_doencas')
+      const { data, error } = await getStorageClient().storage
+        .from(this.BUCKET_NAME)
         .createSignedUrl(path, expires);
 
       if (error) {

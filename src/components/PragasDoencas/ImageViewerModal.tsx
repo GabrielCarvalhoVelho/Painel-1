@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { X, Download, Upload, Loader2, Trash2 } from 'lucide-react';
 import { AuthService } from '../../services/authService';
 import { UserService } from '../../services/userService';
-import { supabase } from '../../lib/supabase';
+import { PragasDoencasService } from '../../services/pragasDoencasService';
 
 const WhatsAppIcon = () => (
   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -36,7 +36,6 @@ export default function ImageViewerModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const BUCKET_NAME = 'pragas_e_doencas';
 
   useEffect(() => {
     if (isOpen) {
@@ -125,19 +124,16 @@ export default function ImageViewerModal({
     const file = event.target.files?.[0];
     if (!file || !imagePath || !ocorrenciaId) return;
     try {
-      await supabase.storage.from(BUCKET_NAME).remove([imagePath]);
       const userId = AuthService.getInstance().getCurrentUser()?.user_id;
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const newPath = `${userId}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from(BUCKET_NAME).upload(newPath, file, {
-        cacheControl: '3600',
-        upsert: true
-      });
-      if (uploadError) {
-        console.error('Erro no upload:', uploadError);
+      if (!userId) {
+        console.error('Usuário não autenticado');
         return;
       }
-      await supabase.from('pragas_e_doencas').update({ foto_principal: newPath }).eq('id', ocorrenciaId);
+      const newPath = await PragasDoencasService.replaceImage(file, imagePath, ocorrenciaId, userId);
+      if (!newPath) {
+        console.error('Erro ao substituir imagem');
+        return;
+      }
       onImageReplaced?.();
       onClose();
       window.location.reload();
@@ -151,12 +147,11 @@ export default function ImageViewerModal({
   const handleDeleteImage = async () => {
     if (!imagePath || !ocorrenciaId) return;
     try {
-      const { error } = await supabase.storage.from(BUCKET_NAME).remove([imagePath]);
-      if (error) {
-        console.error('Erro ao excluir:', error);
+      const deleted = await PragasDoencasService.deleteImage(imagePath, ocorrenciaId);
+      if (!deleted) {
+        console.error('Erro ao excluir imagem');
         return;
       }
-      await supabase.from('pragas_e_doencas').update({ foto_principal: null }).eq('id', ocorrenciaId);
       onImageDeleted?.();
       onClose();
       window.location.reload();
