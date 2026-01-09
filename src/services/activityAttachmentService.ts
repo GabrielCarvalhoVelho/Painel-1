@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import { AuthService } from './authService';
 
 // Cliente com service role para operações de storage (contorna RLS)
 // Em produção, usa anon key (requer políticas RLS corretas no Storage)
@@ -387,28 +388,51 @@ export class ActivityAttachmentService {
 
   static async deleteAttachment(activityId: string): Promise<boolean> {
     try {
-      console.log('🗑️ Excluindo imagem:', activityId);
+      console.log('🗑️ [Manejo] Excluindo imagem:', activityId);
 
-      const fileName = `${this.IMAGE_FOLDER}/${activityId}.jpg`;
+      const user = AuthService.getInstance().getCurrentUser();
+      const pathsToTry: string[] = [];
 
-      let { data, error } = await supabaseServiceRole.storage.from(this.BUCKET_NAME).remove([fileName]);
+      // 1. Path padrão (formato atual)
+      pathsToTry.push(`${this.IMAGE_FOLDER}/${activityId}.jpg`);
 
-      if (error) {
-        console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
-        const result = await supabase.storage.from(this.BUCKET_NAME).remove([fileName]);
-        data = result.data;
-        error = result.error;
+      // 2. Path com user_id (caso exista)
+      if (user?.user_id) {
+        pathsToTry.push(`${user.user_id}/${this.IMAGE_FOLDER}/${activityId}.jpg`);
+        pathsToTry.push(`${user.user_id}/${activityId}.jpg`);
       }
 
-      if (error) {
-        console.error('❌ Erro na exclusão:', error);
-        throw new Error(`Erro ao excluir imagem: ${error.message}`);
+      // 3. Path direto (sem pasta)
+      pathsToTry.push(`${activityId}.jpg`);
+
+      console.log('🔍 [Manejo] Tentando excluir paths:', pathsToTry);
+
+      // Tentar excluir cada path até conseguir
+      for (const path of pathsToTry) {
+        console.log(`🗑️ [Manejo] Tentando excluir: ${path}`);
+
+        let { data, error } = await supabaseServiceRole.storage
+          .from(this.BUCKET_NAME)
+          .remove([path]);
+
+        if (error) {
+          console.log('⚠️ [Manejo] Tentando com cliente normal...');
+          const result = await supabase.storage.from(this.BUCKET_NAME).remove([path]);
+          data = result.data;
+          error = result.error;
+        }
+
+        if (!error && data && data.length > 0) {
+          console.log('✅ [Manejo] Exclusão concluída:', path);
+          return true;
+        } else {
+          console.log(`⚠️ [Manejo] Falha ao excluir ${path}:`, error?.message || 'Nenhum arquivo removido');
+        }
       }
 
-      console.log('✅ Exclusão concluída:', data);
-      return true;
+      throw new Error('Imagem não encontrada em nenhum dos caminhos tentados');
     } catch (error) {
-      console.error('💥 Erro ao excluir imagem:', error);
+      console.error('💥 [Manejo] Erro ao excluir imagem:', error);
       throw error;
     }
   }
@@ -495,29 +519,78 @@ export class ActivityAttachmentService {
 
   static async deleteFileAttachment(activityId: string): Promise<boolean> {
     try {
-      console.log('🗑️ Excluindo arquivo:', activityId);
+      console.log('🗑️ [Manejo] Excluindo arquivo:', activityId);
 
-  const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
-  const filesToDelete = extensions.map(ext => `${this.FILE_FOLDER}/${activityId}.${ext}`);
+      const user = AuthService.getInstance().getCurrentUser();
+      const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
+      const pathsToTry: string[] = [];
 
-      let { data, error } = await supabaseServiceRole.storage.from(this.BUCKET_NAME).remove(filesToDelete);
+      // 1. Paths padrão (formato atual) - todas as extensões possíveis
+      for (const ext of extensions) {
+        pathsToTry.push(`${this.FILE_FOLDER}/${activityId}.${ext}`);
+      }
+
+      // 2. Paths com user_id (caso exista) - todas as extensões possíveis
+      if (user?.user_id) {
+        for (const ext of extensions) {
+          pathsToTry.push(`${user.user_id}/${this.FILE_FOLDER}/${activityId}.${ext}`);
+          pathsToTry.push(`${user.user_id}/${activityId}.${ext}`);
+        }
+      }
+
+      // 3. Paths diretos (sem pasta) - todas as extensões possíveis
+      for (const ext of extensions) {
+        pathsToTry.push(`${activityId}.${ext}`);
+      }
+
+      console.log('🔍 [Manejo] Tentando excluir paths de arquivo (total:', pathsToTry.length, ')');
+
+      // Tentar excluir todos os paths de uma vez (mais eficiente)
+      let { data, error } = await supabaseServiceRole.storage
+        .from(this.BUCKET_NAME)
+        .remove(pathsToTry);
 
       if (error) {
-        console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
-        const result = await supabase.storage.from(this.BUCKET_NAME).remove(filesToDelete);
+        console.log('⚠️ [Manejo] Tentando com cliente normal...');
+        const result = await supabase.storage.from(this.BUCKET_NAME).remove(pathsToTry);
         data = result.data;
         error = result.error;
       }
 
-      if (error) {
-        console.error('❌ Erro na exclusão:', error);
-        throw new Error(`Erro ao excluir arquivo: ${error.message}`);
+      if (!error && data && data.length > 0) {
+        console.log('✅ [Manejo] Exclusão concluída. Arquivos removidos:', data.length);
+        return true;
       }
 
-      console.log('✅ Exclusão concluída:', data);
-      return true;
+      // Se a tentativa em massa falhou, tentar um por um
+      console.log('⚠️ [Manejo] Tentativa em massa falhou, tentando individualmente...');
+      let removedCount = 0;
+
+      for (const path of pathsToTry) {
+        let { data: singleData, error: singleError } = await supabaseServiceRole.storage
+          .from(this.BUCKET_NAME)
+          .remove([path]);
+
+        if (singleError) {
+          const result = await supabase.storage.from(this.BUCKET_NAME).remove([path]);
+          singleData = result.data;
+          singleError = result.error;
+        }
+
+        if (!singleError && singleData && singleData.length > 0) {
+          console.log('✅ [Manejo] Arquivo removido:', path);
+          removedCount++;
+        }
+      }
+
+      if (removedCount > 0) {
+        console.log(`✅ [Manejo] Total de arquivos removidos: ${removedCount}`);
+        return true;
+      }
+
+      throw new Error('Arquivo não encontrado em nenhum dos caminhos tentados');
     } catch (error) {
-      console.error('💥 Erro ao excluir arquivo:', error);
+      console.error('💥 [Manejo] Erro ao excluir arquivo:', error);
       throw error;
     }
   }
