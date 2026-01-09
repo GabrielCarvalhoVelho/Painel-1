@@ -74,6 +74,24 @@ export default function DividasFinanciamentosPanel() {
     }
   };
 
+  const handleRefresh = async () => {
+    if (!userId || !selectedDivida) return;
+
+    // Recarregar todas as dívidas
+    await loadDividas(userId);
+
+    // Atualizar a dívida selecionada com os novos dados
+    const { data, error } = await supabase
+      .from('dividas_financiamentos')
+      .select('*')
+      .eq('id', selectedDivida.id)
+      .single();
+
+    if (!error && data) {
+      setSelectedDivida(data);
+    }
+  };
+
   const uploadFilesForDivida = async (dividaId: string, files: File[]) => {
     const bucket = 'dividas_financiamentos';
     const ALLOWED_EXT = ['pdf', 'png', 'jpg', 'jpeg'];
@@ -284,6 +302,7 @@ export default function DividasFinanciamentosPanel() {
         onEdit={handleEdit}
         onLiquidar={handleLiquidar}
         onDelete={handleDelete}
+        onRefresh={handleRefresh}
       />
 
       {/* Form Modal */}

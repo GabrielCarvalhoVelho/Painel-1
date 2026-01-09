@@ -19,6 +19,7 @@ interface DividaDetailPanelProps {
   onEdit: (id: string) => void;
   onLiquidar: (id: string) => void;
   onDelete: (id: string) => void;
+  onRefresh: () => Promise<void>;
 }
 
 const getSituacaoBadgeColor = (situacao: string) => {
@@ -51,6 +52,7 @@ export default function DividaDetailPanel({
   onEdit,
   onLiquidar,
   onDelete,
+  onRefresh,
 }: DividaDetailPanelProps) {
   const [signedAnexos, setSignedAnexos] = useState<string[]>([]);
   const [originalPaths, setOriginalPaths] = useState<string[]>([]);
@@ -60,39 +62,41 @@ export default function DividaDetailPanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const BUCKET_NAME = 'dividas_financiamentos';
 
+  const loadSignedUrls = async () => {
+    if (!divida?.anexos || divida.anexos.length === 0) {
+      setSignedAnexos([]);
+      setOriginalPaths([]);
+      return;
+    }
+
+    const results: string[] = [];
+    const paths: string[] = [];
+    for (const anexo of divida.anexos) {
+      try {
+        const path = anexo.startsWith('http')
+          ? (anexo.match(/dividas_financiamentos\/(.*)$/) || [])[1]
+          : anexo;
+        if (!path) continue;
+        paths.push(path);
+        const { data, error } = await supabase.storage.from(BUCKET_NAME).createSignedUrl(path, 3600);
+        if (error) {
+          console.error('Erro criando signedUrl:', error);
+          continue;
+        }
+        if (data?.signedUrl) results.push(data.signedUrl);
+      } catch (err) {
+        console.error('Erro ao gerar signed url anexo:', err);
+      }
+    }
+    setSignedAnexos(results);
+    setOriginalPaths(paths);
+  };
+
   useEffect(() => {
     let mounted = true;
     const loadSigned = async () => {
-      if (!divida?.anexos || divida.anexos.length === 0) {
-        if (mounted) {
-          setSignedAnexos([]);
-          setOriginalPaths([]);
-        }
-        return;
-      }
-
-      const results: string[] = [];
-      const paths: string[] = [];
-      for (const anexo of divida.anexos) {
-        try {
-          const path = anexo.startsWith('http')
-            ? (anexo.match(/dividas_financiamentos\/(.*)$/) || [])[1]
-            : anexo;
-          if (!path) continue;
-          paths.push(path);
-          const { data, error } = await supabase.storage.from(BUCKET_NAME).createSignedUrl(path, 3600);
-          if (error) {
-            console.error('Erro criando signedUrl:', error);
-            continue;
-          }
-          if (data?.signedUrl) results.push(data.signedUrl);
-        } catch (err) {
-          console.error('Erro ao gerar signed url anexo:', err);
-        }
-      }
       if (mounted) {
-        setSignedAnexos(results);
-        setOriginalPaths(paths);
+        await loadSignedUrls();
       }
     };
 
@@ -185,7 +189,9 @@ export default function DividaDetailPanel({
       const newAnexos = divida.anexos.filter((_, i) => i !== selectedImage.index);
       await supabase.from('dividas_financiamentos').update({ anexos: newAnexos }).eq('id', divida.id);
       setSelectedImage(null);
-      window.location.reload();
+
+      // Atualizar dados sem recarregar a página
+      await onRefresh();
     } catch (error) {
       console.error('Erro ao excluir:', error);
     }
@@ -215,7 +221,9 @@ export default function DividaDetailPanel({
       newAnexos[selectedImage.index] = newPath;
       await supabase.from('dividas_financiamentos').update({ anexos: newAnexos }).eq('id', divida.id);
       setSelectedImage(null);
-      window.location.reload();
+
+      // Atualizar dados sem recarregar a página
+      await onRefresh();
     } catch (error) {
       console.error('Erro ao substituir:', error);
     } finally {
