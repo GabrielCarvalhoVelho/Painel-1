@@ -304,26 +304,68 @@ export class ActivityAttachmentService {
     }
   }
 
+  /**
+   * Upload de imagem (nova lógica seguindo padrão de Máquinas)
+   * Gera path único com user_id, salva no banco e usa upsert
+   */
   static async uploadAttachment(activityId: string, file: File): Promise<boolean> {
     try {
-      console.log('⬆️ Fazendo upload da imagem:', activityId);
-      console.log('📁 Arquivo:', file.name, 'Tamanho:', file.size, 'bytes');
+      console.log('⬆️ [Manejo] Fazendo upload da imagem:', activityId);
+      console.log('📁 [Manejo] Arquivo:', file.name, 'Tamanho:', file.size, 'bytes');
 
-      const fileName = `${this.IMAGE_FOLDER}/${activityId}.jpg`;
-      const processedFile = await this.processImageFile(file, `${activityId}.jpg`);
-      console.log('🖼️ Imagem processada:', processedFile.size, 'bytes');
+      // Validações
+      const maxFileSize = 10 * 1024 * 1024;
+      if (file.size > maxFileSize) {
+        throw new Error('Arquivo muito grande. Limite de 10MB.');
+      }
 
+      // Obter user_id para estrutura de pastas
+      const user = AuthService.getInstance().getCurrentUser();
+      if (!user?.user_id) {
+        throw new Error('Usuário não autenticado.');
+      }
+
+      // Processar imagem
+      const processedFile = await this.processImageFile(file, `temp.jpg`);
+      console.log('🖼️ [Manejo] Imagem processada:', processedFile.size, 'bytes');
+
+      // Gerar path único (igual Máquinas): user_id/imagens/jpg/timestamp_random.jpg
+      const timestamp = Date.now();
+      const randomSuffix = Math.random().toString(36).substring(2, 8);
+      const fileName = `${timestamp}_${randomSuffix}.jpg`;
+      const filePath = `${user.user_id}/imagens/jpg/${fileName}`;
+
+      console.log('👤 [Manejo] User ID:', user.user_id);
+      console.log('📁 [Manejo] File path:', filePath);
+
+      // Se já existe imagem, deletar primeiro
+      const { data: existing } = await supabase
+        .from('lancamentos_agricolas')
+        .select('url_imagem')
+        .eq('atividade_id', activityId)
+        .maybeSingle();
+
+      if (existing?.url_imagem) {
+        console.log('🔄 [Manejo] Imagem existente encontrada, deletando:', existing.url_imagem);
+        try {
+          await supabaseServiceRole.storage.from(this.BUCKET_NAME).remove([existing.url_imagem]);
+        } catch (err) {
+          console.warn('⚠️ [Manejo] Falha ao deletar imagem antiga:', err);
+        }
+      }
+
+      // Upload com upsert
       let { data, error } = await supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
-        .upload(fileName, processedFile, {
+        .upload(filePath, processedFile, {
           cacheControl: '3600',
           upsert: true,
           contentType: 'image/jpeg'
         });
 
       if (error) {
-        console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
-        const result = await supabase.storage.from(this.BUCKET_NAME).upload(fileName, processedFile, {
+        console.log('⚠️ [Manejo] Tentativa com service role falhou, tentando com cliente normal...');
+        const result = await supabase.storage.from(this.BUCKET_NAME).upload(filePath, processedFile, {
           cacheControl: '3600',
           upsert: true,
           contentType: 'image/jpeg'
@@ -333,97 +375,138 @@ export class ActivityAttachmentService {
       }
 
       if (error) {
-        console.error('❌ Erro no upload para storage:', error);
+        console.error('❌ [Manejo] Erro no upload para storage:', error);
         throw new Error(`Erro ao fazer upload: ${error.message}`);
       }
 
-      console.log('✅ Upload para storage concluído:', data);
+      console.log('✅ [Manejo] Upload para storage concluído');
 
-      // Não atualizamos mais o banco de dados com a URL — apenas retornamos sucesso
-      return true;
-    } catch (error) {
-      console.error('💥 Erro no upload:', error);
-      throw error;
-    }
-  }
+      // Salvar path no banco
+      const { error: dbError } = await supabase
+        .from('lancamentos_agricolas')
+        .update({ 
+          url_imagem: filePath,
+          esperando_por_anexo: false // Compatibilidade
+        })
+        .eq('atividade_id', activityId);
 
-  static async replaceAttachment(activityId: string, file: File): Promise<boolean> {
-    try {
-      console.log('🔄 Substituindo imagem:', activityId);
-      console.log('📁 Arquivo:', file.name, 'Tamanho:', file.size, 'bytes');
-
-      const fileName = `${this.IMAGE_FOLDER}/${activityId}.jpg`;
-      const processedFile = await this.processImageFile(file, `${activityId}.jpg`);
-      console.log('🖼️ Imagem processada:', processedFile.size, 'bytes');
-
-      let { data, error } = await supabaseServiceRole.storage
-        .from(this.BUCKET_NAME)
-        .update(fileName, processedFile, {
-          cacheControl: '3600',
-          contentType: 'image/jpeg'
-        });
-
-      if (error) {
-        console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
-        const result = await supabase.storage.from(this.BUCKET_NAME).update(fileName, processedFile, {
-          cacheControl: '3600',
-          contentType: 'image/jpeg'
-        });
-        data = result.data;
-        error = result.error;
+      if (dbError) {
+        console.error('❌ [Manejo] Erro ao atualizar banco:', dbError);
+        // Rollback: deletar arquivo
+        await supabaseServiceRole.storage.from(this.BUCKET_NAME).remove([filePath]);
+        throw new Error(`Erro na base de dados: ${dbError.message}`);
       }
 
-      if (error) {
-        console.error('❌ Erro na substituição do storage:', error);
-        throw new Error(`Erro ao substituir imagem: ${error.message}`);
-      }
-
-      console.log('✅ Substituição no storage concluída:', data);
+      console.log('✅ [Manejo] Banco atualizado com path:', filePath);
       return true;
     } catch (error) {
-      console.error('💥 Erro ao substituir imagem:', error);
+      console.error('💥 [Manejo] Erro no upload:', error);
       throw error;
     }
   }
 
   /**
-   * Exclui uma imagem anexada a uma atividade agrícola
-   * @param activityId - ID da atividade
-   * @param storageUrl - URL completa do storage (opcional, mas recomendado para precisão)
+   * Substitui imagem (agora usa uploadAttachment que já faz upsert)
+   * Mantido para compatibilidade, mas redireciona para uploadAttachment
+   */
+  static async replaceAttachment(activityId: string, file: File): Promise<boolean> {
+    console.log('🔄 [Manejo] replaceAttachment chamado - redirecionando para uploadAttachment');
+    return this.uploadAttachment(activityId, file);
+  }
+
+  /**
+   * Exclui uma imagem anexada a uma atividade agrícola  
+   * Nova lógica: busca path do banco (url_imagem)
    */
   static async deleteAttachment(activityId: string, storageUrl?: string): Promise<boolean> {
     try {
       console.log('🗑️ [Manejo] Excluindo imagem:', activityId);
-      if (storageUrl) console.log('🔗 [Manejo] StorageUrl fornecida:', storageUrl);
-      
-      const user = AuthService.getInstance().getCurrentUser();
+
+      // Buscar path salvo no banco
+      const { data: activity, error: fetchError } = await supabase
+        .from('lancamentos_agricolas')
+        .select('url_imagem')
+        .eq('atividade_id', activityId)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('❌ [Manejo] Erro ao buscar atividade:', fetchError);
+      }
+
+      const storedPath = activity?.url_imagem;
+      console.log('📊 [Manejo] Path salvo no banco:', storedPath || 'N/A');
+
       const pathsToTry: string[] = [];
 
-      // 🎯 PRIORIDADE #1: Se storageUrl foi fornecida, extrair o path correto dela
-      if (storageUrl) {
-        const normalizedPath = this.normalizeStoragePath(storageUrl);
-        console.log('📍 [Manejo] Path normalizado da URL:', normalizedPath);
-        pathsToTry.push(normalizedPath);
+      // PRIORIDADE #1: Path do banco
+      if (storedPath) {
+        pathsToTry.push(storedPath);
       }
 
-      // Fallbacks caso storageUrl não exista ou falhe
+      // PRIORIDADE #2: storageUrl fornecida (de attachments antigos)
+      if (storageUrl) {
+        const normalizedPath = this.normalizeStoragePath(storageUrl);
+        if (!pathsToTry.includes(normalizedPath)) {
+          pathsToTry.push(normalizedPath);
+        }
+      }
+
+      // Fallbacks para arquivos antigos (formato antigo)
+      const user = AuthService.getInstance().getCurrentUser();
       pathsToTry.push(`${this.IMAGE_FOLDER}/${activityId}.jpg`);
-      
       if (user?.user_id) {
         pathsToTry.push(`${user.user_id}/${this.IMAGE_FOLDER}/${activityId}.jpg`);
-        pathsToTry.push(`${user.user_id}/${activityId}.jpg`);
       }
-      
-      pathsToTry.push(`${activityId}.jpg`);
 
       console.log('🔍 [Manejo] Tentando excluir paths:', pathsToTry);
 
-      // Tentar excluir cada path até conseguir
+      // Tentar excluir cada path
       for (const path of pathsToTry) {
         console.log(`🗑️ [Manejo] Tentando excluir: ${path}`);
 
         let { data, error } = await supabaseServiceRole.storage
           .from(this.BUCKET_NAME)
+          .remove([path]);
+
+        if (error) {
+          const result = await supabase.storage.from(this.BUCKET_NAME).remove([path]);
+          data = result.data;
+          error = result.error;
+        }
+
+        if (!error && data && data.length > 0) {
+          console.log('✅ [Manejo] Exclusão concluída:', path);
+
+          // Limpar campo no banco
+          const { error: updateError } = await supabase
+            .from('lancamentos_agricolas')
+            .update({ 
+              url_imagem: null,
+              esperando_por_anexo: false 
+            })
+            .eq('atividade_id', activityId);
+
+          if (updateError) {
+            console.warn('⚠️ [Manejo] Erro ao limpar campo no banco:', updateError);
+          } else {
+            console.log('✅ [Manejo] Campo url_imagem limpo no banco');
+          }
+
+          return true;
+        } else {
+          console.log(`⚠️ [Manejo] Falha ao excluir ${path}:`, error?.message || 'Nenhum arquivo removido');
+        }
+      }
+
+      throw new Error('Imagem não encontrada em nenhum dos caminhos tentados');
+    } catch (error) {
+      console.error('💥 [Manejo] Erro ao excluir imagem:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload de arquivo (nova lógica seguindo padrão de Máquinas)
           .remove([path]);
 
         if (error) {
@@ -468,26 +551,70 @@ export class ActivityAttachmentService {
     }
   }
 
+  /**
+   * Upload de arquivo (nova lógica seguindo padrão de Máquinas)
+   * Gera path único com user_id, salva no banco e usa upsert
+   */
   static async uploadFileAttachment(activityId: string, file: File): Promise<boolean> {
     try {
-      console.log('⬆️ Fazendo upload do arquivo:', activityId);
-      console.log('📁 Arquivo:', file.name, 'Tipo:', file.type, 'Tamanho:', file.size, 'bytes');
+      console.log('⬆️ [Manejo] Fazendo upload do arquivo:', activityId);
+      console.log('📁 [Manejo] Arquivo:', file.name, 'Tipo:', file.type, 'Tamanho:', file.size, 'bytes');
+
+      // Validações
+      const maxFileSize = 10 * 1024 * 1024;
+      if (file.size > maxFileSize) {
+        throw new Error('Arquivo muito grande. Limite de 10MB.');
+      }
 
       this.validateFile(file);
 
-      const ext = this.getFileExtension(file);
-      const fileName = `${this.FILE_FOLDER}/${activityId}.${ext}`;
-      console.log('📂 Caminho no storage:', fileName);
+      // Obter user_id para estrutura de pastas
+      const user = AuthService.getInstance().getCurrentUser();
+      if (!user?.user_id) {
+        throw new Error('Usuário não autenticado.');
+      }
 
-      let { data, error } = await supabaseServiceRole.storage.from(this.BUCKET_NAME).upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: true,
-        contentType: file.type
-      });
+      // Obter extensão
+      const ext = this.getFileExtension(file);
+      console.log('📂 [Manejo] Extensão do arquivo:', ext);
+
+      // Gerar path único: user_id/arquivos/ext/timestamp_random.ext
+      const timestamp = Date.now();
+      const randomSuffix = Math.random().toString(36).substring(2, 8);
+      const fileName = `${timestamp}_${randomSuffix}.${ext}`;
+      const filePath = `${user.user_id}/arquivos/${ext}/${fileName}`;
+
+      console.log('👤 [Manejo] User ID:', user.user_id);
+      console.log('📁 [Manejo] File path:', filePath);
+
+      // Se já existe arquivo, deletar primeiro
+      const { data: existing } = await supabase
+        .from('lancamentos_agricolas')
+        .select('url_arquivo')
+        .eq('atividade_id', activityId)
+        .maybeSingle();
+
+      if (existing?.url_arquivo) {
+        console.log('🔄 [Manejo] Arquivo existente encontrado, deletando:', existing.url_arquivo);
+        try {
+          await supabaseServiceRole.storage.from(this.BUCKET_NAME).remove([existing.url_arquivo]);
+        } catch (err) {
+          console.warn('⚠️ [Manejo] Falha ao deletar arquivo antigo:', err);
+        }
+      }
+
+      // Upload com upsert
+      let { data, error } = await supabaseServiceRole.storage
+        .from(this.BUCKET_NAME)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: file.type
+        });
 
       if (error) {
-        console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
-        const result = await supabase.storage.from(this.BUCKET_NAME).upload(fileName, file, {
+        console.log('⚠️ [Manejo] Tentativa com service role falhou, tentando com cliente normal...');
+        const result = await supabase.storage.from(this.BUCKET_NAME).upload(filePath, file, {
           cacheControl: '3600',
           upsert: true,
           contentType: file.type
@@ -497,11 +624,29 @@ export class ActivityAttachmentService {
       }
 
       if (error) {
-        console.error('❌ Erro no upload para storage:', error);
+        console.error('❌ [Manejo] Erro no upload para storage:', error);
         throw new Error(`Erro ao fazer upload: ${error.message}`);
       }
 
-      console.log('✅ Upload para storage concluído:', data);
+      console.log('✅ [Manejo] Upload para storage concluído');
+
+      // Salvar path no banco
+      const { error: dbError } = await supabase
+        .from('lancamentos_agricolas')
+        .update({ 
+          url_arquivo: filePath,
+          esperando_por_anexo: false // Compatibilidade
+        })
+        .eq('atividade_id', activityId);
+
+      if (dbError) {
+        console.error('❌ [Manejo] Erro ao atualizar banco:', dbError);
+        // Rollback: deletar arquivo
+        await supabaseServiceRole.storage.from(this.BUCKET_NAME).remove([filePath]);
+        throw new Error(`Erro na base de dados: ${dbError.message}`);
+      }
+
+      console.log('✅ [Manejo] Banco atualizado com path:', filePath);
       return true;
     } catch (error) {
       console.error('💥 Erro no upload de arquivo:', error);
@@ -509,30 +654,17 @@ export class ActivityAttachmentService {
     }
   }
 
+  /**
+   * Substitui arquivo (agora usa uploadFileAttachment que já faz upsert)
+   * Mantido para compatibilidade, mas redireciona para uploadFileAttachment
+   */
   static async replaceFileAttachment(activityId: string, file: File): Promise<boolean> {
-    try {
-      console.log('🔄 Substituindo arquivo:', activityId);
-      console.log('📁 Arquivo:', file.name, 'Tipo:', file.type, 'Tamanho:', file.size, 'bytes');
+    console.log('🔄 [Manejo] replaceFileAttachment chamado - redirecionando para uploadFileAttachment');
+    return this.uploadFileAttachment(activityId, file);
+  }
 
-      this.validateFile(file);
-
-      const ext = this.getFileExtension(file);
-      const fileName = `${this.FILE_FOLDER}/${activityId}.${ext}`;
-      console.log('📂 Caminho no storage:', fileName);
-
-      let { data, error } = await supabaseServiceRole.storage.from(this.BUCKET_NAME).update(fileName, file, {
-        cacheControl: '3600',
-        contentType: file.type
-      });
-
-      if (error) {
-        console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
-        const result = await supabase.storage.from(this.BUCKET_NAME).update(fileName, file, {
-          cacheControl: '3600',
-          contentType: file.type
-        });
-        data = result.data;
-        error = result.error;
+  /**
+   * Exclui um arquivo anexado a uma atividade agrícola
       }
 
       if (error) {
@@ -553,120 +685,91 @@ export class ActivityAttachmentService {
    * @param activityId - ID da atividade
    * @param storageUrl - URL completa do storage (opcional, mas recomendado para precisão)
    */
+  /**
+   * Exclui um arquivo anexado a uma atividade agrícola
+   * Nova lógica: busca path do banco (url_arquivo)
+   */
   static async deleteFileAttachment(activityId: string, storageUrl?: string): Promise<boolean> {
     try {
       console.log('🗑️ [Manejo] Excluindo arquivo:', activityId);
-      if (storageUrl) console.log('🔗 [Manejo] StorageUrl fornecida:', storageUrl);
 
-      const user = AuthService.getInstance().getCurrentUser();
-      const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
-      const pathsToTry: string[] = [];
-      
-      // 🎯 PRIORIDADE #1: Se storageUrl foi fornecida, extrair o path correto dela
-      if (storageUrl) {
-        const normalizedPath = this.normalizeStoragePath(storageUrl);
-        console.log('📍 [Manejo] Path normalizado da URL:', normalizedPath);
-        pathsToTry.push(normalizedPath);
+      // Buscar path salvo no banco
+      const { data: activity, error: fetchError } = await supabase
+        .from('lancamentos_agricolas')
+        .select('url_arquivo')
+        .eq('atividade_id', activityId)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('❌ [Manejo] Erro ao buscar atividade:', fetchError);
       }
 
-      // 1. Paths padrão (formato atual) - todas as extensões possíveis
+      const storedPath = activity?.url_arquivo;
+      console.log('📊 [Manejo] Path salvo no banco:', storedPath || 'N/A');
+
+      const pathsToTry: string[] = [];
+
+      // PRIORIDADE #1: Path do banco
+      if (storedPath) {
+        pathsToTry.push(storedPath);
+      }
+
+      // PRIORIDADE #2: storageUrl fornecida (de attachments antigos)
+      if (storageUrl) {
+        const normalizedPath = this.normalizeStoragePath(storageUrl);
+        if (!pathsToTry.includes(normalizedPath)) {
+          pathsToTry.push(normalizedPath);
+        }
+      }
+
+      // Fallbacks para arquivos antigos (formato antigo)
+      const user = AuthService.getInstance().getCurrentUser();
+      const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
+      
       for (const ext of extensions) {
         pathsToTry.push(`${this.FILE_FOLDER}/${activityId}.${ext}`);
       }
 
-      // 2. Paths com user_id (caso exista) - todas as extensões possíveis
       if (user?.user_id) {
         for (const ext of extensions) {
           pathsToTry.push(`${user.user_id}/${this.FILE_FOLDER}/${activityId}.${ext}`);
-          pathsToTry.push(`${user.user_id}/${activityId}.${ext}`);
         }
       }
 
-      // 3. Paths diretos (sem pasta) - todas as extensões possíveis
-      for (const ext of extensions) {
-        pathsToTry.push(`${activityId}.${ext}`);
-      }
+      console.log('🔍 [Manejo] Tentando excluir paths:', pathsToTry.slice(0, 5), '...(total:', pathsToTry.length, ')');
 
-      console.log('🔍 [Manejo] Tentando excluir paths de arquivo (total:', pathsToTry.length, ')');
-
-      // Tentar excluir todos os paths de uma vez (mais eficiente)
-      let { data, error } = await supabaseServiceRole.storage
-        .from(this.BUCKET_NAME)
-        .remove(pathsToTry);
-
-      if (error) {
-        console.log('⚠️ [Manejo] Tentando com cliente normal...');
-        const result = await supabase.storage.from(this.BUCKET_NAME).remove(pathsToTry);
-        data = result.data;
-        error = result.error;
-      }
-
-      if (!error && data && data.length > 0) {
-        console.log('✅ [Manejo] Exclusão em massa concluída. Arquivos removidos:', data.length);
-        console.log('📦 [Diagnóstico] Dados retornados:', data);
-        
-        // ⭐ Atualizar flag no banco de dados
-        const { data: updateData, error: updateError } = await supabase
-          .from('lancamentos_agricolas')
-          .update({ esperando_por_anexo: false })
-          .eq('atividade_id', activityId)
-          .select();
-        
-        if (updateError) {
-          console.error('❌ [Manejo] Erro ao atualizar banco:', updateError);
-        } else {
-          console.log('✅ [Manejo] Flag esperando_por_anexo resetada no banco:', updateData);
-        }
-        
-        // 🔍 DIAGNÓSTICO: Verificar se arquivo ainda existe
-        const stillExists = await this.hasFileAttachment(activityId);
-        console.log('🔍 [Diagnóstico] Arquivo ainda existe após exclusão?', stillExists);
-        
-        return true;
-      }
-
-      // Se a tentativa em massa falhou, tentar um por um
-      console.log('⚠️ [Manejo] Tentativa em massa falhou, tentando individualmente...');
-      let removedCount = 0;
-
+      // Tentar excluir cada path
       for (const path of pathsToTry) {
-        let { data: singleData, error: singleError } = await supabaseServiceRole.storage
+        let { data, error } = await supabaseServiceRole.storage
           .from(this.BUCKET_NAME)
           .remove([path]);
 
-        if (singleError) {
+        if (error) {
           const result = await supabase.storage.from(this.BUCKET_NAME).remove([path]);
-          singleData = result.data;
-          singleError = result.error;
+          data = result.data;
+          error = result.error;
         }
 
-        if (!singleError && singleData && singleData.length > 0) {
-          console.log('✅ [Manejo] Arquivo removido:', path);
-          removedCount++;
-        }
-      }
+        if (!error && data && data.length > 0) {
+          console.log('✅ [Manejo] Exclusão concluída:', path);
 
-      if (removedCount > 0) {
-        console.log(`✅ [Manejo] Total de arquivos removidos (individual): ${removedCount}`);
-        
-        // ⭐ Atualizar flag no banco de dados
-        const { data: updateData, error: updateError } = await supabase
-          .from('lancamentos_agricolas')
-          .update({ esperando_por_anexo: false })
-          .eq('atividade_id', activityId)
-          .select();
-        
-        if (updateError) {
-          console.error('❌ [Manejo] Erro ao atualizar banco:', updateError);
-        } else {
-          console.log('✅ [Manejo] Flag esperando_por_anexo resetada no banco:', updateData);
+          // Limpar campo no banco
+          const { error: updateError } = await supabase
+            .from('lancamentos_agricolas')
+            .update({ 
+              url_arquivo: null,
+              esperando_por_anexo: false 
+            })
+            .eq('atividade_id', activityId);
+
+          if (updateError) {
+            console.warn('⚠️ [Manejo] Erro ao limpar campo no banco:', updateError);
+          } else {
+            console.log('✅ [Manejo] Campo url_arquivo limpo no banco');
+          }
+
+          return true;
         }
-        
-        // 🔍 DIAGNÓSTICO: Verificar se arquivo ainda existe
-        const stillExists = await this.hasFileAttachment(activityId);
-        console.log('🔍 [Diagnóstico] Arquivo ainda existe após exclusão?', stillExists);
-        
-        return true;
       }
 
       throw new Error('Arquivo não encontrado em nenhum dos caminhos tentados');
