@@ -1832,11 +1832,19 @@ export class AttachmentService {
       };
     }
 
+    // Obter user_id para estrutura de pastas (igual ao bucket notas_fiscais)
+    const user = AuthService.getInstance().getCurrentUser();
+    if (!user?.user_id) {
+      console.error('❌ User not authenticated');
+      return { success: false, error: 'Usuário não autenticado.' };
+    }
+
     const timestamp = Date.now();
     const randomSuffix = Math.random().toString(36).substring(2, 8);
     const fileName = `${timestamp}_${randomSuffix}.${fileExt}`;
-    const filePath = `${uploadType}/${fileExt}/${fileName}`;
+    const filePath = `${user.user_id}/${uploadType}/${fileExt}/${fileName}`;
 
+    console.log('👤 User ID:', user.user_id);
     console.log('📁 File path:', filePath);
 
     const existingUrl = await this.getFileUrl(maquinaId, uploadType);
