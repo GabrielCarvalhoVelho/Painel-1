@@ -490,28 +490,18 @@ export class AttachmentProductService {
   }
 
   /**
-   * Exclui apenas um anexo (imagem ou pdf) - tenta path novo e legado
+   * Exclui apenas um anexo (imagem ou pdf)
    */
   static async deleteSingleAttachment(productId: string, ext: 'jpg' | 'pdf'): Promise<boolean> {
     try {
-      const userId = this.getUserId();
-      const folder = ext === 'pdf' ? this.PDF_FOLDER : this.IMAGE_FOLDER;
-      const pathsToTry: string[] = [];
+      const path = this.getFilePath(productId, ext);
       
-      // Adiciona path novo se tiver userId
-      if (userId) {
-        pathsToTry.push(`${userId}/${folder}/${productId}.${ext}`);
-      }
-      // Adiciona path legado
-      pathsToTry.push(this.getLegacyFilePath(productId, ext));
+      console.log('[Delete] Excluindo path:', path);
       
-      console.log('[Delete] Tentando excluir paths:', pathsToTry);
-      
-      // Tenta excluir todos os paths possíveis
       const { data, error } = await getStorageClient()
         .storage
         .from(this.BUCKET_NAME)
-        .remove(pathsToTry);
+        .remove([path]);
         
       if (error) {
         console.error('❌ Erro na exclusão:', error);
@@ -520,44 +510,12 @@ export class AttachmentProductService {
       
       console.log('[Delete] Resultado do remove:', data);
       
-      // Verifica se pelo menos um arquivo foi excluído
-      // O Supabase retorna um array com os arquivos que foram excluídos
+      // Verifica se o arquivo foi excluído
       if (!data || data.length === 0) {
-        console.warn('⚠️ Nenhum arquivo foi excluído - pode ser problema de RLS ou arquivo não existe');
-        
-        // Tenta verificar se algum arquivo ainda existe
-        let fileStillExists = false;
-        for (const path of pathsToTry) {
-          try {
-            const { data: checkData, error: checkError } = await getStorageClient()
-              .storage
-              .from(this.BUCKET_NAME)
-              .download(path);
-            
-            // Se conseguiu baixar, o arquivo existe e a exclusão falhou
-            if (checkData && !checkError) {
-              console.error('❌ Arquivo ainda existe após tentativa de exclusão:', path);
-              fileStillExists = true;
-              break;
-            }
-          } catch (checkErr) {
-            // Se deu erro no download, pode ser que o arquivo não existe (ok) ou erro de RLS
-            const errMsg = checkErr instanceof Error ? checkErr.message : String(checkErr);
-            console.log('[Delete] Erro ao verificar arquivo:', path, errMsg);
-            // Se o erro for "Object not found", o arquivo não existe (ok)
-            if (!errMsg.includes('not found') && !errMsg.includes('404')) {
-              // Pode ser erro de RLS ou outro problema
-              console.warn('[Delete] Possível erro de permissão ao verificar:', path);
-            }
-          }
-        }
-        
-        if (fileStillExists) {
-          throw new Error('Falha na exclusão: arquivo ainda existe. Verifique as permissões de RLS no bucket produtos.');
-        }
+        console.log('ℹ️ Nenhum arquivo encontrado para excluir (pode já ter sido removido)');
       }
       
-      console.log('✅ Exclusão concluída com sucesso');
+      console.log('✅ Exclusão concluída');
       return true;
     } catch (error) {
       console.error('💥 Erro na exclusão de anexo:', error);
