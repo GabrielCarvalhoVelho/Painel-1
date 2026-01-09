@@ -1,7 +1,7 @@
 -- SQL para corrigir configuração dos buckets em PRODUÇÃO
 -- Execute este SQL no Supabase SQL Editor
 
--- Atualiza os buckets pragas_e_doencas e dividas_financiamentos
+-- Atualiza os buckets pragas_e_doencas, dividas_financiamentos e produtos
 -- com as mesmas configurações do notas_fiscais (que funciona)
 UPDATE storage.buckets 
 SET 
@@ -20,9 +20,9 @@ SET
     'text/plain',
     'text/csv'
   ]
-WHERE id IN ('pragas_e_doencas', 'dividas_financiamentos');
+WHERE id IN ('pragas_e_doencas', 'dividas_financiamentos', 'produtos');
 
 -- Verifica se a atualização foi feita
 SELECT id, name, public, file_size_limit, allowed_mime_types 
 FROM storage.buckets 
-WHERE id IN ('pragas_e_doencas', 'dividas_financiamentos', 'notas_fiscais', 'atividades_agricolas');
+WHERE id IN ('pragas_e_doencas', 'dividas_financiamentos', 'notas_fiscais', 'atividades_agricolas', 'produtos');

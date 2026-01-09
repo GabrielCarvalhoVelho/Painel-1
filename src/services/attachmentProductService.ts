@@ -1,19 +1,27 @@
 // src/services/attachmentProductService.ts
 import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
+import { AuthService } from './authService';
 
-// Cliente com service role (contorna RLS para Storage)
-// Em produção, usa anon key (requer políticas RLS corretas no Storage)
+// Cliente com service role para operações de storage (contorna RLS)
+// Em produção, usa o cliente principal com sessão do usuário
 const url = import.meta.env.VITE_SUPABASE_URL;
 const serviceRole = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const storageKey = serviceRole || anonKey;
-
-if (!url || !storageKey) {
-  throw new Error('Supabase configuration missing for attachmentProductService');
+// Criar cliente service role apenas se a chave existir
+let supabaseServiceRole: ReturnType<typeof createClient> | null = null;
+if (serviceRole && url) {
+  supabaseServiceRole = createClient(url, serviceRole);
 }
 
-const supabaseServiceRole = createClient(url, storageKey);
+/**
+ * Retorna o cliente de storage apropriado:
+ * - Se houver service role key (dev), usa cliente com bypass de RLS
+ * - Caso contrário (prod), usa cliente principal com sessão JWT do usuário
+ */
+function getStorageClient() {
+  return supabaseServiceRole || supabase;
+}
 
 export type AttachmentFile = {
   url: string; // URL para exibição (pode ser blob URL)
@@ -27,7 +35,31 @@ export class AttachmentProductService {
   private static readonly IMAGE_FOLDER = 'imagens';
   private static readonly PDF_FOLDER = 'pdfs';
 
-  private static getFilePath(productId: string, ext: string = 'jpg'): string {
+  /**
+   * Obtém o user_id do usuário atual
+   */
+  private static getUserId(): string | null {
+    return AuthService.getInstance().getCurrentUser()?.user_id || null;
+  }
+
+  /**
+   * Gera o path do arquivo no formato: {user_id}/{folder}/{productId}.{ext}
+   * Isso é necessário para as políticas RLS funcionarem corretamente
+   */
+  private static getFilePath(productId: string, ext: string = 'jpg', userId?: string): string {
+    const folder = ext === 'pdf' ? this.PDF_FOLDER : this.IMAGE_FOLDER;
+    const uid = userId || this.getUserId();
+    if (!uid) {
+      console.error('[AttachmentProductService] Usuário não autenticado');
+      throw new Error('Usuário não autenticado');
+    }
+    return `${uid}/${folder}/${productId}.${ext}`;
+  }
+
+  /**
+   * Gera o path legado (sem user_id) para buscar arquivos antigos
+   */
+  private static getLegacyFilePath(productId: string, ext: string = 'jpg'): string {
     const folder = ext === 'pdf' ? this.PDF_FOLDER : this.IMAGE_FOLDER;
     return `${folder}/${productId}.${ext}`;
   }
@@ -121,7 +153,7 @@ export class AttachmentProductService {
         // Fallback: usa createSignedUrl do Supabase diretamente
         console.log('[AttachmentProductService] Tentando createSignedUrl do Supabase...');
         try {
-          const { data: signedData, error: signedError } = await supabaseServiceRole.storage
+          const { data: signedData, error: signedError } = await getStorageClient().storage
             .from(this.BUCKET_NAME)
             .createSignedUrl(path, 3600);
 
@@ -140,7 +172,7 @@ export class AttachmentProductService {
         // Download fallback (blob URL para display apenas)
         console.log('[AttachmentProductService] Fallback: baixando arquivo para criar blob URL...');
         try {
-          const { data: blobData, error: dlErr } = await supabaseServiceRole.storage.from(this.BUCKET_NAME).download(path);
+          const { data: blobData, error: dlErr } = await getStorageClient().storage.from(this.BUCKET_NAME).download(path);
           if (!dlErr && blobData) {
             displayUrl = URL.createObjectURL(blobData);
             console.log('[AttachmentProductService] Blob URL criada para display:', displayUrl);
@@ -163,25 +195,52 @@ export class AttachmentProductService {
       }
     };
 
+    // Helper para tentar path novo e depois legado
+    const tryResolveWithFallback = async (ext: 'jpg' | 'pdf'): Promise<{ urls: { displayUrl: string | null; storageUrl: string | null }; usedPath: string | null }> => {
+      const userId = this.getUserId();
+      
+      // Tenta path novo primeiro (com user_id)
+      if (userId) {
+        try {
+          const newPath = this.getFilePath(productId, ext, userId);
+          console.log('[AttachmentProductService] Tentando path novo:', newPath);
+          const urls = await resolveUrls(newPath);
+          if (urls.displayUrl) {
+            return { urls, usedPath: newPath };
+          }
+        } catch (e) {
+          // Ignora erro e tenta legado
+        }
+      }
+      
+      // Fallback para path legado (sem user_id)
+      const legacyPath = this.getLegacyFilePath(productId, ext);
+      console.log('[AttachmentProductService] Tentando path legado:', legacyPath);
+      const urls = await resolveUrls(legacyPath);
+      if (urls.displayUrl) {
+        return { urls, usedPath: legacyPath };
+      }
+      
+      return { urls: { displayUrl: null, storageUrl: null }, usedPath: null };
+    };
+
     // Imagem
-    const imagePath = this.getFilePath(productId, 'jpg');
-    const imageUrls = await resolveUrls(imagePath);
-    if (imageUrls.displayUrl) {
+    const imageResult = await tryResolveWithFallback('jpg');
+    if (imageResult.urls.displayUrl) {
       results.push({
-        url: imageUrls.displayUrl,
-        storageUrl: imageUrls.storageUrl || undefined,
+        url: imageResult.urls.displayUrl,
+        storageUrl: imageResult.urls.storageUrl || undefined,
         type: 'image',
         name: `${productId}.jpg`
       });
     }
 
     // PDF
-    const pdfPath = this.getFilePath(productId, 'pdf');
-    const pdfUrls = await resolveUrls(pdfPath);
-    if (pdfUrls.displayUrl) {
+    const pdfResult = await tryResolveWithFallback('pdf');
+    if (pdfResult.urls.displayUrl) {
       results.push({
-        url: pdfUrls.displayUrl,
-        storageUrl: pdfUrls.storageUrl || undefined,
+        url: pdfResult.urls.displayUrl,
+        storageUrl: pdfResult.urls.storageUrl || undefined,
         type: 'pdf',
         name: `${productId}.pdf`
       });
@@ -217,7 +276,7 @@ export class AttachmentProductService {
 
       // Fallback: usa createSignedUrl do Supabase diretamente
       try {
-        const { data: signedData, error: signedError } = await supabaseServiceRole.storage
+        const { data: signedData, error: signedError } = await getStorageClient().storage
           .from(this.BUCKET_NAME)
           .createSignedUrl(path, 3600);
 
@@ -250,7 +309,7 @@ export class AttachmentProductService {
         processedFile = await this.processImageFile(file, `${productId}.jpg`);
       }
 
-      const { error } = await supabaseServiceRole.storage
+      const { error } = await getStorageClient().storage
         .from(this.BUCKET_NAME)
         .upload(filePath, processedFile, {
           cacheControl: '3600',
@@ -280,20 +339,45 @@ export class AttachmentProductService {
   }
 
   /**
-   * Download
+   * Download - tenta path novo primeiro, depois legado
    */
   static async downloadAttachment(productId: string, ext: 'jpg' | 'pdf' = 'jpg'): Promise<void> {
     try {
       console.log('⬇️ Download do anexo do produto:', productId);
-      const filePath = this.getFilePath(productId, ext);
+      
+      // Tenta path novo primeiro
+      const userId = this.getUserId();
+      let filePath = userId ? `${userId}/${ext === 'pdf' ? this.PDF_FOLDER : this.IMAGE_FOLDER}/${productId}.${ext}` : null;
+      let data: Blob | null = null;
+      let error: Error | null = null;
 
-      const { data, error } = await supabaseServiceRole
-        .storage
-        .from(this.BUCKET_NAME)
-        .download(filePath);
+      if (filePath) {
+        console.log('[Download] Tentando path novo:', filePath);
+        const result = await getStorageClient()
+          .storage
+          .from(this.BUCKET_NAME)
+          .download(filePath);
+        
+        if (!result.error && result.data) {
+          data = result.data;
+        } else {
+          console.log('[Download] Path novo falhou, tentando legado...');
+        }
+      }
 
-      if (error || !data) {
-        throw error || new Error('Nenhum dado recebido no download');
+      // Fallback para path legado
+      if (!data) {
+        filePath = this.getLegacyFilePath(productId, ext);
+        console.log('[Download] Tentando path legado:', filePath);
+        const result = await getStorageClient()
+          .storage
+          .from(this.BUCKET_NAME)
+          .download(filePath);
+        
+        if (result.error || !result.data) {
+          throw result.error || new Error('Nenhum dado recebido no download');
+        }
+        data = result.data;
       }
 
       const url = URL.createObjectURL(data);
@@ -318,7 +402,7 @@ export class AttachmentProductService {
   static async getAttachmentUrl(productId: string, ext: 'jpg' | 'pdf' = 'jpg'): Promise<string | null> {
     const path = this.getFilePath(productId, ext);
     try {
-      const { data } = supabaseServiceRole.storage.from(this.BUCKET_NAME).getPublicUrl(path);
+      const { data } = getStorageClient().storage.from(this.BUCKET_NAME).getPublicUrl(path);
       if (data?.publicUrl) {
         try {
           const head = await fetch(data.publicUrl, { method: 'HEAD', cache: 'no-cache' });
@@ -348,7 +432,7 @@ export class AttachmentProductService {
 
       // download fallback
       try {
-        const { data: blobData, error: dlErr } = await supabaseServiceRole.storage.from(this.BUCKET_NAME).download(path);
+        const { data: blobData, error: dlErr } = await getStorageClient().storage.from(this.BUCKET_NAME).download(path);
         if (!dlErr && blobData) {
           return URL.createObjectURL(blobData);
         }
@@ -364,17 +448,27 @@ export class AttachmentProductService {
   }
 
   /**
-   * Exclui anexos (imagem e/ou pdf)
+   * Exclui anexos (imagem e/ou pdf) - tenta paths novos e legados
    */
   static async deleteAttachment(productId: string): Promise<boolean> {
     try {
       console.log('🗑️ Excluindo anexos do produto:', productId);
-      const paths = [
-        this.getFilePath(productId, 'jpg'),
-        this.getFilePath(productId, 'pdf'),
-      ];
+      
+      const userId = this.getUserId();
+      const paths: string[] = [];
+      
+      // Adiciona paths novos se tiver userId
+      if (userId) {
+        paths.push(`${userId}/${this.IMAGE_FOLDER}/${productId}.jpg`);
+        paths.push(`${userId}/${this.PDF_FOLDER}/${productId}.pdf`);
+      }
+      // Adiciona paths legados
+      paths.push(this.getLegacyFilePath(productId, 'jpg'));
+      paths.push(this.getLegacyFilePath(productId, 'pdf'));
+      
+      console.log('[DeleteAll] Tentando excluir paths:', paths);
 
-      const { error } = await supabaseServiceRole
+      const { error } = await getStorageClient()
         .storage
         .from(this.BUCKET_NAME)
         .remove(paths);
@@ -442,19 +536,34 @@ export class AttachmentProductService {
   }
 
   /**
-   * Exclui apenas um anexo (imagem ou pdf)
+   * Exclui apenas um anexo (imagem ou pdf) - tenta path novo e legado
    */
   static async deleteSingleAttachment(productId: string, ext: 'jpg' | 'pdf'): Promise<boolean> {
     try {
-      const filePath = this.getFilePath(productId, ext);
-      const { error } = await supabaseServiceRole
+      const userId = this.getUserId();
+      const pathsToTry: string[] = [];
+      
+      // Adiciona path novo se tiver userId
+      if (userId) {
+        pathsToTry.push(`${userId}/${ext === 'pdf' ? this.PDF_FOLDER : this.IMAGE_FOLDER}/${productId}.${ext}`);
+      }
+      // Adiciona path legado
+      pathsToTry.push(this.getLegacyFilePath(productId, ext));
+      
+      console.log('[Delete] Tentando excluir paths:', pathsToTry);
+      
+      // Tenta excluir todos os paths possíveis
+      const { error } = await getStorageClient()
         .storage
         .from(this.BUCKET_NAME)
-        .remove([filePath]);
+        .remove(pathsToTry);
+        
       if (error) {
         console.error('❌ Erro na exclusão:', error);
         throw error;
       }
+      
+      console.log('✅ Exclusão concluída');
       return true;
     } catch (error) {
       console.error('💥 Erro na exclusão de anexo:', error);
