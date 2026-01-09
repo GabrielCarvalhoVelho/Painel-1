@@ -396,7 +396,12 @@ export default function ActivityAttachmentModal({
           setMessage(null);
           await ActivityAttachmentService.deleteAttachment(activityId);
           setMessage({ type: 'success', text: 'Imagem excluída!' });
-          await checkAttachments();
+          
+          // Aguardar propagação da exclusão
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Forçar refresh da lista de anexos
+          await checkAttachments(true);
         } catch (error) {
           setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Erro ao excluir imagem' });
         } finally {
@@ -416,7 +421,12 @@ export default function ActivityAttachmentModal({
           setMessage(null);
           await ActivityAttachmentService.deleteFileAttachment(activityId);
           setMessage({ type: 'success', text: 'Arquivo excluído!' });
-          await checkAttachments();
+          
+          // Aguardar propagação da exclusão
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Forçar refresh da lista de anexos
+          await checkAttachments(true);
         } catch (error) {
           setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Erro ao excluir arquivo' });
         } finally {

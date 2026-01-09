@@ -424,6 +424,15 @@ export class ActivityAttachmentService {
 
         if (!error && data && data.length > 0) {
           console.log('✅ [Manejo] Exclusão concluída:', path);
+          
+          // ⭐ Atualizar flag no banco de dados
+          await supabase
+            .from('lancamentos_agricolas')
+            .update({ esperando_por_anexo: false })
+            .eq('atividade_id', activityId);
+          
+          console.log('📝 [Manejo] Flag esperando_por_anexo resetada no banco');
+          
           return true;
         } else {
           console.log(`⚠️ [Manejo] Falha ao excluir ${path}:`, error?.message || 'Nenhum arquivo removido');
@@ -559,6 +568,15 @@ export class ActivityAttachmentService {
 
       if (!error && data && data.length > 0) {
         console.log('✅ [Manejo] Exclusão concluída. Arquivos removidos:', data.length);
+        
+        // ⭐ Atualizar flag no banco de dados
+        await supabase
+          .from('lancamentos_agricolas')
+          .update({ esperando_por_anexo: false })
+          .eq('atividade_id', activityId);
+        
+        console.log('📝 [Manejo] Flag esperando_por_anexo resetada no banco');
+        
         return true;
       }
 
@@ -585,6 +603,15 @@ export class ActivityAttachmentService {
 
       if (removedCount > 0) {
         console.log(`✅ [Manejo] Total de arquivos removidos: ${removedCount}`);
+        
+        // ⭐ Atualizar flag no banco de dados
+        await supabase
+          .from('lancamentos_agricolas')
+          .update({ esperando_por_anexo: false })
+          .eq('atividade_id', activityId);
+        
+        console.log('📝 [Manejo] Flag esperando_por_anexo resetada no banco');
+        
         return true;
       }
 
