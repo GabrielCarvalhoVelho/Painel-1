@@ -64,7 +64,22 @@ Deno.serve(async (req: Request) => {
     }
 
     const data = await response.json();
-    const signedUrl = `${supabaseUrl}/storage/v1/object/sign/${bucket}/${data.signed_url}`;
+    console.log("Supabase Storage response:", JSON.stringify(data));
+
+    const signedPath = data.signedURL || data.signedUrl || data.signed_url;
+
+    if (!signedPath) {
+      console.error("No signed URL in response:", data);
+      return new Response(
+        JSON.stringify({ error: "No signed URL returned from storage" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const signedUrl = `${supabaseUrl}/storage/v1${signedPath}`;
 
     return new Response(
       JSON.stringify({ signedUrl }),

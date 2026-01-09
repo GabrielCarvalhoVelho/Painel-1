@@ -1847,7 +1847,8 @@ export class AttachmentService {
     console.log('📋 Content type:', contentType);
 
     console.log('⬆️ Uploading to storage...');
-    const { error: uploadError } =  await supabaseServiceRole.storage
+    const storageClient = serviceRole ? supabaseServiceRole : supabase;
+    const { error: uploadError } = await storageClient.storage
       .from(this.bucketName)
       .upload(filePath, file, {
         cacheControl: '3600',
@@ -2025,7 +2026,8 @@ export class AttachmentService {
       return { success: false, error: 'File path is empty or invalid for deletion' };
     }
 
-    const { error: deleteError } = await supabaseServiceRole.storage
+    const storageClient = serviceRole ? supabaseServiceRole : supabase;
+    const { error: deleteError } = await storageClient.storage
       .from(this.bucketName)
       .remove([filePath]);
 
@@ -2209,8 +2211,9 @@ export class AttachmentService {
       if (!path) return null;
 
       // tentar public URL
+      const storageClient = serviceRole ? supabaseServiceRole : supabase;
       try {
-        const { data } = supabaseServiceRole.storage.from(this.bucketName).getPublicUrl(path);
+        const { data } = storageClient.storage.from(this.bucketName).getPublicUrl(path);
         if (data?.publicUrl) {
           try {
             const head = await fetch(data.publicUrl, { method: 'HEAD', cache: 'no-cache' });
@@ -2247,7 +2250,8 @@ export class AttachmentService {
 
       // fallback: download blob e retornar URL.createObjectURL
       try {
-        const { data: blobData, error: dlErr } = await supabaseServiceRole.storage.from(this.bucketName).download(path);
+        const dlClient = serviceRole ? supabaseServiceRole : supabase;
+        const { data: blobData, error: dlErr } = await dlClient.storage.from(this.bucketName).download(path);
         if (!dlErr && blobData) {
           return URL.createObjectURL(blobData);
         }
