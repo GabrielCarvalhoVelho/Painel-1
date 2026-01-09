@@ -74,7 +74,7 @@ export default function FileAttachmentModal({
     try {
       let displayUrl: string | null = null;
       let storageUrl: string | null = null;
-      const BUCKET_NAME = 'maquinas_equipamentos';
+      const BUCKET_NAME = 'Documento_Maquina';
 
       console.log('[Maquinas] Resolvendo URLs para:', path);
 
@@ -165,7 +165,7 @@ export default function FileAttachmentModal({
 
       // Buscar informações da tabela
       const { data: maquinaData, error } = await supabase
-        .from('maquinas_equipamentos_anexos')
+        .from('maquinas_equipamentos')
         .select('url_primeiro_envio, url_segundo_envio')
         .eq('id_maquina', maquinaId)
         .maybeSingle();
