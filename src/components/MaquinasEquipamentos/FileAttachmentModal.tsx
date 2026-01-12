@@ -119,9 +119,23 @@ export default function FileAttachmentModal({
             path = `${path}/${id}${ext}`;
           }
       } else if (!temExtensao) {
-        // Para imagens, adiciona extensão se faltar
-        if (path.includes('/jpg/') || path.includes('/jpeg/') || path.includes('/png/')) {
+        // Para imagens, adiciona extensão correta se faltar
+        if (path.includes('/png/') && !path.endsWith('.png')) {
+          path = path + '.png';
+        } else if (path.includes('/jpeg/') && !path.endsWith('.jpeg')) {
+          path = path + '.jpeg';
+        } else if (path.includes('/jpg/') && !path.endsWith('.jpg')) {
           path = path + '.jpg';
+        } else if (path.includes('/webp/') && !path.endsWith('.webp')) {
+          path = path + '.webp';
+        } else if (path.includes('/gif/') && !path.endsWith('.gif')) {
+          path = path + '.gif';
+        } else if (path.includes('/bmp/') && !path.endsWith('.bmp')) {
+          path = path + '.bmp';
+        } else if (path.includes('/svg/') && !path.endsWith('.svg')) {
+          path = path + '.svg';
+        } else if (path.includes('/avif/') && !path.endsWith('.avif')) {
+          path = path + '.avif';
         } else {
           // Loga para debug
           console.warn('[extractStoragePath] Path sem extensão conhecida:', path);
