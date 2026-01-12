@@ -266,7 +266,7 @@ export default function ImageViewerModal({
 
             <button
               onClick={handleDeleteImage}
-              className="flex items-center gap-2 px-4 py-2 bg-red-500/80 hover:bg-red-500 text-white rounded-lg font-medium transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-[#F7941F]/80 hover:bg-[#F7941F] text-white rounded-lg font-medium transition-colors"
             >
               <Trash2 className="w-4 h-4" />
               Excluir
@@ -333,7 +333,7 @@ export default function ImageViewerModal({
 
             <button
               onClick={handleDeleteImage}
-              className="flex items-center gap-2 px-4 py-2 bg-red-500/80 hover:bg-red-500 text-white rounded-lg font-medium transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-[#F7941F]/80 hover:bg-[#F7941F] text-white rounded-lg font-medium transition-colors"
             >
               <Trash2 className="w-4 h-4" />
               Excluir

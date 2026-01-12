@@ -388,7 +388,7 @@ export default function OcorrenciaFormModal({
                       <button
                         type="button"
                         onClick={handleRemoveImage}
-                        className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                        className="absolute top-2 right-2 p-1.5 bg-[#F7941F] hover:bg-[#e07d0d] text-white rounded-lg transition-colors"
                       >
                         <X className="w-4 h-4" />
                       </button>

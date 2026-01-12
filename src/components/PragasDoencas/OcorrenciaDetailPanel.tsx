@@ -521,7 +521,7 @@ export default function OcorrenciaDetailPanel({
                 <button
                   type="button"
                   onClick={() => setShowRemoveConfirm(true)}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-[#F7941F] hover:text-[#e07d0d] hover:bg-orange-50 rounded-lg transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
                   Remover
