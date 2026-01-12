@@ -554,4 +554,96 @@ export class PragasDoencasService {
 
     return '📋';
   }
+
+  /**
+   * Envia imagem da ocorrência para o WhatsApp do usuário via webhook n8n
+   * @param ocorrenciaId - ID da ocorrência no banco
+   * @param telefone - Telefone do usuário em formato E.164 (ex: 5511999999999)
+   * @param imagePath - Path da imagem no storage
+   * @param userId - ID do usuário para gerar signed URL
+   * @param nomePraga - Nome da praga/doença para usar como título
+   * @returns Objeto com success, message e error
+   */
+  static async sendToWhatsApp(
+    ocorrenciaId: number,
+    telefone: string,
+    imagePath: string,
+    userId: string,
+    nomePraga?: string
+  ): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      console.log('[PragasDoencas][WhatsApp] Iniciando envio da imagem:', ocorrenciaId);
+
+      if (!imagePath) {
+        return { success: false, error: 'Ocorrência sem imagem anexada' };
+      }
+
+      // Gera URL assinada válida por 1 hora
+      const signedUrl = await this.getSignedUrl(imagePath, 3600, userId);
+      if (!signedUrl) {
+        return { success: false, error: 'Falha ao gerar URL da imagem' };
+      }
+
+      // Em desenvolvimento, usa proxy do Vite para contornar CORS
+      // Em produção, usa URL direta do webhook
+      const isDev = import.meta.env.MODE === 'development' || 
+                    (typeof window !== 'undefined' && 
+                     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'));
+      
+      let webhookUrl: string;
+      if (isDev) {
+        webhookUrl = '/api/whatsapp/enviar-documento-whatsapp';
+      } else {
+        webhookUrl = import.meta.env.VITE_WHATSAPP_WEBHOOK_URL;
+        if (!webhookUrl) {
+          console.error('[PragasDoencas][WhatsApp] VITE_WHATSAPP_WEBHOOK_URL não configurada');
+          return { success: false, error: 'Serviço de WhatsApp não configurado' };
+        }
+      }
+
+      // Extrai informações do arquivo
+      const fileName = imagePath.split('/').pop() || 'imagem';
+      const extension = fileName.split('.').pop()?.toLowerCase() || 'jpg';
+
+      const payload = {
+        telefone: telefone.replace(/\D/g, ''),
+        arquivo_url: signedUrl,
+        titulo: nomePraga || 'Ocorrência',
+        tipo_arquivo: 'image',
+        mime_type: `image/${extension === 'jpg' ? 'jpeg' : extension}`,
+        nome_arquivo: fileName
+      };
+
+      console.log('[PragasDoencas][WhatsApp] Chamando webhook:', webhookUrl);
+
+      const resp = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      console.log('[PragasDoencas][WhatsApp] Response status:', resp.status, resp.statusText);
+      
+      const responseText = await resp.text();
+      
+      let json: any = {};
+      try {
+        json = responseText ? JSON.parse(responseText) : {};
+      } catch (parseErr) {
+        console.error('[PragasDoencas][WhatsApp] Erro ao parsear JSON:', parseErr);
+      }
+
+      if (resp.ok && json?.success) {
+        console.log('[PragasDoencas][WhatsApp] ✓ Imagem enviada com sucesso');
+        return { success: true, message: 'Imagem enviada para seu WhatsApp!' };
+      }
+
+      console.error('[PragasDoencas][WhatsApp] Falha no webhook:', resp.status, json);
+      
+      return { success: false, error: json?.error || json?.message || `Erro ${resp.status}: ${resp.statusText}` };
+    } catch (err) {
+      console.error('[PragasDoencas][WhatsApp] Erro:', err);
+      return { success: false, error: 'Erro de conexão. Tente novamente.' };
+    }
+  }
 }
