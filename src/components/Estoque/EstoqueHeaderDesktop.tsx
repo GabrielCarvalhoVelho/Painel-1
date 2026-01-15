@@ -1,5 +1,12 @@
 // src/components/Estoque/EstoqueHeaderDesktop.tsx
 import { formatCurrency } from '../../lib/currencyFormatter';
+import NfBanner from './NfBanner';
+
+interface NfMeta {
+  numero?: string;
+  fornecedor?: string;
+  recebidoEm?: string;
+}
 
 interface Props {
   resumoEstoque: {
@@ -7,14 +14,27 @@ interface Props {
     valorTotal: number;
   };
   onOpenModal: () => void;
+  pendingNf?: NfMeta | null;
+  onReviewNf?: () => void;
 }
 
-export default function EstoqueHeaderDesktop({ resumoEstoque, onOpenModal }: Props) {
+export default function EstoqueHeaderDesktop({ resumoEstoque, onOpenModal, pendingNf, onReviewNf }: Props) {
   return (
     <div className="hidden md:block">
       {/* Título separado (fora da div que contém os cards) */}
       <div className="mb-4">
         <h2 className="text-xl font-bold text-[#004417] mb-4">Controle de Estoque</h2>
+        {/* Banner NF (logo abaixo do título) */}
+        {pendingNf && (
+          <div className="mt-2">
+            <NfBanner
+              numero={pendingNf.numero}
+              fornecedor={pendingNf.fornecedor}
+              recebidoEm={pendingNf.recebidoEm}
+              onReview={() => onReviewNf && onReviewNf()}
+            />
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-[14px] shadow-[0_1px_4px_rgba(0,68,23,0.10)] p-6">

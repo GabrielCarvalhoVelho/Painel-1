@@ -13,6 +13,9 @@ export interface ProdutoEstoque {
   unidade: string; // mapeado de unidade_de_medida
   quantidade: number; // mapeado de quantidade_em_estoque
   valor: number | null; // mapeado de valor_unitario
+  status?: string | null; // possível coluna adicional
+  nota_fiscal?: boolean | null;
+  numero_nota_fiscal?: string | null;
   lote: string | null;
   validade: string | null;
   created_at?: string;
@@ -146,34 +149,84 @@ export class EstoqueService {
 
   static async getProdutos(): Promise<ProdutoEstoque[]> {
     const userId = await this.getCurrentUserId();
+    // Tenta selecionar também colunas opcionais relacionadas a NF (se existirem).
+    // Se a coluna não existir no banco, fará fallback para a seleção padrão.
+    let data: any = null;
+    let error: any = null;
 
-    const { data, error } = await supabase
-      .from('estoque_de_produtos')
-      .select(`
-        id,
-        created_at,
-        user_id,
-        nome_do_produto,
-        marca_ou_fabricante,
-        categoria,
-        unidade_de_medida,
-        quantidade_em_estoque,
-        valor_unitario,
-        lote,
-        validade,
-        fornecedor,
-        registro_mapa,
-        unidade_valor_original,
-        quantidade_inicial,
-        valor_total,
-        valor_medio,
-        tipo_de_movimentacao,
-        produto_id,
-        observacoes_das_movimentacoes,
-        entrada_referencia_id
-      `)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    try {
+      const resp = await supabase
+        .from('estoque_de_produtos')
+        .select(`
+          id,
+          created_at,
+          user_id,
+          nome_do_produto,
+          marca_ou_fabricante,
+          categoria,
+          unidade_de_medida,
+          quantidade_em_estoque,
+          valor_unitario,
+          lote,
+          validade,
+          fornecedor,
+          registro_mapa,
+          unidade_valor_original,
+          quantidade_inicial,
+          valor_total,
+          valor_medio,
+          tipo_de_movimentacao,
+          produto_id,
+          observacoes_das_movimentacoes,
+          entrada_referencia_id,
+          status,
+          nota_fiscal,
+          numero_nota_fiscal
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      data = resp.data;
+      error = resp.error;
+
+      // Se o erro indicar coluna desconhecida, refazer sem os campos extras
+      if (error && /column|invalid|does not exist/i.test(String(error.message || error))) {
+        console.warn('Colunas NF não encontradas em estoque_de_produtos, fazendo fallback sem elas.');
+        const resp2 = await supabase
+          .from('estoque_de_produtos')
+          .select(`
+            id,
+            created_at,
+            user_id,
+            nome_do_produto,
+            marca_ou_fabricante,
+            categoria,
+            unidade_de_medida,
+            quantidade_em_estoque,
+            valor_unitario,
+            lote,
+            validade,
+            fornecedor,
+            registro_mapa,
+            unidade_valor_original,
+            quantidade_inicial,
+            valor_total,
+            valor_medio,
+            tipo_de_movimentacao,
+            produto_id,
+            observacoes_das_movimentacoes,
+            entrada_referencia_id
+          `)
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
+
+        data = resp2.data;
+        error = resp2.error;
+      }
+    } catch (e) {
+      console.error('Erro ao buscar produtos (getProdutos):', e);
+      error = e;
+    }
 
     if (error) {
       console.error('❌ Erro ao buscar produtos:', error);
@@ -190,6 +243,9 @@ export class EstoqueService {
       unidade: produto.unidade_de_medida,
       quantidade: produto.quantidade_em_estoque,
       valor: produto.valor_unitario,
+      status: produto.status ?? null,
+      nota_fiscal: produto.nota_fiscal ?? null,
+      numero_nota_fiscal: produto.numero_nota_fiscal ?? null,
       lote: produto.lote,
       validade: produto.validade,
       created_at: produto.created_at,
@@ -395,6 +451,51 @@ export class EstoqueService {
     if (error) {
       console.error('❌ Erro ao editar produto:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Marca um produto como confirmado (altera status de 'pendente' para 'confirmado')
+   */
+  static async confirmarPendencia(id: number | string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('estoque_de_produtos')
+        .update({ status: 'confirmado' })
+        .eq('id', Number(id));
+
+      if (error) {
+        console.error('❌ Erro ao confirmar pendência (id ' + id + '):', error);
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error('❌ Falha ao confirmar pendência:', err);
+      return false;
+    }
+  }
+
+  /**
+   * Marca múltiplos produtos como confirmados (bulk).
+   */
+  static async confirmarMultiplasPendencias(ids: Array<number | string>): Promise<boolean> {
+    try {
+      const numericIds = ids.map(i => Number(i));
+      const { error } = await supabase
+        .from('estoque_de_produtos')
+        .update({ status: 'confirmado' })
+        .in('id', numericIds);
+
+      if (error) {
+        console.error('❌ Erro ao confirmar múltiplas pendências:', error);
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error('❌ Falha ao confirmar múltiplas pendências:', err);
+      return false;
     }
   }
 

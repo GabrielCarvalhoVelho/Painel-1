@@ -1,5 +1,12 @@
 // src/components/Estoque/EstoqueHeaderMobile.tsx
 import { formatCurrency } from '../../lib/currencyFormatter';
+import NfBanner from './NfBanner';
+
+interface NfMeta {
+  numero?: string;
+  fornecedor?: string;
+  recebidoEm?: string;
+}
 
 interface Props {
   resumoEstoque: {
@@ -7,16 +14,28 @@ interface Props {
     valorTotal: number;
   };
   onOpenModal: () => void;
+  pendingNf?: NfMeta | null;
+  onReviewNf?: () => void;
 }
 
-export default function EstoqueHeaderMobile({ resumoEstoque, onOpenModal }: Props) {
+export default function EstoqueHeaderMobile({ resumoEstoque, onOpenModal, pendingNf, onReviewNf }: Props) {
   return (
     <div className="block md:hidden">
       <div className="bg-white rounded-[14px] shadow-[0_1px_4px_rgba(0,68,23,0.10)] p-6">
         {/* Título e subtítulo */}
         <div className="mb-4">
           <h2 className="text-xl font-bold text-[#004417] mb-4">Controle de Estoque</h2>
-          <p className="text-[13px] text-[rgba(0,68,23,0.7)]">Produtos cadastrados via WhatsApp</p>
+          {/* Banner NF (logo abaixo do título) */}
+          {pendingNf && (
+            <div className="mt-2">
+              <NfBanner
+                numero={pendingNf.numero}
+                fornecedor={pendingNf.fornecedor}
+                recebidoEm={pendingNf.recebidoEm}
+                onReview={() => onReviewNf && onReviewNf()}
+              />
+            </div>
+          )}
         </div>
 
         {/* Cards resumo */}

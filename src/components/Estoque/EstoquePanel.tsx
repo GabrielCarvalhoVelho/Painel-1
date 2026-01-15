@@ -10,6 +10,8 @@ import AttachmentProductModal from './AttachmentProductModal';
 import RemoveQuantityModal from './RemoveQuantityModal';
 import HistoryMovementsModal from './HistoryMovementsModal';
 import FormProdutoModal from './FormProdutoModal';
+import NfReviewModal from './NfReviewModal';
+import NfEditItemModal, { PendingNfItem } from './NfEditItemModal';
 import EstoqueHeaderDesktop from "./EstoqueHeaderDesktop";
 import EstoqueHeaderMobile from "./EstoqueHeaderMobile";
 import ListaProdutosDesktop from "./ListaProdutosDesktop";
@@ -19,6 +21,7 @@ import { agruparProdutos, ProdutoAgrupado } from '../../services/agruparProdutos
 import SuccessToast from '../common/SuccessToast';
 import AjusteEstoqueModal from './AjusteEstoqueModal';
 import { convertBetweenUnits, convertValueBetweenUnits } from '../../lib/unitConverter';
+import { formatDateTimeBR } from '../../lib/dateUtils';
 
 export default function EstoquePanel() {
   // 📌 Constantes
@@ -216,14 +219,129 @@ export default function EstoquePanel() {
 
   const refetchAll = async () => {
     try {
-      const dados = await EstoqueService.getProdutos();
-      const grupos = await agruparProdutos(dados);
-      setProdutos(dados);
+      // Carrega todos os produtos (incluindo pendentes) para detectar NF pendente,
+      // mas usa somente os visíveis (sem pendentes) para exibir/agrupamentos.
+      const dadosTodos = await EstoqueService.getProdutos();
+      const dadosVisiveis = (dadosTodos || []).filter(p => (p.status || '').toLowerCase() !== 'pendente');
+
+      const grupos = await agruparProdutos(dadosVisiveis);
+      setProdutos(dadosVisiveis);
       const gruposEnriquecidos = enriquecerGruposComValor(grupos);
       setProdutosAgrupados(gruposEnriquecidos);
       atualizarResumo(gruposEnriquecidos);
+
+      // Detectar produtos com status pendente usando o conjunto completo
+      detectPendingFromProdutos(dadosTodos);
     } catch (err) {
       console.error('Erro ao refetch all:', err);
+    }
+  };
+
+  const detectPendingFromProdutos = (dados: ProdutoEstoque[]) => {
+    if (!dados || !dados.length) { setPendingNf(null); return; }
+    const pendentes = dados.filter(p => (p.status || '').toLowerCase() === 'pendente');
+    if (!pendentes.length) { setPendingNf(null); return; }
+
+    const items: PendingNfItem[] = pendentes.map(p => ({
+      id: String(p.id),
+      nome_produto: p.nome_produto,
+      marca: p.marca || null,
+      categoria: p.categoria || null,
+      unidade: p.unidade || 'un',
+      quantidade: p.quantidade || 0,
+      valor_unitario: p.valor ?? null,
+      lote: p.lote ?? null,
+      validade: p.validade ?? null,
+    }));
+
+    const primeira = pendentes[0];
+    setPendingNf({
+      numero: primeira.numero_nota_fiscal ?? undefined,
+      fornecedor: primeira.fornecedor ?? undefined,
+      recebidoEm: primeira.created_at ? formatDateTimeBR(primeira.created_at) : undefined,
+      items,
+    });
+  };
+
+  // ----- Handlers para NF pendente -----
+  const handleEditNfItem = (item: PendingNfItem) => {
+    setEditingItem(item);
+  };
+
+  const handleSaveEditedItem = (item: PendingNfItem) => {
+    setPendingNf((prev) => {
+      if (!prev) return prev;
+      return { ...prev, items: prev.items.map(i => i.id === item.id ? item : i) };
+    });
+    setEditingItem(null);
+  };
+
+  const handleDeleteNfItem = (id: string) => {
+    // Realiza remoção no banco e atualiza UI
+    (async () => {
+      try {
+        const numericId = Number(id);
+        await EstoqueService.removerProduto(numericId);
+
+        setPendingNf((prev) => {
+          if (!prev) return prev;
+          return { ...prev, items: prev.items.filter(i => i.id !== id) };
+        });
+
+        await refetchAll();
+        setToastMessage('Produto pendente excluído com sucesso.');
+        setShowToast(true);
+      } catch (err) {
+        console.error('Erro ao excluir pendência NF:', err);
+        alert('Erro ao excluir item. Veja o console.');
+      }
+    })();
+  };
+
+  const handleConfirmNfItem = async (id: string) => {
+    if (!pendingNf) return;
+    try {
+      const success = await EstoqueService.confirmarPendencia(Number(id));
+      if (!success) {
+        alert('Não foi possível confirmar o item. Veja o console.');
+        return;
+      }
+
+      // Remover item confirmado da lista local de pendências
+      setPendingNf((prev) => {
+        if (!prev) return prev;
+        return { ...prev, items: prev.items.filter(i => i.id !== id) };
+      });
+
+      // Recarregar dados visíveis/estado
+      await refetchAll();
+      setToastMessage('Item confirmado com sucesso.');
+      setShowToast(true);
+    } catch (err) {
+      console.error('Erro ao confirmar item NF:', err);
+      alert('Erro ao confirmar item. Veja o console.');
+    }
+  };
+
+  const handleConfirmAll = async () => {
+    if (!pendingNf) return;
+    try {
+      const ids = pendingNf.items.map(i => Number(i.id));
+      const success = await EstoqueService.confirmarMultiplasPendencias(ids);
+      if (!success) {
+        alert('Não foi possível confirmar todos os itens. Veja o console.');
+        return;
+      }
+
+      // Recarregar e limpar pendência
+      await refetchAll();
+      setPendingNf(null);
+      setShowNfModal(false);
+      setToastMessage('Produtos confirmados com sucesso.');
+      setShowToast(true);
+    } catch (err) {
+      console.error('Erro ao confirmar todos itens NF:', err);
+      alert('Erro ao processar a NF. Veja o console.');
     }
   };
 
@@ -232,25 +350,17 @@ export default function EstoquePanel() {
 
   const [attachmentModal, setAttachmentModal] = useState<{ isOpen: boolean; productId: string; productName: string }>({ isOpen: false, productId: '', productName: '' });
 
+  // Estados para fluxo NF pendente (recebimento via WhatsApp / n8n)
+  const [pendingNf, setPendingNf] = useState<null | { numero?: string; fornecedor?: string; recebidoEm?: string; items: PendingNfItem[] }>(null);
+  const [showNfModal, setShowNfModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<PendingNfItem | null>(null);
   // ...existing code...
 
   // 🔄 Carregar produtos ao montar
   useEffect(() => {
     const carregarDados = async () => {
       try {
-        const authService = AuthService.getInstance();
-        const user = authService.getCurrentUser();
-        if (!user) {
-          console.warn("⚠️ Nenhum usuário autenticado");
-          return;
-        }
-
-        const dados = await EstoqueService.getProdutos();
-        const grupos = await agruparProdutos(dados);
-        const gruposEnriquecidos = enriquecerGruposComValor(grupos);
-        setProdutos(dados);
-        setProdutosAgrupados(gruposEnriquecidos);
-        atualizarResumo(gruposEnriquecidos);
+        await refetchAll();
       } catch (error) {
         console.error("❌ Erro ao carregar estoque:", error);
       }
@@ -261,7 +371,7 @@ export default function EstoquePanel() {
     // 🔄 Auto-atualização a cada 30 segundos para pegar valores atualizados pelo trigger
     const intervalo = setInterval(async () => {
       try {
-        await carregarDados();
+        await refetchAll();
       } catch (error) {
         console.error("❌ Erro ao atualizar estoque automaticamente:", error);
       }
@@ -344,10 +454,19 @@ export default function EstoquePanel() {
         onClose={() => setShowToast(false)}
       />
       <div className="space-y-6 relative">
-      {/* Headers */}
-      <EstoqueHeaderDesktop resumoEstoque={resumoEstoque} onOpenModal={() => setShowModal(true)} />
-      <EstoqueHeaderMobile resumoEstoque={resumoEstoque} onOpenModal={() => setShowModal(true)} />
-
+      {/* Header (título + cards) com banner integrado */}
+      <EstoqueHeaderDesktop
+        resumoEstoque={resumoEstoque}
+        onOpenModal={() => setShowModal(true)}
+        pendingNf={pendingNf ? { numero: pendingNf.numero, fornecedor: pendingNf.fornecedor, recebidoEm: pendingNf.recebidoEm } : null}
+        onReviewNf={() => setShowNfModal(true)}
+      />
+      <EstoqueHeaderMobile
+        resumoEstoque={resumoEstoque}
+        onOpenModal={() => setShowModal(true)}
+        pendingNf={pendingNf ? { numero: pendingNf.numero, fornecedor: pendingNf.fornecedor, recebidoEm: pendingNf.recebidoEm } : null}
+        onReviewNf={() => setShowNfModal(true)}
+      />
       {/* Filtros */}
       <EstoqueFiltros
         search={search}
@@ -434,6 +553,26 @@ export default function EstoquePanel() {
         onClose={() => setAttachmentModal({ isOpen: false, productId: '', productName: '' })}
         productId={attachmentModal.productId}
         productName={attachmentModal.productName}
+      />
+
+      {/* Modal de revisão de NF */}
+      <NfReviewModal
+        isOpen={showNfModal}
+        meta={pendingNf ? { numero: pendingNf.numero, fornecedor: pendingNf.fornecedor, recebidoEm: pendingNf.recebidoEm } : undefined}
+        items={pendingNf?.items || []}
+        onClose={() => setShowNfModal(false)}
+        onEditItem={(item) => handleEditNfItem(item)}
+        onDeleteItem={(id) => handleDeleteNfItem(id)}
+        onConfirmItem={(id) => handleConfirmNfItem(id)}
+        onConfirmAll={() => handleConfirmAll()}
+      />
+
+      {/* Modal mini para editar item NF */}
+      <NfEditItemModal
+        isOpen={!!editingItem}
+        item={editingItem}
+        onClose={() => setEditingItem(null)}
+        onSave={(it) => handleSaveEditedItem(it)}
       />
 
       {/* Modal Cadastro */}
