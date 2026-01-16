@@ -397,14 +397,59 @@ export class EstoqueService {
     };
   }
 
-  static async atualizarQuantidade(id: number, novaQuantidade: number): Promise<void> {
+  static async atualizarQuantidade(
+    id: number,
+    novaQuantidade: number,
+    valorUnitario?: number | null,
+    unidadeValorOriginal?: string | null
+  ): Promise<void> {
+    // Primeiro, tentar buscar o produto para obter a unidade padrão armazenada
+    let produto: any = null;
+    try {
+      const { data, error } = await supabase
+        .from('estoque_de_produtos')
+        .select('unidade_de_medida, unidade_valor_original')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        console.warn('⚠️ Aviso: não foi possível buscar produto para calcular valor_total:', error);
+      } else {
+        produto = data;
+      }
+    } catch (err) {
+      console.warn('⚠️ Falha ao buscar produto (ignorar e prosseguir):', err);
+    }
+
+    const unidadePadrao = produto?.unidade_de_medida ?? 'un';
+    const unidadeOrig = unidadeValorOriginal ?? produto?.unidade_valor_original ?? unidadePadrao;
+
+    let valorTotal: number | null = null;
+    if (valorUnitario != null && !Number.isNaN(Number(valorUnitario))) {
+      try {
+        const quantidadeOriginal = convertFromStandardUnit(novaQuantidade, unidadePadrao, unidadeOrig);
+        valorTotal = Number(valorUnitario) * Number(quantidadeOriginal);
+      } catch (e) {
+        console.warn('⚠️ Falha ao calcular valor_total (conversão):', e);
+        valorTotal = null;
+      }
+    }
+
+    const updateObj: any = {
+      quantidade_em_estoque: novaQuantidade,
+      quantidade_inicial: novaQuantidade,
+    };
+
+    // Definir valor_total (pode ser null se não tivermos valorUnitario)
+    updateObj.valor_total = valorTotal != null && Number.isFinite(valorTotal) ? valorTotal : null;
+
     const { error } = await supabase
       .from('estoque_de_produtos')
-      .update({ quantidade_em_estoque: novaQuantidade })
+      .update(updateObj)
       .eq('id', id);
 
     if (error) {
-      console.error('❌ Erro ao atualizar quantidade:', error);
+      console.error('❌ Erro ao atualizar quantidade/quantidade_inicial/valor_total:', error);
       throw error;
     }
   }
@@ -428,6 +473,7 @@ export class EstoqueService {
     categoria: string,
     unidade: string,
     valor: number,
+    unidade_valor_original?: string | null,
     lote?: string,
     validade?: string,
     fornecedor?: string,
@@ -441,6 +487,7 @@ export class EstoqueService {
         categoria,
         unidade_de_medida: unidade,
         valor_unitario: valor,
+        unidade_valor_original: unidade_valor_original ?? null,
         lote: lote || null,
         validade: validade || null,
         fornecedor: fornecedor || null,

@@ -62,7 +62,7 @@ const UNIT_ALIASES: Record<string, string> = {
   'peca': 'un',
 };
 
-function normalizeUnit(raw?: string | null): string {
+export function normalizeUnit(raw?: string | null): string {
   if (!raw || typeof raw !== 'string') return '';
   // Trim, remover acentos, pontuação simples e espaços internas
   const lower = raw.trim().toLowerCase();
