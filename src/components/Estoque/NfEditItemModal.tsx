@@ -7,6 +7,7 @@ export interface PendingNfItem {
   marca?: string | null;
   categoria?: string | null;
   unidade: string;
+  unidade_valor_original?: string | null;
   quantidade: number;
   valor_unitario?: number | null;
   lote?: string | null;

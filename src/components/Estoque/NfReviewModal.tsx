@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { PendingNfItem } from './NfEditItemModal';
 import NfDeleteConfirmModal from './NfDeleteConfirmModal';
+import { convertFromStandardUnit } from '../../lib/unitConverter';
 
 interface NfMeta {
   numero?: string;
@@ -24,6 +25,19 @@ interface Props {
 export default function NfReviewModal({ isOpen, meta, items, onClose, onEditItem, onDeleteItem, onConfirmItem, onConfirmAll }: Props) {
   const [processing, setProcessing] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name?: string } | null>(null);
+
+  const formatQuantity = (quantidadePadrao: number, unidadePadrao?: string | null, unidadeDesejada?: string | null) => {
+    try {
+      const from = unidadePadrao || 'un';
+      const to = unidadeDesejada || from;
+      const converted = convertFromStandardUnit(Number(quantidadePadrao || 0), from, to);
+      if (Number.isInteger(converted)) return String(converted);
+      // Mostrar até 3 casas decimais, remover zeros à direita
+      return String(Number(converted.toFixed(3)).toString());
+    } catch (e) {
+      return String(quantidadePadrao || 0);
+    }
+  };
 
   if (!isOpen) return null;
   const modal = (
@@ -49,10 +63,10 @@ export default function NfReviewModal({ isOpen, meta, items, onClose, onEditItem
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-[#004417] truncate">{it.nome_produto}</div>
-                    <div className="mt-1 text-xs text-[#092f20]">{it.categoria} • {it.unidade}</div>
+                    <div className="mt-1 text-xs text-[#092f20]">{it.categoria} • {it.unidade_valor_original ?? it.unidade}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-medium text-[#092f20] whitespace-nowrap">{it.quantidade}</div>
+                    <div className="text-sm font-medium text-[#092f20] whitespace-nowrap">{formatQuantity(it.quantidade, it.unidade, it.unidade_valor_original)}</div>
                     <div className="text-xs text-[#092f20] mt-1">{it.valor_unitario != null ? `R$ ${Number(it.valor_unitario).toFixed(2)}` : '-'}</div>
                   </div>
                 </div>
@@ -84,8 +98,8 @@ export default function NfReviewModal({ isOpen, meta, items, onClose, onEditItem
                   <tr key={it.id} className="bg-white border-b border-[rgba(0,0,0,0.06)]">
                     <td className="px-3 py-5 text-sm text-[#004417] font-medium align-top">{it.nome_produto}</td>
                     <td className="px-6 py-5 text-sm text-[#004417] font-medium align-top">{it.categoria}</td>
-                    <td className="px-6 py-5 text-sm text-[#004417] font-medium align-top">{it.unidade}</td>
-                    <td className="px-6 py-5 text-sm text-right text-[#092f20] font-medium align-top whitespace-nowrap">{it.quantidade}</td>
+                      <td className="px-6 py-5 text-sm text-[#004417] font-medium align-top">{it.unidade_valor_original ?? it.unidade}</td>
+                    <td className="px-6 py-5 text-sm text-right text-[#092f20] font-medium align-top whitespace-nowrap">{formatQuantity(it.quantidade, it.unidade, it.unidade_valor_original)}</td>
                     <td className="px-6 py-5 text-sm text-right font-medium text-[#092f20] align-top whitespace-nowrap">{it.valor_unitario != null ? `R$ ${Number(it.valor_unitario).toFixed(2)}` : '-'}</td>
                     <td className="px-6 py-5 text-sm text-right align-top whitespace-nowrap">
                       <div className="inline-flex items-center justify-end gap-2">

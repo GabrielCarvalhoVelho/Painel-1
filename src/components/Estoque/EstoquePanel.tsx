@@ -248,6 +248,7 @@ export default function EstoquePanel() {
       marca: p.marca || null,
       categoria: p.categoria || null,
       unidade: p.unidade || 'un',
+      unidade_valor_original: p.unidade_valor_original ?? p.unidade ?? 'un',
       quantidade: p.quantidade || 0,
       valor_unitario: p.valor ?? null,
       lote: p.lote ?? null,
