@@ -160,14 +160,6 @@ export class FinanceService {
             talhoes!inner(
               nome
             )
-          ),
-          transacoes_talhoes_alocacao!left(
-            id,
-            id_talhao,
-            percentual_alocacao,
-            talhoes!inner(
-              nome
-            )
           )
         `)
         .eq('user_id', userId)
@@ -184,20 +176,47 @@ export class FinanceService {
         const nomeTalhao = talhoes.length > 0 && talhoes[0].talhoes?.nome
           ? talhoes[0].talhoes.nome
           : 'Sem talhão específico';
-
-        const alocacoes = (transacao as any).transacoes_talhoes_alocacao || [];
-
         return {
           ...transacao,
           nome_talhao: nomeTalhao,
-          alocacoes: alocacoes.map((a: any) => ({
-            id: a.id,
-            id_talhao: a.id_talhao,
-            percentual_alocacao: a.percentual_alocacao,
-            nome_talhao: a.talhoes?.nome || 'N/A'
-          }))
+          alocacoes: [] // será preenchido abaixo por query separada
         } as TransacaoFinanceira;
       });
+
+      // Buscar alocações em batch para evitar dependência de relacionamento no PostgREST
+      try {
+        const ids = (transacoesComTalhoes || []).map((t: any) => t.id_transacao).filter(Boolean);
+        if (ids.length > 0) {
+          const { data: alocacoesData, error: alocError } = await supabase
+            .from('transacoes_talhoes_alocacao')
+            .select(`*, talhoes:id_talhao ( nome )`)
+            .in('id_transacao', ids);
+
+          if (!alocError && alocacoesData) {
+            const mapAloc: Record<string, any[]> = {};
+            alocacoesData.forEach((a: any) => {
+              const idt = a.id_transacao;
+              if (!mapAloc[idt]) mapAloc[idt] = [];
+              mapAloc[idt].push(a);
+            });
+
+            transacoesComTalhoes.forEach((t: any) => {
+              const alocs = mapAloc[t.id_transacao] || [];
+              t.alocacoes = alocs.map((a: any) => ({
+                id: a.id,
+                id_transacao: a.id_transacao,
+                id_talhao: a.id_talhao,
+                percentual_alocacao: a.percentual_alocacao,
+                criado_em: a.criado_em,
+                atualizado_em: a.atualizado_em,
+                nome_talhao: a.talhoes?.nome || 'N/A'
+              }));
+            });
+          }
+        }
+      } catch (batchErr) {
+        console.error('Erro ao buscar alocações em batch:', batchErr);
+      }
 
       return transacoesComTalhoes;
     } catch (error) {
@@ -1238,11 +1257,12 @@ static async getTotalNegativeTransactions(userId: string): Promise<number> {
     }
 
     // Para transações processadas, usa data da transação ou registro
-    const dataStr = transacao.data_agendamento_pagamento; // || transacao.data_registro;
-    if (!dataStr) return null;
+    // Prioriza `data_agendamento_pagamento`, se ausente usa `data_transacao`, se ausente usa `data_registro`.
+    const candidate = transacao.data_agendamento_pagamento || transacao.data_transacao || transacao.data_registro;
+    if (!candidate) return null;
 
     try {
-      return typeof dataStr === 'string' ? parseISO(dataStr) : new Date(dataStr as Date);
+      return typeof candidate === 'string' ? parseISO(candidate) : new Date(candidate as Date);
     } catch {
       return null;
     }
@@ -1315,14 +1335,6 @@ static async getTotalNegativeTransactions(userId: string): Promise<number> {
             talhoes!inner(
               nome
             )
-          ),
-          transacoes_talhoes_alocacao!left(
-            id,
-            id_talhao,
-            percentual_alocacao,
-            talhoes!inner(
-              nome
-            )
           )
         `)
         .eq('user_id', userId)
@@ -1340,26 +1352,57 @@ static async getTotalNegativeTransactions(userId: string): Promise<number> {
       const futuras: TransacaoFinanceira[] = [];
 
       // 3. FILTRA E CLASSIFICA CADA TRANSAÇÃO
-      (todasTransacoes || []).forEach(transacaoRaw => {
-        // Processa talhão
+      const transacoesProcessadas = (todasTransacoes || []).map(transacaoRaw => {
         const talhoes = (transacaoRaw as any).transacoes_talhoes || [];
         const nomeTalhao = talhoes.length > 0 && talhoes[0].talhoes?.nome
           ? talhoes[0].talhoes.nome
           : 'Sem talhão específico';
 
-        const alocacoes = (transacaoRaw as any).transacoes_talhoes_alocacao || [];
+        const alocacoesPlaceholder: any[] = [];
 
-        const transacao = {
+        return {
           ...transacaoRaw,
           nome_talhao: nomeTalhao,
-          alocacoes: alocacoes.map((a: any) => ({
-            id: a.id,
-            id_talhao: a.id_talhao,
-            percentual_alocacao: a.percentual_alocacao,
-            nome_talhao: a.talhoes?.nome || 'N/A'
-          }))
+          alocacoes: alocacoesPlaceholder
         } as TransacaoFinanceira;
+      });
 
+      // Buscar alocações em batch para as transações retornadas
+      try {
+        const ids = transacoesProcessadas.map((t: any) => t.id_transacao).filter(Boolean);
+        if (ids.length > 0) {
+          const { data: alocacoesData, error: alocError } = await supabase
+            .from('transacoes_talhoes_alocacao')
+            .select(`*, talhoes:id_talhao ( nome )`)
+            .in('id_transacao', ids);
+
+          if (!alocError && alocacoesData) {
+            const mapAloc: Record<string, any[]> = {};
+            alocacoesData.forEach((a: any) => {
+              const idt = a.id_transacao;
+              if (!mapAloc[idt]) mapAloc[idt] = [];
+              mapAloc[idt].push(a);
+            });
+
+            transacoesProcessadas.forEach((t: any) => {
+              const alocs = mapAloc[t.id_transacao] || [];
+              t.alocacoes = alocs.map((a: any) => ({
+                id: a.id,
+                id_transacao: a.id_transacao,
+                id_talhao: a.id_talhao,
+                percentual_alocacao: a.percentual_alocacao,
+                criado_em: a.criado_em,
+                atualizado_em: a.atualizado_em,
+                nome_talhao: a.talhoes?.nome || 'N/A'
+              }));
+            });
+          }
+        }
+      } catch (batchErr) {
+        console.error('Erro ao buscar alocações em batch:', batchErr);
+      }
+
+      (transacoesProcessadas || []).forEach(transacao => {
         const dataTransacao = this.getTransactionDate(transacao);
         if (!dataTransacao) return;
 
@@ -1378,7 +1421,7 @@ static async getTotalNegativeTransactions(userId: string): Promise<number> {
               descricao: transacao.descricao,
               data: format(dataTransacao, 'dd/MM/yyyy'),
               valor: transacao.valor,
-              talhao: nomeTalhao
+              talhao: transacao.nome_talhao
             });
           } else {
             futuras.push(transacao);
@@ -1386,7 +1429,7 @@ static async getTotalNegativeTransactions(userId: string): Promise<number> {
               descricao: transacao.descricao,
               data: format(dataTransacao, 'dd/MM/yyyy'),
               valor: transacao.valor,
-              talhao: nomeTalhao
+              talhao: transacao.nome_talhao
             });
           }
         }

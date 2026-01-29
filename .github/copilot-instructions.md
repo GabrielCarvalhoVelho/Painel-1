@@ -1,5 +1,20 @@
 # Copilot Instructions — Painel Solos.ag
 
+## Guia Rápido para Agentes (leia primeiro)
+
+- **Stack:** React 18 + TypeScript + Vite + TailwindCSS. Backend/storage: Supabase (RLS).
+- **Navegação:** Tab-based via `activeTab` (sem React Router). Veja [src/App.tsx](src/App.tsx#L1) e [src/components/Layout/Sidebar.tsx](src/components/Layout/Sidebar.tsx#L1).
+- **Padrão de serviços:** Toda interação com Supabase ocorre em `src/services/*` — classes com **métodos estáticos**; **AuthService** é singleton (`src/services/authService.ts`).
+- **Supabase singleton:** conexão em `src/lib/supabase.ts`. Em DEV a app pode usar `service_role` (bypass RLS) detectado por `import.meta.env.MODE`, hostname ou `VITE_ZE_AMBIENTE`.
+- **Autenticação:** JWT do n8n em `localStorage` na chave `ze_safra_token`. Use `AuthService.getInstance().getCurrentUser()` e `?.user_id` para obter o user_id.
+- **Erros e retornos:** Services NUNCA lançam exceções — **sempre** retornam `[]` ou `null` em caso de erro e logam o erro (procure exemplos em `src/services/*Service.ts`).
+- **Componentes Panel:** use `loading` + `<LoadingSpinner />` (em `src/components/Dashboard/LoadingSpinner.tsx`) e carregue dados em `useEffect` no mount.
+- **Utilitários comuns:** `src/lib/dateUtils.ts`, `currencyFormatter.ts`, `unitConverter.ts`. Use `parseDateFromDB()` para evitar bugs de timezone.
+- **Ícones:** usar somente `lucide-react`.
+- **Comandos úteis:** `npm run dev`, `npm run build`, `npm run lint`.
+
+Para detalhes e o schema completo, a documentação abaixo permanece e pode ser consultada — preservei o conteúdo existente.
+
 ## Contexto
 
 SPA agrícola para cafeicultores brasileiros: **React 18 + TypeScript + Vite + TailwindCSS + Supabase**. Autenticação via JWT do n8n (armazenado em `localStorage` como `ze_safra_token`). Supabase usa RLS em produção, bypass DEV com `service_role`.
