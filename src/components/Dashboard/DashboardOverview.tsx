@@ -25,6 +25,11 @@ import WeatherWidget from './WeatherWidget';
 import { AuthService } from '../../services/authService';
 import { UserService } from '../../services/userService';
 import { FinanceService, ResumoFinanceiro, DadosGrafico, OverallBalance, ResumoMensalFinanceiro, PeriodBalance } from '../../services/financeService';
+import { supabase } from '../../lib/supabase';
+import IncompleteFinancialBanner from './IncompleteFinancialBanner';
+import IncompleteFinancialReviewModal from './IncompleteFinancialReviewModal';
+import IncompleteActivitiesBanner from './IncompleteActivitiesBanner';
+import IncompleteActivitiesReviewModal from './IncompleteActivitiesReviewModal';
 import { ActivityService } from '../../services/activityService';
 import { CotacaoService } from '../../services/cotacaoService';
 import { formatSmartCurrency } from '../../lib/currencyFormatter';
@@ -99,6 +104,10 @@ export default function DashboardOverview() {
   const [estoqueStatus] = useState({ percentual: 85, itensAbaixoMinimo: 3 });
   const [producaoTotal, setProducaoTotal] = useState(0);
   const [custoTotal, setCustoTotal] = useState(0);
+  const [incompleteTransactions, setIncompleteTransactions] = useState<TransacaoFinanceira[]>([]);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [incompleteActivities, setIncompleteActivities] = useState<TransacaoFinanceira[]>([]);
+  const [isActivitiesReviewOpen, setIsActivitiesReviewOpen] = useState(false);
     const [resumoMensalFinanceiro, setResumoMensalFinanceiro] = useState<ResumoMensalFinanceiro>({
     totalReceitas: 0,
     totalDespesas: 0,
@@ -174,6 +183,22 @@ export default function DashboardOverview() {
       setTransacoes(lancamentos);
       setProximas5Transacoes(proximas5);
       setUltimas5Transacoes(ultimas5);
+      // carregar transações incompletas (Supabase)
+      try {
+        const incompletas = await FinanceService.getIncompleteTransactionsWithTalhao(currentUser.user_id);
+        setIncompleteTransactions(incompletas || []);
+      } catch (e) {
+        console.warn('Erro ao carregar transações incompletas:', e);
+        setIncompleteTransactions([]);
+      }
+      // carregar atividades (Supabase)
+      try {
+        const incActs = await ActivityService.getLancamentos(currentUser.user_id, 100);
+        setIncompleteActivities(incActs || []);
+      } catch (e) {
+        console.warn('Erro ao carregar atividades:', e);
+        setIncompleteActivities([]);
+      }
       setOverallBalance(overall);
       // Sincroniza o saldo do dashboard com o resultado canônico do serviço
       setPeriodBalanceDashboard(periodBalance);
@@ -380,6 +405,144 @@ export default function DashboardOverview() {
         </div>
       )}
 
+      {/* Incomplete transactions (mock) — mostrar primeiro para o usuário */}
+      <div className="mb-6">
+        <IncompleteFinancialBanner count={incompleteTransactions.length} onReview={() => setIsReviewOpen(true)} />
+      </div>
+
+      {/* Incomplete activities banner */}
+      <div className="mb-6">
+        <IncompleteActivitiesBanner count={incompleteActivities.length} onReview={() => setIsActivitiesReviewOpen(true)} />
+      </div>
+
+      <IncompleteFinancialReviewModal
+        isOpen={isReviewOpen}
+        transactions={incompleteTransactions}
+        onClose={() => setIsReviewOpen(false)}
+        onEdit={async (id, payload) => {
+          // Atualização otimista: atualiza o item localmente antes da chamada ao backend
+          try {
+            setIncompleteTransactions((prev) => (
+              (prev || []).map((t) => {
+                if (t.id_transacao !== id) return t;
+                // mesclar valores do payload (podem incluir nome_talhao)
+                return { ...t, ...payload } as any;
+              })
+            ));
+
+            const talhaoId = (payload as any).talhao_id || undefined;
+            const ok = await FinanceService.updateTransaction(id, payload as any, talhaoId);
+            if (!ok) console.warn('Atualização retornou false para id', id);
+          } catch (err) {
+            console.error('Erro ao atualizar transação:', err);
+          }
+
+          // Recarrega a lista definitiva do servidor para garantir consistência
+          const userId = AuthService.getInstance().getCurrentUser()?.user_id || '';
+          const updated = await FinanceService.getIncompleteTransactionsWithTalhao(userId);
+          setIncompleteTransactions(updated || []);
+        }}
+        onDelete={async (id) => {
+          try {
+            await supabase.from('transacoes_financeiras').delete().eq('id_transacao', id);
+          } catch (err) {
+            console.error('Erro ao deletar transação:', err);
+          }
+          const userId = AuthService.getInstance().getCurrentUser()?.user_id || '';
+          const updated = await FinanceService.getIncompleteTransactionsWithTalhao(userId);
+          setIncompleteTransactions(updated || []);
+        }}
+        onConfirmItem={async (id) => {
+          try {
+            // localizar transação no cache local para decidir comportamento
+            const tx = (incompleteTransactions || []).find(t => t.id_transacao === id);
+            const shouldCreateParcels = Boolean(tx && ((tx as any).numero_parcelas && Number((tx as any).numero_parcelas) > 1) || String(((tx as any).condicao_pagamento) || '').toLowerCase() === 'parcelado');
+
+            if (shouldCreateParcels) {
+              // chama a RPC que cria as parcelas filhas atomically
+              const res = await FinanceService.createParcelasFromParent(id);
+              if (!res) {
+                console.error('Falha ao criar parcelas para transação pai', id);
+              }
+            } else {
+              await supabase.from('transacoes_financeiras').update({ is_completed: true }).eq('id_transacao', id);
+            }
+          } catch (err) {
+            console.error('Erro ao processar confirmação da transação:', err);
+          }
+
+          // Recarregar lista para refletir mudanças
+          const userId = AuthService.getInstance().getCurrentUser()?.user_id || '';
+          const updated = await FinanceService.getIncompleteTransactionsWithTalhao(userId);
+          setIncompleteTransactions(updated || []);
+        }}
+        onConfirmAll={async () => {
+          const userId = AuthService.getInstance().getCurrentUser()?.user_id || '';
+          const current = await FinanceService.getIncompleteTransactionsWithTalhao(userId);
+          for (const t of current) {
+            try {
+              await supabase.from('transacoes_financeiras').update({ is_completed: true }).eq('id_transacao', t.id_transacao);
+            } catch (err) {
+              console.error('Erro ao marcar transação como completa:', err, t.id_transacao);
+            }
+          }
+          const updated = await FinanceService.getIncompleteTransactionsWithTalhao(userId);
+          setIncompleteTransactions(updated || []);
+          setIsReviewOpen(false);
+        }}
+      />
+
+      <IncompleteActivitiesReviewModal
+        isOpen={isActivitiesReviewOpen}
+        activities={incompleteActivities}
+        onClose={() => setIsActivitiesReviewOpen(false)}
+        onEdit={async (id, payload) => {
+          try {
+            await ActivityService.updateLancamento(id, payload as any);
+          } catch (err) {
+            console.error('Erro ao atualizar atividade:', err);
+          }
+          const userId = AuthService.getInstance().getCurrentUser()?.user_id || '';
+          const updated = await ActivityService.getLancamentos(userId, 100);
+          setIncompleteActivities(updated || []);
+        }}
+        onDelete={async (id) => {
+          try {
+            await ActivityService.deleteLancamento(id);
+          } catch (err) {
+            console.error('Erro ao deletar atividade:', err);
+          }
+          const userId = AuthService.getInstance().getCurrentUser()?.user_id || '';
+          const updated = await ActivityService.getLancamentos(userId, 100);
+          setIncompleteActivities(updated || []);
+        }}
+        onConfirmItem={async (id) => {
+          try {
+            await ActivityService.updateLancamento(id, { esperando_por_anexo: false });
+          } catch (err) {
+            console.error('Erro ao marcar atividade como completa:', err);
+          }
+          const userId = AuthService.getInstance().getCurrentUser()?.user_id || '';
+          const updated = await ActivityService.getLancamentos(userId, 100);
+          setIncompleteActivities(updated || []);
+        }}
+        onConfirmAll={async () => {
+          const userId = AuthService.getInstance().getCurrentUser()?.user_id || '';
+          const current = await ActivityService.getLancamentos(userId, 1000);
+          for (const t of current) {
+            try {
+              const idToUpdate = (t as any).atividade_id || (t as any).id;
+              if (idToUpdate) await ActivityService.updateLancamento(idToUpdate, { esperando_por_anexo: false });
+            } catch (err) {
+              console.error('Erro ao marcar atividade como completa:', err, t);
+            }
+          }
+          const updated = await ActivityService.getLancamentos(userId, 100);
+          setIncompleteActivities(updated || []);
+          setIsActivitiesReviewOpen(false);
+        }}
+      />
+
       {/* User profile moved to header modal; removed card from dashboard */}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
@@ -440,6 +603,8 @@ export default function DashboardOverview() {
           <PlannedTransactions transactions={transacoes} proximas5={proximas5Transacoes} />
         </div>
       )}
+
+      
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ActivityList activities={atividades} />

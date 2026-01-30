@@ -658,11 +658,11 @@ static async getProdutividadeFazendaTeste(
   }
 }
   
-  static async getTalhoesByUserId(userId: string): Promise<Array<{ id_talhao: string; nome: string }>> {
+  static async getTalhoesByUserId(userId: string): Promise<Array<{ id_talhao: string; nome: string; talhao_default?: boolean }>> {
     try {
       const { data, error } = await supabase
         .from('talhoes')
-        .select('id_talhao, nome')
+        .select('id_talhao, nome, talhao_default')
         .eq('user_id', userId)
         .eq('ativo', true)
         .order('nome');

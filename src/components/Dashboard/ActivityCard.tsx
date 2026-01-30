@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Sprout, Droplets, Package, Leaf, Scissors, Bug, Paperclip } from 'lucide-react';
+import { formatDateTimeBR } from '../../lib/dateUtils';
 import ActivityAttachmentModal from '../ManejoAgricola/ActivityAttachmentModal';
 
 interface Props {
@@ -90,17 +91,10 @@ export default function ActivityCard({ atividade, talhaoLabel }: Props) {
         <div className="mt-3 pt-3 border-t border-[rgba(0,68,23,0.08)]">
           <div className="flex items-start justify-between">
             <div className="flex-shrink-0 text-xs text-[#004417]/65 mr-3">
-              {atividade.created_at && (
-                <>Lançado em {new Date(atividade.created_at).toLocaleString('pt-BR', {
-                  timeZone: 'America/Sao_Paulo',
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}</>
-              )}
-            </div>
+                {atividade.created_at && (
+                  <>Lançado em {formatDateTimeBR(atividade.created_at)}</>
+                )}
+              </div>
             <div className="flex-1">
               <span className="text-[rgba(0,68,23,0.75)] font-medium text-sm">Observações:</span>
               <p className="text-sm text-[#00A651] mt-1">{atividadeDisplay.observacoes}</p>
@@ -126,14 +120,7 @@ export default function ActivityCard({ atividade, talhaoLabel }: Props) {
           <div className="flex items-center justify-between">
             <div className="text-xs text-[#004417]/65">
               {atividade.created_at && (
-                <>Lançado em {new Date(atividade.created_at).toLocaleString('pt-BR', {
-                  timeZone: 'America/Sao_Paulo',
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}</>
+                <>Lançado em {formatDateTimeBR(atividade.created_at)}</>
               )}
             </div>
             <div>

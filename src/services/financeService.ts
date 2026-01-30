@@ -225,6 +225,135 @@ export class FinanceService {
     }
   }
 
+  /**
+   * Retorna transações incompletas para um usuário, incluindo informação
+   * sobre vínculo com talhões (contagem e ids).
+   * - Incompleta quando is_completed = false OR is_completed IS NULL
+   * - Ignora registros com ativo = false (mantém TRUE ou NULL)
+   * - Não lança exceções: em erro retorna lista vazia
+   */
+  static async getIncompleteTransactionsWithTalhao(userId: string): Promise<Array<any>> {
+    try {
+      const { data, error } = await supabase
+        .from('transacoes_financeiras')
+        .select(`*, transacoes_talhoes!left(id_talhao, talhoes!inner(nome))`)
+        // filtrar apenas transações explicitamente incompletas (is_completed = FALSE)
+        .eq('is_completed', false)
+        .neq('ativo', false)
+        .eq('user_id', userId)
+        .order('data_agendamento_pagamento', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao buscar transações incompletas:', error);
+        return [];
+      }
+
+      const result = (data || []).map((t: any) => {
+        const links = Array.isArray(t.transacoes_talhoes) ? t.transacoes_talhoes : [];
+        const talhaoIds = links.map((l: any) => l.id_talhao).filter(Boolean);
+        // tentar extrair nome do talhão via relacionamento carregado
+        const nomeTalhao = (links.length > 0 && links[0].talhoes && links[0].talhoes.nome) ? links[0].talhoes.nome : (t.nome_talhao || null);
+        return {
+          ...t,
+          talhao_count: talhaoIds.length,
+          talhao_ids: talhaoIds,
+          has_talhao_link: talhaoIds.length > 0,
+          nome_talhao: nomeTalhao
+        };
+      });
+
+      return result;
+    } catch (err) {
+      console.error('Erro crítico ao buscar transações incompletas:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Atualiza uma transação financeira e sincroniza vínculo com talhão (transacoes_talhoes).
+   * - `payload` deve conter os campos que serão atualizados na tabela `transacoes_financeiras`.
+   * - `talhaoId` (opcional) será usado para substituir vínculos existentes em `transacoes_talhoes`.
+   */
+  static async updateTransaction(id_transacao: string, payload: Partial<TransacaoFinanceira>, talhaoId?: string): Promise<boolean> {
+    try {
+      // Protege: extrai talhao_id/nome_talhao do payload para evitar tentativa de atualizar colunas inexistentes
+      const { talhao_id, nome_talhao, ...updatePayload } = (payload as any) || {};
+
+      // Se talhaoId não foi passado explicitamente, tente usar o do payload
+      const effectiveTalhaoId = talhaoId !== undefined ? talhaoId : (talhao_id ?? undefined);
+
+      // Limpar campos não-existentes no schema e chaves undefined
+      // Alguns campos usados na UI (ex: data_primeira_parcela) não existem na tabela
+      if ((updatePayload as any).data_primeira_parcela !== undefined) {
+        delete (updatePayload as any).data_primeira_parcela;
+      }
+      // Remover chaves com valor undefined para não enviá-las ao REST
+      Object.keys(updatePayload).forEach((k) => {
+        if ((updatePayload as any)[k] === undefined) delete (updatePayload as any)[k];
+      });
+
+      // Atualiza a transação principal (sem campos relacionados a talhão)
+      const { error: updError } = await supabase
+        .from('transacoes_financeiras')
+        .update(updatePayload)
+        .eq('id_transacao', id_transacao);
+
+      if (updError) {
+        console.error('Erro ao atualizar transacao:', updError);
+        return false;
+      }
+
+      // Se foi passado um talhão (via parâmetro ou payload), substitui vínculos existentes por ele
+      if (effectiveTalhaoId !== undefined) {
+        // Remover vínculos atuais
+        const { error: delErr } = await supabase
+          .from('transacoes_talhoes')
+          .delete()
+          .eq('id_transacao', id_transacao);
+
+        if (delErr) {
+          console.error('Erro ao remover vínculos antigos de transacoes_talhoes:', delErr);
+          // não abortamos; tentaremos inserir em seguida
+        }
+
+        if (effectiveTalhaoId) {
+          const { error: insErr } = await supabase
+            .from('transacoes_talhoes')
+            .insert([{ id_transacao, id_talhao: effectiveTalhaoId }]);
+
+          if (insErr) {
+            console.error('Erro ao inserir vínculo em transacoes_talhoes:', insErr);
+            // não aborta totalmente, mas sinaliza falha
+            return false;
+          }
+        }
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Erro crítico em updateTransaction:', err);
+      return false;
+    }
+  }
+
+  /**
+   * Chama a função SQL `create_parcelas_from_parent` no Postgres/Supabase
+   * Retorna array de objetos inseridos ({ id_transacao }) ou null em erro
+   */
+  static async createParcelasFromParent(parentId: string): Promise<Array<{ id_transacao: string }> | null> {
+    try {
+      const { data, error } = await supabase.rpc('create_parcelas_from_parent', { p_parent_id: parentId });
+      if (error) {
+        console.error('Erro ao criar parcelas via RPC:', error);
+        return null;
+      }
+      return (data as any) || null;
+    } catch (err) {
+      console.error('Erro crítico em createParcelasFromParent:', err);
+      return null;
+    }
+  }
+
   static async getDadosGrafico(userId: string): Promise<DadosGrafico[]> {
     try {
       console.log('🔍 INICIANDO getDadosGrafico para userId:', userId);

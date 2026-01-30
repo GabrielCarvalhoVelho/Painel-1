@@ -82,7 +82,8 @@ export function formatDateTimeBR(dateString?: string | Date): string {
       return typeof dateString === 'string' ? dateString : 'Data inválida';
     }
 
-    return format(date, 'dd/MM/yyyy HH:mm', { locale: ptBR });
+    // incluir segundos conforme requisito: dd/MM/yyyy HH:mm:ss
+    return format(date, 'dd/MM/yyyy HH:mm:ss', { locale: ptBR });
   } catch (error) {
     console.error('Erro ao formatar data e hora:', error);
     return typeof dateString === 'string' ? dateString : 'Data inválida';

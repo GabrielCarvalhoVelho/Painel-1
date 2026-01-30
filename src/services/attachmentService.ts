@@ -71,7 +71,7 @@ export interface AttachmentInfo {
 }
 
 export class AttachmentService {
-  private static readonly BUCKET_NAME = 'notas_fiscais';
+  private static readonly BUCKET_NAME = 'transacoes_financeiras';
   // private static readonly IMAGE_FOLDER = 'imagens'; // Não utilizada
   private static readonly FILE_FOLDER = 'arquivos';
 
@@ -273,8 +273,6 @@ export class AttachmentService {
       }
 
       // Se não, busca no storage usando o ID correto (grupo ou transação)
-      const fileId = await this.getStorageFileId(transactionId);
-      const fileName = `${fileId}.jpg`;
       const user = AuthService.getInstance().getCurrentUser();
       const userPath = user ? `${user.user_id}` : '';
 
@@ -471,7 +469,8 @@ export class AttachmentService {
         throw new Error('Usuario nao autenticado - user_id ausente');
       }
 
-      const filePath = `${user.user_id}/${fileName}`;
+      // Save under bucket: transacoes_financeiras/{user_id}/{transaction_id}.jpg
+      const filePath = `${user.user_id}/${transactionId}.jpg`;
 
       console.log('👤 [Image Upload] userId:', user.user_id);
       console.log('📍 [Image Upload] path:', filePath);
@@ -519,15 +518,14 @@ export class AttachmentService {
 
       logAuthStatus('Image Replace Start');
 
-      const fileId = await this.getStorageFileId(transactionId);
-      const fileName = `${fileId}.jpg`;
       const user = AuthService.getInstance().getCurrentUser();
 
       if (!user?.user_id) {
         throw new Error('Usuario nao autenticado - user_id ausente');
       }
 
-      const filePath = `${user.user_id}/${fileName}`;
+      // Save under bucket: transacoes_financeiras/{user_id}/{transaction_id}.jpg
+      const filePath = `${user.user_id}/${transactionId}.jpg`;
 
       console.log('👤 [Image Replace] userId:', user.user_id);
       console.log('📍 [Image Replace] path:', filePath);
@@ -1003,6 +1001,7 @@ export class AttachmentService {
   static validateFile(file: File): boolean {
     const validTypes = [
       'application/pdf', 'application/xml', 'text/xml',
+      'application/octet-stream',
       'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'text/csv', 'text/plain'
@@ -1277,7 +1276,6 @@ export class AttachmentService {
 
       this.validateFile(file);
 
-      const fileId = await this.getStorageFileIdForFile(transactionId);
       const ext = this.getFileExtension(file);
       const user = AuthService.getInstance().getCurrentUser();
 
@@ -1285,11 +1283,38 @@ export class AttachmentService {
         throw new Error('Usuario nao autenticado - user_id ausente');
       }
 
-      const fileName = `${user.user_id}/${this.FILE_FOLDER}/${fileId}.${ext}`;
+      // Save under bucket: transacoes_financeiras/{user_id}/{transaction_id}.{ext}
+      const fileName = `${user.user_id}/${transactionId}.${ext}`;
 
-      console.log('📦 [File Upload] fileId:', fileId, 'ext:', ext);
+      console.log('📦 [File Upload] transactionId:', transactionId, 'ext:', ext);
       console.log('👤 [File Upload] userId:', user.user_id);
       console.log('📍 [File Upload] path:', fileName);
+
+      // Antes de fazer upload do novo arquivo, tentar remover quaisquer arquivos
+      // existentes com o mesmo fileId e outras extensões para garantir substituição
+      try {
+        const extensionsList = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
+        const filesToRemove: string[] = [];
+        // paths a verificar: {user_id}/{transactionId}.{ext}, arquivos/{transactionId}.{ext}, {transactionId}.{ext}
+        for (const extCandidate of extensionsList) {
+          if (user?.user_id) filesToRemove.push(`${user.user_id}/${transactionId}.${extCandidate}`);
+          filesToRemove.push(`${this.FILE_FOLDER}/${transactionId}.${extCandidate}`);
+          filesToRemove.push(`${transactionId}.${extCandidate}`);
+        }
+        // remover duplicatas
+        const uniqueToRemove = Array.from(new Set(filesToRemove));
+        if (uniqueToRemove.length) {
+          try {
+            await supabase.storage.from(this.BUCKET_NAME).remove(uniqueToRemove);
+            console.log('✅ [File Upload] Arquivos antigos removidos (se existiam):', uniqueToRemove.length);
+          } catch (remErr) {
+            // log e continuar; falha ao remover não impede novo upload
+            console.warn('⚠️ [File Upload] Falha ao remover arquivos antigos (continuando):', remErr?.message || remErr);
+          }
+        }
+      } catch (remAllErr) {
+        console.warn('⚠️ [File Upload] Erro ao preparar remoção de arquivos antigos:', remAllErr);
+      }
 
       const { data, error } = await supabase.storage
         .from(this.BUCKET_NAME)
@@ -1340,7 +1365,6 @@ export class AttachmentService {
 
       this.validateFile(file);
 
-      const fileId = await this.getStorageFileIdForFile(transactionId);
       const ext = this.getFileExtension(file);
       const user = AuthService.getInstance().getCurrentUser();
 
@@ -1348,7 +1372,8 @@ export class AttachmentService {
         throw new Error('Usuario nao autenticado - user_id ausente');
       }
 
-      const fileName = `${user.user_id}/${this.FILE_FOLDER}/${fileId}.${ext}`;
+      // Replace at same path: transacoes_financeiras/{user_id}/{transaction_id}.{ext}
+      const fileName = `${user.user_id}/${transactionId}.${ext}`;
 
       console.log('👤 [File Replace] userId:', user.user_id);
       console.log('📍 [File Replace] path:', fileName);
