@@ -738,7 +738,7 @@ export class FinanceService {
       // já foi processada (status e data) e para somar o valor.
       const { data, error } = await supabase
         .from('transacoes_financeiras')
-        .select('valor, status, data_agendamento_pagamento')
+        .select('valor, status, data_agendamento_pagamento, is_completed')
         .or('eh_transacao_pai.is.null,eh_transacao_pai.eq.false')
         .eq('user_id', userId);
 
@@ -755,7 +755,7 @@ export class FinanceService {
       // saldo_atual: SUM(valor) quando (
       //   (data_agendamento_pagamento IS NOT NULL AND date <= CURRENT_DATE)
       //   OR (data_agendamento_pagamento IS NULL AND status IS DISTINCT FROM 'Agendado')
-      // )
+      // ) AND is_completed = true
       // saldo_futuro: SUM(valor) quando (
       //   (data_agendamento_pagamento IS NOT NULL AND date > CURRENT_DATE)
       //   OR (data_agendamento_pagamento IS NULL AND status = 'Agendado')
@@ -769,6 +769,7 @@ export class FinanceService {
       (data || []).forEach((transacao: any) => {
         const valor = Number(transacao.valor) || 0;
         const dp = transacao.data_agendamento_pagamento;
+        const isCompleted = transacao.is_completed === true;
 
         if (dp) {
           try {
@@ -776,8 +777,10 @@ export class FinanceService {
             const dataAgSemHora = startOfDay(dataAg);
 
             if (dataAgSemHora <= hoje) {
-              // conta como atual
-              saldoAtual += valor;
+              // conta como atual APENAS se is_completed = true
+              if (isCompleted) {
+                saldoAtual += valor;
+              }
             } else {
               // data > hoje => futuro
               saldoFuturo += valor;
@@ -791,8 +794,10 @@ export class FinanceService {
           if (status === 'Agendado') {
             saldoFuturo += valor;
           } else {
-            // status IS DISTINCT FROM 'Agendado'
-            saldoAtual += valor;
+            // status IS DISTINCT FROM 'Agendado' E is_completed = true
+            if (isCompleted) {
+              saldoAtual += valor;
+            }
           }
         }
       });
@@ -820,7 +825,7 @@ export class FinanceService {
     try {
       const { data, error } = await supabase
         .from('transacoes_financeiras')
-        .select('valor, status, data_agendamento_pagamento')
+        .select('valor, status, data_agendamento_pagamento, is_completed')
         .or('eh_transacao_pai.is.null,eh_transacao_pai.eq.false')
         .eq('user_id', userId);
 
@@ -836,6 +841,7 @@ export class FinanceService {
       (data || []).forEach((transacao: any) => {
         const valor = Number(transacao.valor) || 0;
         const dp = transacao.data_agendamento_pagamento;
+        const isCompleted = transacao.is_completed === true;
 
         if (dp) {
           try {
@@ -843,8 +849,12 @@ export class FinanceService {
             const dataAgSemHora = startOfDay(dataAg);
 
             if (dataAgSemHora <= hoje) {
-              saldoAtual += valor;
+              // Saldo atual: só conta se is_completed = true
+              if (isCompleted) {
+                saldoAtual += valor;
+              }
             } else {
+              // Saldo futuro: conta independente de is_completed
               saldoFuturo += valor;
             }
           } catch {
@@ -853,9 +863,13 @@ export class FinanceService {
         } else {
           const status = transacao.status;
           if (status === 'Agendado') {
+            // Saldo futuro: conta independente de is_completed
             saldoFuturo += valor;
           } else {
-            saldoAtual += valor;
+            // Saldo atual: só conta se is_completed = true
+            if (isCompleted) {
+              saldoAtual += valor;
+            }
           }
         }
       });
@@ -1142,6 +1156,7 @@ static async getResumoMensalFinanceiro(userId: string): Promise<{ totalReceitas:
   ): Promise<PeriodBalance> {
     try {
       // 1. Busca todas as transações do usuário (eficiente para filtrar na memória)
+      // Nota: o select('*') já inclui is_completed
       const { data, error } = await supabase
         .from('transacoes_financeiras')
         .select('*')
