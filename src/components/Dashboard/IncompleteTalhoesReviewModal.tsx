@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { format } from 'date-fns';
-import { Talhao } from '../../lib/supabase';
+import { formatDateTimeBR, parseDateFromDB } from '../../lib/dateUtils';
 import NfDeleteConfirmModal from '../Estoque/NfDeleteConfirmModal';
 import type { Talhao as TalhaoType } from '../../lib/supabase';
-import TalhaoEditModal from './ActivityEditModal';
+import TalhaoEditModal from './TalhaoEditModal';
 
 interface Props {
   isOpen: boolean;
@@ -28,15 +27,14 @@ export default function IncompleteTalhoesReviewModal({ isOpen, talhoes, onClose,
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-sm font-semibold text-[#004417] truncate">{t.nome || 'Talhão sem nome'}</div>
-          <div className="mt-1 text-xs text-[#092f20]">Área: {t.area ?? '-' } ha</div>
-          <div className="mt-1 text-xs text-[#092f20]">Cultura: {t.cultura || '-'}</div>
+          <div className="mt-1 text-xs text-[#092f20]">Área: {t.area ?? '-'} ha</div>
+          <div className="mt-1 text-xs text-[#092f20]">Produtividade (sacas): {t.produtividade_saca != null ? String(t.produtividade_saca) : '-'}</div>
+          <div className="mt-1 text-xs text-[#092f20]">Quantidade de pés: {t.quantidade_de_pes != null ? String(t.quantidade_de_pes) : '-'}</div>
           <div className="mt-1 text-xs text-[#092f20]">Variedade: {t.variedade_plantada || '-'}</div>
-          <div className="mt-1 text-xs text-[#092f20]">Ano de plantio: {t.ano_de_plantio ? String(t.ano_de_plantio) : '-'}</div>
+          <div className="mt-1 text-xs text-[#092f20]">Ano de plantio: {t.ano_de_plantio ? (() => { const d = parseDateFromDB(t.ano_de_plantio); return d && !isNaN(d.getTime()) ? String(d.getFullYear()) : String(t.ano_de_plantio).slice(0,4); })() : '-'}</div>
+          <div className="mt-1 text-xs text-[#004417]/65">{t.data_criacao ? `Lançado em ${formatDateTimeBR(t.data_criacao)}` : '-'}</div>
         </div>
-        <div className="text-right">
-          <div className="text-sm font-medium text-[#092f20]">{t.propriedade_id || '-'}</div>
-          <div className="text-xs text-[#092f20] mt-1 whitespace-nowrap">Criado: {t.data_criacao ? format(new Date(t.data_criacao), 'dd/MM/yyyy') : '-'}</div>
-        </div>
+        <div className="text-right" />
       </div>
 
       <div className="mt-3 flex items-center gap-2">
@@ -44,8 +42,16 @@ export default function IncompleteTalhoesReviewModal({ isOpen, talhoes, onClose,
         <button onClick={() => onConfirmItem(t.id_talhao || '')} className="flex-1 text-sm px-3 py-2 bg-[#397738] hover:bg-[#004417] text-white rounded">Confirmar</button>
         <button onClick={() => setDeleteTarget({ id: t.id_talhao || '', name: t.nome })} className="flex-1 text-sm px-3 py-2 bg-orange-50 hover:bg-orange-100 text-[#F7941F] rounded font-medium">Excluir</button>
       </div>
+
     </div>
   );
+
+  // Ordena talhões por `data_criacao` — mais recentes primeiro
+  const sortedTalhoes = (talhoes || []).slice().sort((a, b) => {
+    const ta = a?.data_criacao ? new Date(a.data_criacao).getTime() : 0;
+    const tb = b?.data_criacao ? new Date(b.data_criacao).getTime() : 0;
+    return tb - ta;
+  });
 
   const modal = (
     <div className="fixed inset-0 z-[9999] flex items-end sm:items-start justify-center pt-6 sm:pt-10 bg-black/40 h-screen min-h-screen overflow-auto">
@@ -61,13 +67,13 @@ export default function IncompleteTalhoesReviewModal({ isOpen, talhoes, onClose,
         </div>
 
         <div className="mt-6">
-          <div className="sm:hidden flex flex-col gap-4">
-            {talhoes.map(renderCard)}
+            <div className="sm:hidden flex flex-col gap-4">
+            {sortedTalhoes.map(renderCard)}
           </div>
 
           <div className="hidden sm:block overflow-auto bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {talhoes.map(renderCard)}
+              {sortedTalhoes.map(renderCard)}
             </div>
           </div>
         </div>
@@ -88,12 +94,12 @@ export default function IncompleteTalhoesReviewModal({ isOpen, talhoes, onClose,
           }}
         />
 
-        {/* Reutilizamos ActivityEditModal apenas como placeholder caso não exista TalhaoEditModal */}
+        {/* Modal de edição específico para talhões */}
         <TalhaoEditModal
           isOpen={!!editingTalhao}
-          transaction={editingTalhao as any}
+          talhao={editingTalhao}
           onClose={() => setEditingTalhao(null)}
-          onSave={async (id: string, payload: any) => { await onEdit(id, payload); }}
+          onSave={async (id: string, payload: Partial<TalhaoType>) => { await onEdit(id, payload); }}
         />
       </div>
     </div>

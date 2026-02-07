@@ -35,8 +35,11 @@ import { CotacaoService } from '../../services/cotacaoService';
 import { formatSmartCurrency } from '../../lib/currencyFormatter';
 import { TalhaoService } from '../../services/talhaoService';
 import { Usuario, TransacaoFinanceira, Talhao } from '../../lib/supabase';
+import type { ActivityPayload } from '../../types/activity';
 import IncompleteTalhoesBanner from './IncompleteTalhoesBanner';
 import IncompleteTalhoesReviewModal from './IncompleteTalhoesReviewModal';
+import IncompleteMaquinasBanner from './IncompleteMaquinasBanner';
+import IncompleteMaquinasReviewModal from './IncompleteMaquinasReviewModal';
 
 function WheatDollarIcon({ size = 20, className = "" }) {
   return (
@@ -110,8 +113,10 @@ export default function DashboardOverview() {
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [incompleteTalhoes, setIncompleteTalhoes] = useState<Talhao[]>([]);
   const [isTalhoesReviewOpen, setIsTalhoesReviewOpen] = useState(false);
-  const [incompleteActivities, setIncompleteActivities] = useState<TransacaoFinanceira[]>([]);
+  const [incompleteActivities, setIncompleteActivities] = useState<ActivityPayload[]>([]);
   const [isActivitiesReviewOpen, setIsActivitiesReviewOpen] = useState(false);
+  const [incompleteMaquinas, setIncompleteMaquinas] = useState<any[]>([]);
+  const [isMaquinasReviewOpen, setIsMaquinasReviewOpen] = useState(false);
     const [resumoMensalFinanceiro, setResumoMensalFinanceiro] = useState<ResumoMensalFinanceiro>({
     totalReceitas: 0,
     totalDespesas: 0,
@@ -129,6 +134,31 @@ export default function DashboardOverview() {
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  // Normaliza lançamentos retornados pelo ActivityService para o formato esperado pelos modais/cards
+  const normalizeActivities = (list: any[] = []) => {
+    return (list || []).map((l: any) => {
+      const talhoesLanc = l.lancamento_talhoes || l.talhoes || [];
+      const nomes = talhoesLanc
+        .map((t: any) => {
+          const match = (talhoesCafe || []).find((th: any) => th.id_talhao === t.talhao_id || th.id_talhao === t.talho_id || th.id === t.talhao_id || th.id === t.talho_id);
+          return match ? match.nome : t.talhao_id || t.talho_id || null;
+        })
+        .filter(Boolean as any);
+
+      const talhaoLabel = nomes.length > 0 ? nomes.join(', ') : (l.area_atividade || l.area || null);
+
+      return {
+        id: l.atividade_id || l.id,
+        descricao: l.nome_atividade || l.descricao || '',
+        data_atividade: l.data_atividade || l.created_at || null,
+        nome_talhao: talhaoLabel || 'Área não informada',
+        produtos: l.lancamento_produtos || [],
+        maquinas: l.lancamento_maquinas || [],
+        observacoes: l.observacoes || l.observacao || ''
+      };
+    });
+  };
 
   const loadDashboardData = async () => {
     try {
@@ -195,10 +225,32 @@ export default function DashboardOverview() {
         console.warn('Erro ao carregar transações incompletas:', e);
         setIncompleteTransactions([]);
       }
-      // carregar atividades (Supabase)
+      // carregar atividades (Supabase) e normalizar para ActivityPayload
       try {
         const incActs = await ActivityService.getLancamentos(currentUser.user_id, 100);
-        setIncompleteActivities(incActs || []);
+        const mappedIncActs = (incActs || []).map((l: any) => {
+          const talhoesLanc = l.lancamento_talhoes || l.talhoes || [];
+          const nomes = talhoesLanc
+            .map((t: any) => {
+              const match = (talhoes || []).find((th: any) => th.id_talhao === t.talhao_id || th.id_talhao === t.talho_id);
+              return match ? match.nome : t.talhao_id || t.talho_id || null;
+            })
+            .filter(Boolean as any);
+
+          const talhaoLabel = nomes.length > 0 ? nomes.join(', ') : (l.area_atividade || l.area || null);
+
+          return {
+            id: l.atividade_id || l.id,
+            descricao: l.nome_atividade || l.descricao || '',
+            data_atividade: l.data_atividade || l.created_at || null,
+            nome_talhao: talhaoLabel || 'Área não informada',
+            produtos: l.lancamento_produtos || [],
+            maquinas: l.lancamento_maquinas || [],
+            observacoes: l.observacoes || l.observacao || ''
+          };
+        });
+
+        setIncompleteActivities(mappedIncActs || []);
       } catch (e) {
         console.warn('Erro ao carregar atividades:', e);
         setIncompleteActivities([]);
@@ -217,6 +269,21 @@ export default function DashboardOverview() {
       } catch (e) {
         console.warn('Erro ao carregar talhões incompletos:', e);
         setIncompleteTalhoes([]);
+      }
+
+      // carregar máquinas incompletas (maquinas_equipamentos.is_completed = false)
+      try {
+        const { data: maqInc, error: maqError } = await supabase
+          .from('maquinas_equipamentos')
+          .select('*')
+          .eq('user_id', currentUser.user_id)
+          .eq('is_completed', false);
+
+        if (maqError) throw maqError;
+        setIncompleteMaquinas(maqInc || []);
+      } catch (e) {
+        console.warn('Erro ao carregar máquinas incompletas:', e);
+        setIncompleteMaquinas([]);
       }
       setOverallBalance(overall);
       // Sincroniza o saldo do dashboard com o resultado canônico do serviço
@@ -424,19 +491,30 @@ export default function DashboardOverview() {
         </div>
       )}
 
-      {/* Incomplete transactions (mock) — mostrar primeiro para o usuário */}
-      <div className="mb-6">
-        <IncompleteFinancialBanner count={incompleteTransactions.length} onReview={() => setIsReviewOpen(true)} />
-      </div>
+      {/* Incomplete talhões banner (mostrar apenas se houver 1+ talhão incompleto) */}
+      {incompleteTalhoes.length > 0 && (
+        <div className="mb-6">
+          <IncompleteTalhoesBanner count={incompleteTalhoes.length} onReview={() => setIsTalhoesReviewOpen(true)} />
+        </div>
+      )}
+
+      {/* Incomplete machines banner (mostrar apenas se houver 1+ máquina incompleta) */}
+      {incompleteMaquinas.length > 0 && (
+        <div className="mb-6">
+          <IncompleteMaquinasBanner count={incompleteMaquinas.length} onReview={() => setIsMaquinasReviewOpen(true)} />
+        </div>
+      )}
+
+      {/* Incomplete transactions (mostrar apenas se existir 1+ transação incompleta) */}
+      {incompleteTransactions.length > 0 && (
+        <div className="mb-6">
+          <IncompleteFinancialBanner count={incompleteTransactions.length} onReview={() => setIsReviewOpen(true)} />
+        </div>
+      )}
 
       {/* Incomplete activities banner */}
       <div className="mb-6">
         <IncompleteActivitiesBanner count={incompleteActivities.length} onReview={() => setIsActivitiesReviewOpen(true)} />
-      </div>
-
-      {/* Incomplete talhões banner */}
-      <div className="mb-6">
-        <IncompleteTalhoesBanner count={incompleteTalhoes.length} onReview={() => setIsTalhoesReviewOpen(true)} />
       </div>
 
       <IncompleteTalhoesReviewModal
@@ -522,6 +600,88 @@ export default function DashboardOverview() {
             setIncompleteTalhoes(talhoesInc || []);
           }
           setIsTalhoesReviewOpen(false);
+        }}
+      />
+
+      <IncompleteMaquinasReviewModal
+        isOpen={isMaquinasReviewOpen}
+        maquinas={incompleteMaquinas}
+        onClose={() => setIsMaquinasReviewOpen(false)}
+        onEdit={async (id, payload) => {
+          try {
+            setIncompleteMaquinas((prev) => (prev || []).map(m => (m.id_maquina === id ? { ...m, ...payload } : m)));
+            await supabase.from('maquinas_equipamentos').update(payload).eq('id_maquina', id);
+          } catch (err) {
+            console.error('Erro ao atualizar máquina:', err);
+          }
+          // reload incompletas
+          const currentUser = AuthService.getInstance().getCurrentUser();
+          if (currentUser) {
+            try {
+              const { data: maqInc } = await supabase
+                .from('maquinas_equipamentos')
+                .select('*')
+                .eq('user_id', currentUser.user_id)
+                .eq('is_completed', false);
+              setIncompleteMaquinas(maqInc || []);
+            } catch (e) {
+              console.warn('Erro ao recarregar máquinas incompletas:', e);
+            }
+          }
+        }}
+        onDelete={async (id) => {
+          try {
+            await supabase.from('maquinas_equipamentos').delete().eq('id_maquina', id);
+          } catch (err) {
+            console.error('Erro ao deletar máquina:', err);
+          }
+          const currentUser = AuthService.getInstance().getCurrentUser();
+          if (currentUser) {
+            try {
+              const { data: maqInc } = await supabase
+                .from('maquinas_equipamentos')
+                .select('*')
+                .eq('user_id', currentUser.user_id)
+                .eq('is_completed', false);
+              setIncompleteMaquinas(maqInc || []);
+            } catch (e) {
+              console.warn('Erro ao recarregar máquinas incompletas:', e);
+            }
+          }
+        }}
+        onConfirmItem={async (id) => {
+          try {
+            await supabase.from('maquinas_equipamentos').update({ is_completed: true }).eq('id_maquina', id);
+          } catch (err) {
+            console.error('Erro ao confirmar máquina:', err);
+          }
+          const currentUser = AuthService.getInstance().getCurrentUser();
+          if (currentUser) {
+            const { data: maqInc } = await supabase
+              .from('maquinas_equipamentos')
+              .select('*')
+              .eq('user_id', currentUser.user_id)
+              .eq('is_completed', false);
+            setIncompleteMaquinas(maqInc || []);
+          }
+        }}
+        onConfirmAll={async () => {
+          try {
+            const currentUser = AuthService.getInstance().getCurrentUser();
+            if (currentUser) await supabase.from('maquinas_equipamentos').update({ is_completed: true }).eq('user_id', currentUser.user_id).eq('is_completed', false);
+          } catch (err) {
+            console.error('Erro ao confirmar todas máquinas:', err);
+          }
+          const currentUser2 = AuthService.getInstance().getCurrentUser();
+          if (currentUser2) {
+            const { data: maqInc } = await supabase
+              .from('maquinas_equipamentos')
+              .select('*')
+              .eq('user_id', currentUser2.user_id)
+              .eq('is_completed', false);
+            setIncompleteMaquinas(maqInc || []);
+          }
+          setIsMaquinasReviewOpen(false);
         }}
       />
 
@@ -614,7 +774,7 @@ export default function DashboardOverview() {
           }
           const userId = AuthService.getInstance().getCurrentUser()?.user_id || '';
           const updated = await ActivityService.getLancamentos(userId, 100);
-          setIncompleteActivities(updated || []);
+          setIncompleteActivities(normalizeActivities(updated || []));
         }}
         onDelete={async (id) => {
           try {
@@ -624,17 +784,17 @@ export default function DashboardOverview() {
           }
           const userId = AuthService.getInstance().getCurrentUser()?.user_id || '';
           const updated = await ActivityService.getLancamentos(userId, 100);
-          setIncompleteActivities(updated || []);
+          setIncompleteActivities(normalizeActivities(updated || []));
         }}
         onConfirmItem={async (id) => {
           try {
-            await ActivityService.updateLancamento(id, { esperando_por_anexo: false });
+            await ActivityService.updateLancamento(id, { esperando_por_anexo: false } as any);
           } catch (err) {
             console.error('Erro ao marcar atividade como completa:', err);
           }
           const userId = AuthService.getInstance().getCurrentUser()?.user_id || '';
           const updated = await ActivityService.getLancamentos(userId, 100);
-          setIncompleteActivities(updated || []);
+          setIncompleteActivities(normalizeActivities(updated || []));
         }}
         onConfirmAll={async () => {
           const userId = AuthService.getInstance().getCurrentUser()?.user_id || '';
@@ -642,13 +802,13 @@ export default function DashboardOverview() {
           for (const t of current) {
             try {
               const idToUpdate = (t as any).atividade_id || (t as any).id;
-              if (idToUpdate) await ActivityService.updateLancamento(idToUpdate, { esperando_por_anexo: false });
+              if (idToUpdate) await ActivityService.updateLancamento(idToUpdate, { esperando_por_anexo: false } as any);
             } catch (err) {
               console.error('Erro ao marcar atividade como completa:', err, t);
             }
           }
           const updated = await ActivityService.getLancamentos(userId, 100);
-          setIncompleteActivities(updated || []);
+          setIncompleteActivities(normalizeActivities(updated || []));
           setIsActivitiesReviewOpen(false);
         }}
       />

@@ -118,8 +118,9 @@ export default function MinhaFazendaPanel() {
   }
 
   const talhoesCafe = talhoes.filter(t => t.cultura === 'Café');
-  const talhoesAtivos = talhoesCafe.filter(t => t.ativo);
-  const talhoesInativos = talhoesCafe.filter(t => !t.ativo);
+  // Agora consideramos 'is_completed' como indicador de talhão válido/completo
+  const talhoesCompletos = talhoesCafe.filter(t => Boolean(t.is_completed));
+  const talhoesIncompletos = talhoesCafe.filter(t => !t.is_completed);
 
   // Confirmation Modal Component
   const ConfirmationModal = () => {
@@ -319,21 +320,21 @@ export default function MinhaFazendaPanel() {
               <span className="text-sm font-medium text-[#004417]">Total de Talhões</span>
             </div>
             <p className="text-2xl font-bold text-[#004417] mb-1">{talhoesCafe.length}</p>
-            <p className="text-xs text-[rgba(0,68,23,0.7)]">{talhoesAtivos.length} ativos</p>
+            <p className="text-xs text-[rgba(0,68,23,0.7)]">{talhoesCompletos.length} completos</p>
           </div>
         </div>
       </div>
 
       {/* Talhões Ativos */}
       <TalhaoList 
-        talhoes={talhoesAtivos}
+        talhoes={talhoesCompletos}
         title="Talhões Ativos"
         emptyMessage="Nenhum talhão ativo encontrado"
       />
 
-      {/* Talhões Inativos */}
+      {/* Talhões Incompletos */}
       <TalhaoList 
-        talhoes={talhoesInativos}
+        talhoes={talhoesIncompletos}
         title="Talhões Inativos"
         emptyMessage="Nenhum talhão inativo encontrado"
       />

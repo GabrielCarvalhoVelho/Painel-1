@@ -179,9 +179,29 @@ export default function TransactionEditModal({ isOpen, transaction, onClose, onS
       // - caso contrário, usar `data_transacao` informado localmente (se houver).
       const dataTransacaoForSave = raw.status === 'Pago' && raw.data_agendamento_pagamento ? raw.data_agendamento_pagamento : (raw.data_transacao || undefined);
 
+      // Normalize numeric value and enforce sign based on transaction type
+      const toNumber = (v: any): number | undefined => {
+        if (v === undefined || v === null || v === '') return undefined;
+        if (typeof v === 'number') return Number(v);
+        // accept strings like "1.234,56" or "1234.56"
+        const s = String(v).replace(/\./g, '').replace(',', '.');
+        const n = Number(s);
+        return Number.isNaN(n) ? undefined : n;
+      };
+
+      let valorNumber = toNumber(raw.valor);
+      if (valorNumber !== undefined) {
+        const tipo = String(raw.tipo_transacao || raw.tipo_transacao || '').toLowerCase();
+        if (tipo === 'gasto') {
+          valorNumber = -Math.abs(valorNumber);
+        } else {
+          valorNumber = Math.abs(valorNumber);
+        }
+      }
+
       const payloadTransacao: Partial<TransacaoFinanceira> = {
         descricao: raw.descricao || undefined,
-        valor: raw.valor !== undefined && raw.valor !== null ? Number(raw.valor) : undefined,
+        valor: valorNumber,
         categoria: raw.categoria || undefined,
         pagador_recebedor: raw.pagador_recebedor || undefined,
         forma_pagamento_recebimento: raw.forma_pagamento || raw.forma_pagamento_recebimento || undefined,
@@ -192,12 +212,14 @@ export default function TransactionEditModal({ isOpen, transaction, onClose, onS
         parcela: raw.condicao_pagamento === 'Parcelado' ? (raw.parcela || raw.condicao || undefined) : null,
         // Garantir que transações à vista tenham 1 parcela (evita enviar 0)
         numero_parcelas: raw.condicao_pagamento === 'Parcelado' ? (raw.numero_parcelas ?? undefined) : 1,
-        data_primeira_parcela: toDate(raw.data_primeira_parcela),
         data_agendamento_pagamento: toDate(raw.data_agendamento_pagamento),
         data_transacao: toDate(dataTransacaoForSave),
         tipo_transacao: raw.tipo_transacao ? String(raw.tipo_transacao).toUpperCase() : undefined,
         nome_talhao: raw.nome_talhao || undefined,
       };
+
+      // campo extra que existe no banco mas não no tipo TS
+      (payloadTransacao as any).data_primeira_parcela = toDate(raw.data_primeira_parcela);
 
       // Marcar transação como pai quando a condição for parcelado
       (payloadTransacao as any).eh_transacao_pai = raw.condicao_pagamento === 'Parcelado' ? true : undefined;

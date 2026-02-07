@@ -47,7 +47,7 @@ export class TalhaoService {
         .in('id_propriedade', propriedadeIds)
         .eq('cultura', 'Café')
         .eq('talhao_default', false)
-        .eq('ativo', true);
+        .or('ativo.eq.true,is_completed.eq.true');
 
       if (error) {
         console.error('Error calculating coffee area:', error);
@@ -109,7 +109,7 @@ static async getTotalProducaoFazenda(
       .select('area, produtividade_saca, nome') // Including nome for debugging
       .in('id_propriedade', propriedadesIds)
       .eq('talhao_default', false)
-      .eq('ativo', true);
+      .or('ativo.eq.true,is_completed.eq.true');
 
     if (talhaoError) throw talhaoError;
     if (!talhoes || !talhoes.length) return 0;
@@ -207,7 +207,7 @@ static async getTotalProducaoFazenda(
         .eq('cultura', 'Café');
 
       if (options?.onlyActive !== false) {
-        talhaoQuery = talhaoQuery.eq('ativo', true);
+        talhaoQuery = talhaoQuery.or('ativo.eq.true,is_completed.eq.true');
       }
 
       const { data: talhoes, error } = await talhaoQuery;
@@ -274,7 +274,7 @@ static async getTalhoesNonDefault(
         .eq('talhao_default', false);  // Only non-default talhões
       
       if (options?.onlyActive !== false) {
-        talhaoQuery = talhaoQuery.eq('ativo', true);
+        talhaoQuery = talhaoQuery.or('ativo.eq.true,is_completed.eq.true');
       }
       
       const { data: talhoes, error } = await talhaoQuery;
@@ -340,7 +340,7 @@ static async getTalhoesNonDefault(
         .eq('criado_por', userId);
 
       if (options?.onlyActive !== false) {
-        query = query.eq('ativo', true);
+        query = query.or('ativo.eq.true,is_completed.eq.true');
       }
 
       if (options?.cultura) {

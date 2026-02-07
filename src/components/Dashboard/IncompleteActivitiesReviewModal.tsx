@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ActivityPayload } from '../../types/activity';
 import ActivityEditModal from './ActivityEditModal';
-import { formatDateBR } from '../../lib/dateUtils';
+import { formatDateBR, formatDateTimeBR } from '../../lib/dateUtils';
 import NfDeleteConfirmModal from '../Estoque/NfDeleteConfirmModal';
 
 interface Props {
@@ -44,7 +44,6 @@ export default function IncompleteActivitiesReviewModal({ isOpen, activities, on
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-[#004417] truncate">{act.descricao}</div>
                     <div className="mt-1 text-xs text-[#092f20]">Talhão: {act.nome_talhao || '-'}</div>
-                    <div className="mt-1 text-xs text-[#092f20]">Data: {act.data_atividade ? formatDateBR(act.data_atividade) : '-'}</div>
                     {(act.produtos && act.produtos.length > 0) && (
                       <div className="mt-2 text-xs text-[#092f20]">
                         <div className="font-semibold text-[13px] text-[#004417]">Produtos:</div>
@@ -91,8 +90,7 @@ export default function IncompleteActivitiesReviewModal({ isOpen, activities, on
                       <div className="mt-1 text-xs text-[#092f20]">{''}</div>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm font-medium text-[#092f20] whitespace-nowrap">{act.nome_talhao || '-'}</div>
-                      <div className="text-xs text-[#092f20] mt-1 whitespace-nowrap">{act.data_atividade ? formatDateBR(act.data_atividade) : '-'}</div>
+                        <div className="text-sm font-medium text-[#092f20] whitespace-nowrap">{act.nome_talhao || '-'}</div>
                     </div>
                   </div>
 
@@ -117,6 +115,10 @@ export default function IncompleteActivitiesReviewModal({ isOpen, activities, on
                       </ul>
                     </div>
                   )}
+
+                  <div className="mt-2 text-xs text-[#004417]/65">
+                    {act.data_atividade ? `Lançado em ${formatDateTimeBR(act.data_atividade)}` : '-'}
+                  </div>
 
                   <div className="mt-3 flex items-center gap-2">
                     <button onClick={() => setEditingActivity(act)} className="flex-1 text-sm px-3 py-2 bg-[#86b646] bg-opacity-10 hover:bg-[#86b646] hover:bg-opacity-20 text-[#004417] rounded transition-colors">Editar</button>
