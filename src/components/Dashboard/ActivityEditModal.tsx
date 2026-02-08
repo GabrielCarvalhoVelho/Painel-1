@@ -57,18 +57,19 @@ export default function ActivityEditModal({ isOpen, transaction, onClose, onSave
         // Buscar produtos vinculados na tabela lancamento_produtos
         const { data: produtosVinculados, error: errorProd } = await supabase
           .from('lancamento_produtos')
-          .select('id, nome_produto, quantidade_val, quantidade_un, unidade_medida')
+          .select('id, nome_produto, quantidade_val, quantidade_un, unidade_medida, produto_id')
           .eq('atividade_id', transaction.id);
 
         if (errorProd) {
           console.error('Erro ao carregar produtos vinculados:', errorProd);
         }
 
-        const produtos = (produtosVinculados || []).map(p => ({
+        const produtos = (produtosVinculados || []).map((p: any) => ({
           id: String(p.id),
           nome: p.nome_produto || '',
           quantidade: p.quantidade_val ? String(p.quantidade_val) : '',
-          unidade: p.quantidade_un || p.unidade_medida || 'kg'
+          unidade: p.quantidade_un || p.unidade_medida || 'kg',
+          produto_id: p.produto_id // Adicionar campo para rastrear se está cadastrado
         }));
 
         // Preencher campos relevantes para atividade agrícola
@@ -168,10 +169,31 @@ export default function ActivityEditModal({ isOpen, transaction, onClose, onSave
       if (local?.talhao_ids) {
         payload.talhoes = local.talhao_ids.map(id => ({ talhao_id: id } as any));
       }
+      
+      console.log('📝 ActivityEditModal - Iniciando salvamento');
+      console.log('Transaction ID:', transaction?.id);
+      console.log('Payload completo:', payload);
+      console.log('Descricao:', payload.descricao);
+      console.log('Data:', payload.data_atividade);
+      console.log('Talhoes IDs:', payload.talhao_ids);
+      console.log('Produtos:', payload.produtos);
+      console.log('Maquinas:', payload.maquinas);
+      console.log('Responsáveis:', payload.responsaveis);
+      console.log('Observações:', payload.observacoes);
+      
       await onSave(transaction?.id || '', payload);
+      console.log('✅ Atividade salva com sucesso');
       onClose();
-    } catch (e) {
-      console.error('Erro ao salvar atividade:', e);
+    } catch (e: any) {
+      console.error('❌ Erro ao salvar atividade:', e);
+      console.error('Erro detalhado:', {
+        message: e?.message,
+        status: e?.status,
+        statusText: e?.statusText,
+        data: e?.data,
+        error: e?.error,
+        errorDescription: e?.error?.message || e?.error?.description
+      });
       onClose();
     } finally {
       setSaving(false);
@@ -303,8 +325,16 @@ export default function ActivityEditModal({ isOpen, transaction, onClose, onSave
             </div>
 
             <div className="mt-3 space-y-3">
-              {(local?.produtos || []).map((p, idx) => (
+              {(local?.produtos || []).map((p: any, idx) => (
                 <div key={p.id || idx} className="grid grid-cols-1 sm:grid-cols-6 gap-2 items-end">
+                  {/* Alerta se produto não está cadastrado no estoque */}
+                  {!p.produto_id && (
+                    <div className="col-span-1 sm:col-span-6 bg-orange-50 border border-orange-200 rounded p-2 text-sm text-orange-700 flex items-center gap-2">
+                      <span>⚠️</span>
+                      <span>Este produto não está cadastrado no estoque</span>
+                    </div>
+                  )}
+                  
                   <div className="col-span-1 sm:col-span-2">
                     {availableProdutos.length > 0 ? (
                       (() => {
@@ -382,8 +412,8 @@ export default function ActivityEditModal({ isOpen, transaction, onClose, onSave
                     <option value="g">g</option>
                     <option value="kg">kg</option>
                     <option value="ton">ton</option>
-                    <option value="ml">ml</option>
-                    <option value="l">l</option>
+                    <option value="mL">mL</option>
+                    <option value="L">L</option>
                     <option value="un">un</option>
                   </select>
 

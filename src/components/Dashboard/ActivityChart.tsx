@@ -3,6 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 // legacy AtividadeComData removed from service; we only need the `data` field here
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { BarChart3 } from 'lucide-react';
 
 interface ActivityChartProps {
   activities: { data?: string }[];
@@ -95,8 +96,10 @@ export default function ActivityChart({ activities }: ActivityChartProps) {
           </ResponsiveContainer>
         </div>
       ) : (
-        <div className="h-64 flex items-center justify-center">
-          <p className="text-[#004417]/70">Nenhuma atividade nos últimos 30 dias</p>
+        <div className="text-center py-8 text-[#004417]/70">
+          <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-50 text-[#00A651]" />
+          <p>Nenhuma atividade nos últimos 30 dias</p>
+          <p className="text-sm">Registre atividades via WhatsApp do ZÉ</p>
         </div>
       )}
     </div>

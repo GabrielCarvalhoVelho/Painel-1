@@ -1,6 +1,6 @@
 // React import not required with new JSX runtime
 import ActivityCard from './ActivityCard';
-import { Sprout } from 'lucide-react';
+import { Sprout, CheckCircle } from 'lucide-react';
 
 interface ActivityListProps {
   activities: Array<{
@@ -47,7 +47,9 @@ export default function ActivityList({ activities }: ActivityListProps) {
       <div>
         {sortedActivities.length === 0 ? (
           <div className="text-center py-8 text-[#004417]/70">
+            <Sprout className="w-12 h-12 mx-auto mb-3 opacity-50 text-[#00A651]" />
             <p>Nenhuma atividade encontrada</p>
+            <p className="text-sm">Registre atividades via WhatsApp do ZÉ</p>
           </div>
         ) : (
           sortedActivities.map((activity, idx) => (

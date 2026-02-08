@@ -9,6 +9,7 @@ import type {
 } from '../lib/supabase';
 import { format, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { AuthService } from './authService';
 
 export interface LancamentoComData extends LancamentoAgricola {
   dataFormatada: string;
@@ -147,15 +148,140 @@ export class ActivityService {
     return { data: lancData, inserts: insertResults };
   }
 
-  static async updateLancamento(atividade_id: string, changes: Partial<LancamentoAgricola>) {
-    const { data, error } = await supabase
-      .from('lancamentos_agricolas')
-      .update(changes)
-      .eq('atividade_id', atividade_id)
-      .select()
-      .single();
+  static async updateLancamento(atividade_id: string, changes: Partial<any>) {
+    console.log('🔄 ActivityService.updateLancamento() - Iniciando atualização');
+    console.log('Atividade ID:', atividade_id);
+    console.log('Changes (payload):', changes);
 
-    return { data, error };
+    const userId = AuthService.getInstance().getCurrentUser()?.user_id;
+
+    // ═══ 1) Mapear campos do frontend → colunas reais do banco ═══
+    const dbChanges: Record<string, any> = {};
+
+    // descricao (frontend) → nome_atividade (banco)
+    if ('descricao' in changes && changes.descricao !== undefined) {
+      dbChanges.nome_atividade = changes.descricao;
+    }
+    if ('nome_atividade' in changes) dbChanges.nome_atividade = changes.nome_atividade;
+
+    // data_atividade → garantir formato date (sem timestamp)
+    if ('data_atividade' in changes && changes.data_atividade !== undefined) {
+      dbChanges.data_atividade = changes.data_atividade ? String(changes.data_atividade).slice(0, 10) : null;
+    }
+
+    // observacoes (frontend, plural) → observacao (banco, singular)
+    if ('observacoes' in changes && changes.observacoes !== undefined) {
+      dbChanges.observacao = changes.observacoes;
+    }
+    if ('observacao' in changes) dbChanges.observacao = changes.observacao;
+
+    // nome_talhao (frontend) → area_atividade (banco)
+    if ('nome_talhao' in changes && changes.nome_talhao !== undefined) {
+      dbChanges.area_atividade = changes.nome_talhao;
+    }
+    if ('area_atividade' in changes) dbChanges.area_atividade = changes.area_atividade;
+
+    // Campos que existem diretamente na tabela
+    if ('esperando_por_anexo' in changes) dbChanges.esperando_por_anexo = changes.esperando_por_anexo;
+    if ('is_completed' in changes) dbChanges.is_completed = changes.is_completed;
+    if ('estoque_excedido' in changes) dbChanges.estoque_excedido = changes.estoque_excedido;
+
+    console.log('Payload mapeado para o banco:', dbChanges);
+
+    // ═══ 2) Atualizar tabela principal ═══
+    let mainResult = { data: null as any, error: null as any };
+    if (Object.keys(dbChanges).length > 0) {
+      const { data, error } = await supabase
+        .from('lancamentos_agricolas')
+        .update(dbChanges)
+        .eq('atividade_id', atividade_id)
+        .select()
+        .single();
+
+      mainResult = { data, error };
+      if (error) {
+        console.error('❌ Erro ao atualizar lancamentos_agricolas:', error);
+      } else {
+        console.log('✅ Tabela principal atualizada:', data);
+      }
+    }
+
+    // ═══ 3) Atualizar talhões vinculados (lancamento_talhoes) ═══
+    if (changes.talhao_ids || changes.talhoes) {
+      const talhaoIds: string[] = changes.talhao_ids || (changes.talhoes || []).map((t: any) => t.talhao_id);
+      try {
+        await supabase.from('lancamento_talhoes').delete().eq('atividade_id', atividade_id);
+        if (talhaoIds.length > 0) {
+          const rows = talhaoIds.map((id: string) => ({ atividade_id, talhao_id: id, user_id: userId }));
+          const { error: errTalhoes } = await supabase.from('lancamento_talhoes').insert(rows);
+          if (errTalhoes) console.error('❌ Erro ao atualizar talhões:', errTalhoes);
+          else console.log('✅ Talhões atualizados:', talhaoIds);
+        }
+      } catch (e) {
+        console.error('❌ Erro ao atualizar talhões:', e);
+      }
+    }
+
+    // ═══ 4) Atualizar responsáveis (lancamento_responsaveis) ═══
+    if (changes.responsaveis) {
+      try {
+        await supabase.from('lancamento_responsaveis').delete().eq('atividade_id', atividade_id);
+        const validResp = (changes.responsaveis as any[]).filter((r: any) => r.nome && r.nome.trim());
+        if (validResp.length > 0) {
+          const rows = validResp.map((r: any) => ({ atividade_id, nome: r.nome.trim(), user_id: userId }));
+          const { error: errResp } = await supabase.from('lancamento_responsaveis').insert(rows);
+          if (errResp) console.error('❌ Erro ao atualizar responsáveis:', errResp);
+          else console.log('✅ Responsáveis atualizados:', validResp.length);
+        }
+      } catch (e) {
+        console.error('❌ Erro ao atualizar responsáveis:', e);
+      }
+    }
+
+    // ═══ 5) Atualizar produtos (lancamento_produtos) ═══
+    if (changes.produtos) {
+      try {
+        await supabase.from('lancamento_produtos').delete().eq('atividade_id', atividade_id);
+        const validProd = (changes.produtos as any[]).filter((p: any) => p.nome && p.nome.trim());
+        if (validProd.length > 0) {
+          const rows = validProd.map((p: any) => ({
+            atividade_id,
+            nome_produto: p.nome.trim(),
+            quantidade_val: p.quantidade ? Number(p.quantidade) : null,
+            quantidade_un: p.unidade || null,
+            user_id: userId
+          }));
+          const { error: errProd } = await supabase.from('lancamento_produtos').insert(rows);
+          if (errProd) console.error('❌ Erro ao atualizar produtos:', errProd);
+          else console.log('✅ Produtos atualizados:', validProd.length);
+        }
+      } catch (e) {
+        console.error('❌ Erro ao atualizar produtos:', e);
+      }
+    }
+
+    // ═══ 6) Atualizar máquinas (lancamento_maquinas) ═══
+    if (changes.maquinas) {
+      try {
+        await supabase.from('lancamento_maquinas').delete().eq('atividade_id', atividade_id);
+        const validMaq = (changes.maquinas as any[]).filter((m: any) => m.nome && m.nome.trim());
+        if (validMaq.length > 0) {
+          const rows = validMaq.map((m: any) => ({
+            atividade_id,
+            nome_maquina: m.nome.trim(),
+            horas_maquina: m.horas ? Number(m.horas) : null,
+            user_id: userId
+          }));
+          const { error: errMaq } = await supabase.from('lancamento_maquinas').insert(rows);
+          if (errMaq) console.error('❌ Erro ao atualizar máquinas:', errMaq);
+          else console.log('✅ Máquinas atualizadas:', validMaq.length);
+        }
+      } catch (e) {
+        console.error('❌ Erro ao atualizar máquinas:', e);
+      }
+    }
+
+    return mainResult;
   }
 
   static async deleteLancamento(atividade_id: string) {

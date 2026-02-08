@@ -22,6 +22,18 @@ export default function IncompleteActivitiesReviewModal({ isOpen, activities, on
 
   if (!isOpen) return null;
 
+  // Debug: log activities to check structure
+  console.log('🔍 IncompleteActivities modal activities:', activities);
+  activities.forEach(act => {
+    console.log(`Activity "${act.descricao}":`, { 
+      produtos: act.produtos, 
+      maquinas: act.maquinas,
+      created_at: act.created_at,
+      data_atividade: act.data_atividade,
+      updated_at: act.updated_at
+    });
+  });
+
   const modal = (
     <div className="fixed inset-0 z-[9999] flex items-end sm:items-start justify-center pt-6 sm:pt-10 bg-black/40 h-screen min-h-screen overflow-auto">
       <div className="w-[95vw] sm:w-[1400px] sm:max-w-[95vw] max-h-[calc(100vh-4rem)] sm:max-h-[calc(100vh-5rem)] overflow-auto bg-white sm:rounded-lg rounded-t-lg p-6">
@@ -44,12 +56,14 @@ export default function IncompleteActivitiesReviewModal({ isOpen, activities, on
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-[#004417] truncate">{act.descricao}</div>
                     <div className="mt-1 text-xs text-[#092f20]">Talhão: {act.nome_talhao || '-'}</div>
-                    {(act.produtos && act.produtos.length > 0) && (
+                    {(act.produtos && Array.isArray(act.produtos) && act.produtos.length > 0) && (
                       <div className="mt-2 text-xs text-[#092f20]">
                         <div className="font-semibold text-[13px] text-[#004417]">Produtos:</div>
                         <ul className="list-disc ml-4">
-                          {act.produtos.map((p) => (
-                            <li key={p.id} className="text-xs text-[#092f20]">{p.nome || '-'} — {p.quantidade || '-'} {p.unidade || ''}</li>
+                          {act.produtos.map((p: any, idx: number) => (
+                            <li key={p.id || idx} className="text-xs text-[#092f20]">
+                              {p.nome_produto || p.nome || '-'} — {p.quantidade_val || p.quantidade || '-'} {p.quantidade_un || p.unidade || ''}
+                            </li>
                           ))}
                         </ul>
                       </div>
@@ -57,16 +71,19 @@ export default function IncompleteActivitiesReviewModal({ isOpen, activities, on
                     {(act.observacoes) && (
                       <div className="mt-2 text-xs text-[#092f20]"><span className="font-semibold text-[13px] text-[#004417]">Observações:</span> {act.observacoes}</div>
                     )}
-                    {(act.maquinas && act.maquinas.length > 0) && (
+                    {(act.maquinas && Array.isArray(act.maquinas) && act.maquinas.length > 0) && (
                       <div className="mt-2 text-xs text-[#092f20]">
                         <div className="font-semibold text-[13px] text-[#004417]">Máquinas:</div>
                         <ul className="list-disc ml-4">
-                          {act.maquinas.map((m) => (
-                            <li key={m.id} className="text-xs text-[#092f20]">{m.nome || '-'} — {m.horas ? `${m.horas}h` : '-'}</li>
+                          {act.maquinas.map((m, idx) => (
+                            <li key={m.id || idx} className="text-xs text-[#092f20]">{m.nome || '-'} — {m.horas ? `${m.horas}h` : '-'}</li>
                           ))}
                         </ul>
                       </div>
                     )}
+                    <div className="mt-2 text-xs text-[#004417]/65">
+                      {act.created_at ? `Lançado em ${formatDateTimeBR(act.created_at)}` : '-'}
+                    </div>
                   </div>
                 </div>
 
@@ -94,30 +111,32 @@ export default function IncompleteActivitiesReviewModal({ isOpen, activities, on
                     </div>
                   </div>
 
-                  {(act.produtos && act.produtos.length > 0) && (
+                  {(act.produtos && Array.isArray(act.produtos) && act.produtos.length > 0) && (
                     <div className="mt-3 text-xs text-[#092f20]">
                       <div className="font-semibold text-[13px] text-[#004417]">Produtos:</div>
                       <ul className="list-disc ml-4">
-                        {act.produtos.map((p) => (
-                          <li key={p.id} className="text-xs text-[#092f20]">{p.nome || '-'} — {p.quantidade || '-'} {p.unidade || ''}</li>
+                        {act.produtos.map((p: any, idx: number) => (
+                          <li key={p.id || idx} className="text-xs text-[#092f20]">
+                            {p.nome_produto || p.nome || '-'} — {p.quantidade_val || p.quantidade || '-'} {p.quantidade_un || p.unidade || ''}
+                          </li>
                         ))}
                       </ul>
                     </div>
                   )}
 
-                  {(act.maquinas && act.maquinas.length > 0) && (
+                  {(act.maquinas && Array.isArray(act.maquinas) && act.maquinas.length > 0) && (
                     <div className="mt-2 text-xs text-[#092f20]">
                       <div className="font-semibold text-[13px] text-[#004417]">Máquinas:</div>
                       <ul className="list-disc ml-4">
-                        {act.maquinas.map((m) => (
-                          <li key={m.id} className="text-xs text-[#092f20]">{m.nome || '-'} — {m.horas ? `${m.horas}h` : '-'}</li>
+                        {act.maquinas.map((m, idx) => (
+                          <li key={m.id || idx} className="text-xs text-[#092f20]">{m.nome || '-'} — {m.horas ? `${m.horas}h` : '-'}</li>
                         ))}
                       </ul>
                     </div>
                   )}
 
                   <div className="mt-2 text-xs text-[#004417]/65">
-                    {act.data_atividade ? `Lançado em ${formatDateTimeBR(act.data_atividade)}` : '-'}
+                    {act.created_at ? `Lançado em ${formatDateTimeBR(act.created_at)}` : '-'}
                   </div>
 
                   <div className="mt-3 flex items-center gap-2">

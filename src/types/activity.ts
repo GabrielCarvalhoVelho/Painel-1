@@ -14,6 +14,8 @@ export interface MaquinaItem {
 export interface ActivityPayload {
   id?: string;
   data_atividade?: string;
+  created_at?: string;
+  updated_at?: string;
   // `nome_talhao` mantém compatibilidade com formatos antigos (string),
   // `talhoes` é a lista de vínculos para múltiplos talhões (cada item tem `talhao_id`).
   nome_talhao?: string;

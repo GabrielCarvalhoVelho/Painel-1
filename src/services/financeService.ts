@@ -166,6 +166,7 @@ export class FinanceService {
         `)
         .or('eh_transacao_pai.is.null,eh_transacao_pai.eq.false')
         .eq('user_id', userId)
+        .eq('is_completed', true)
         .order('data_agendamento_pagamento', { ascending: false })
         .limit(limit);
 
@@ -374,12 +375,13 @@ export class FinanceService {
       // 🔍 CORREÇÃO: Buscar TODAS as transações com tipo_transacao para identificar RECEITA vs GASTO
       const { data, error } = await supabase
         .from('transacoes_financeiras')
-        .select('valor, data_agendamento_pagamento, descricao, tipo_transacao')
+        .select('valor, data_agendamento_pagamento, descricao, tipo_transacao, is_completed')
         .eq('user_id', userId)
+        .eq('is_completed', true)
         .gte('data_agendamento_pagamento', format(dataInicio, 'yyyy-MM-dd'))
         .order('data_agendamento_pagamento', { ascending: true });
 
-      console.log('📊 Dados brutos da consulta:', {
+      console.log('📊 Dados brutos da consulta (apenas transações confirmadas):', {
         totalTransacoes: data?.length || 0,
         erro: error,
         primeiras5: data?.slice(0, 5).map(t => ({
@@ -605,6 +607,7 @@ export class FinanceService {
           )
         `)
         .eq('user_id', userId)
+        .eq('is_completed', true)
         .in('status', ['Agendado', 'Pago'])
         .gt('data_agendamento_pagamento', hoje)
         .order('data_agendamento_pagamento', { ascending: true })
@@ -666,6 +669,7 @@ export class FinanceService {
           )
         `)
         .eq('user_id', userId)
+        .eq('is_completed', true)
         .or(`status.neq.Agendado,and(status.eq.Agendado,data_agendamento_pagamento.lte.${hoje})`)
         .order('data_registro', { ascending: false })
         .order('data_agendamento_pagamento', { ascending: false })
@@ -834,14 +838,16 @@ export class FinanceService {
         return { saldoAtual: 0, saldoFuturo: 0, saldoProjetado: 0 };
       }
 
+      // 🔒 FILTRO CRÍTICO: Só trabalha com transações confirmadas (is_completed = true)
+      const transacoesConfirmadas = (data || []).filter((t: any) => t.is_completed === true);
+
       const hoje = startOfDay(new Date());
       let saldoAtual = 0;
       let saldoFuturo = 0;
 
-      (data || []).forEach((transacao: any) => {
+      transacoesConfirmadas.forEach((transacao: any) => {
         const valor = Number(transacao.valor) || 0;
         const dp = transacao.data_agendamento_pagamento;
-        const isCompleted = transacao.is_completed === true;
 
         if (dp) {
           try {
@@ -849,12 +855,10 @@ export class FinanceService {
             const dataAgSemHora = startOfDay(dataAg);
 
             if (dataAgSemHora <= hoje) {
-              // Saldo atual: só conta se is_completed = true
-              if (isCompleted) {
-                saldoAtual += valor;
-              }
+              // Saldo atual: transações confirmadas até hoje
+              saldoAtual += valor;
             } else {
-              // Saldo futuro: conta independente de is_completed
+              // Saldo futuro: transações confirmadas para o futuro
               saldoFuturo += valor;
             }
           } catch {
@@ -863,13 +867,11 @@ export class FinanceService {
         } else {
           const status = transacao.status;
           if (status === 'Agendado') {
-            // Saldo futuro: conta independente de is_completed
+            // Saldo futuro: transações confirmadas e agendadas
             saldoFuturo += valor;
           } else {
-            // Saldo atual: só conta se is_completed = true
-            if (isCompleted) {
-              saldoAtual += valor;
-            }
+            // Saldo atual: transações confirmadas sem data agendada
+            saldoAtual += valor;
           }
         }
       });
@@ -945,8 +947,9 @@ static async getResumoMensalFinanceiro(userId: string): Promise<{ totalReceitas:
 
     const { data, error } = await supabase
       .from('transacoes_financeiras')
-      .select('tipo_transacao, valor, status, data_agendamento_pagamento')
+      .select('tipo_transacao, valor, status, data_agendamento_pagamento, is_completed')
       .eq('user_id', userId)
+      .eq('is_completed', true)
       .gte('data_agendamento_pagamento', format(inicioMes, 'yyyy-MM-dd'))
       .lte('data_agendamento_pagamento', format(hoje, 'yyyy-MM-dd'));
 
@@ -1069,6 +1072,12 @@ static async getResumoMensalFinanceiro(userId: string): Promise<{ totalReceitas:
   private static isTransacaoProcessada(transacao: MaybeTransacao): boolean {
     if (!transacao) return true;
 
+    // 🔒 FILTRO CRÍTICO: Só considera processada se is_completed = true
+    const isCompleted = (transacao as any).is_completed === true;
+    if (!isCompleted) {
+      return false; // Se não está completa, não é processada
+    }
+
     // Se houver uma data de agendamento, respeitar a data explicitamente:
     // - se a data for futura (> hoje) => NÃO processada (futura)
     // - se a data for hoje ou passada => processada
@@ -1083,14 +1092,14 @@ static async getResumoMensalFinanceiro(userId: string): Promise<{ totalReceitas:
           return false; // transação agendada para o futuro
         }
 
-        return true; // data é hoje ou passada => considera processada
+        return true; // data é hoje ou passada + is_completed = true => considera processada
       } catch {
         // Se não conseguir parsear a data, cairá para a verificação por status abaixo
       }
     }
 
     // Se não houver data, ou houve erro no parse, usar o status como fallback:
-    // Considera processada quando status != 'Agendado'
+    // Considera processada quando status != 'Agendado' E is_completed = true
     return transacao.status !== 'Agendado';
   }
 
@@ -1171,6 +1180,13 @@ static async getResumoMensalFinanceiro(userId: string): Promise<{ totalReceitas:
         return this.getEmptyPeriodBalance();
       }
 
+      // 🔒 FILTRO CRÍTICO: Só trabalha com transações confirmadas (is_completed = true)
+      const transacoesConfirmadas = data.filter(t => (t as any).is_completed === true);
+
+      if (transacoesConfirmadas.length === 0) {
+        return this.getEmptyPeriodBalance();
+      }
+
       // 2. Determina as datas do período e se ele é estritamente futuro
       const { startDate, endDate, includeFuture } = this.getPeriodDates(
         filterPeriod,
@@ -1182,7 +1198,7 @@ static async getResumoMensalFinanceiro(userId: string): Promise<{ totalReceitas:
       const isFutureOnlyPeriod = filterPeriod === 'proximos-7-dias' || filterPeriod === 'proximos-30-dias';
 
       // 3. Filtra transações que pertencem ao período selecionado
-      const transacoesPeriodo = data.filter(t => {
+      const transacoesPeriodo = transacoesConfirmadas.filter(t => {
         const dataTransacao = this.getTransactionDate(t);
         if (!dataTransacao) return false;
         return dataTransacao >= startDate && dataTransacao <= endDate;
@@ -1477,7 +1493,7 @@ static async getTotalNegativeTransactions(userId: string): Promise<number> {
         filterPeriod
       });
   
-      // 2. BUSCA TODAS AS TRANSAÇÕES DO USUÁRIO
+      // 2. BUSCA TODAS AS TRANSAÇÕES DO USUÁRIO (APENAS CONFIRMADAS)
       // Ordenação composta: primeiro por data_registro (mais recente primeiro), depois por data_agendamento_pagamento
       const { data: todasTransacoes, error } = await supabase
         .from('transacoes_financeiras')
@@ -1492,6 +1508,7 @@ static async getTotalNegativeTransactions(userId: string): Promise<number> {
         `)
         .or('eh_transacao_pai.is.null,eh_transacao_pai.eq.false')
         .eq('user_id', userId)
+        .eq('is_completed', true)
         .order('data_registro', { ascending: false })
         .order('data_agendamento_pagamento', { ascending: false });
 
@@ -1500,7 +1517,7 @@ static async getTotalNegativeTransactions(userId: string): Promise<number> {
         return { realizadas: [], futuras: [] };
       }
 
-      console.log('📊 Total de transações encontradas:', todasTransacoes?.length || 0);
+      console.log('📊 Total de transações confirmadas encontradas:', todasTransacoes?.length || 0);
 
       const realizadas: TransacaoFinanceira[] = [];
       const futuras: TransacaoFinanceira[] = [];

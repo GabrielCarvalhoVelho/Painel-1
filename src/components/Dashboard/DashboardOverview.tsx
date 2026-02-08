@@ -136,13 +136,14 @@ export default function DashboardOverview() {
   }, []);
 
   // Normaliza lançamentos retornados pelo ActivityService para o formato esperado pelos modais/cards
-  const normalizeActivities = (list: any[] = []) => {
+  const normalizeActivities = (list: any[] = [], talhoesList?: any[]) => {
+    const talhoesRef = talhoesList || talhoesCafe || [];
     return (list || []).map((l: any) => {
       const talhoesLanc = l.lancamento_talhoes || l.talhoes || [];
       const nomes = talhoesLanc
         .map((t: any) => {
-          const match = (talhoesCafe || []).find((th: any) => th.id_talhao === t.talhao_id || th.id_talhao === t.talho_id || th.id === t.talhao_id || th.id === t.talho_id);
-          return match ? match.nome : t.talhao_id || t.talho_id || null;
+          const match = talhoesRef.find((th: any) => th.id_talhao === t.talhao_id || th.id_talhao === t.talho_id || th.id === t.talhao_id || th.id === t.talho_id);
+          return match ? match.nome : null;
         })
         .filter(Boolean as any);
 
@@ -152,6 +153,8 @@ export default function DashboardOverview() {
         id: l.atividade_id || l.id,
         descricao: l.nome_atividade || l.descricao || '',
         data_atividade: l.data_atividade || l.created_at || null,
+        created_at: l.created_at || null,
+        updated_at: l.updated_at || null,
         nome_talhao: talhaoLabel || 'Área não informada',
         produtos: l.lancamento_produtos || [],
         maquinas: l.lancamento_maquinas || [],
@@ -243,6 +246,8 @@ export default function DashboardOverview() {
             id: l.atividade_id || l.id,
             descricao: l.nome_atividade || l.descricao || '',
             data_atividade: l.data_atividade || l.created_at || null,
+            created_at: l.created_at || null,
+            updated_at: l.updated_at || null,
             nome_talhao: talhaoLabel || 'Área não informada',
             produtos: l.lancamento_produtos || [],
             maquinas: l.lancamento_maquinas || [],
@@ -378,9 +383,8 @@ export default function DashboardOverview() {
   value: FinanceService.formatCurrency(somaTransacoesAteHoje),
   change: (
     <div className="flex flex-col">
-      <span className="text-sm text-[#004417]/70">
-        Saldo projetado: {FinanceService.formatCurrency(periodBalanceDashboard.saldoProjetado ?? overallBalance.totalBalance)}
-      </span>
+      <span className="text-sm text-[#004417]/70">Saldo projetado:</span>
+      <span className="text-sm text-[#004417]/70">{FinanceService.formatCurrency(periodBalanceDashboard.saldoProjetado ?? 0)}</span>
     </div>
   ),
   changeType: 'neutral', // Changed from conditional to neutral
@@ -480,16 +484,6 @@ export default function DashboardOverview() {
 
   return (
     <div className="p-6 space-y-8">
-      {process.env.NODE_ENV === 'development' && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <h4 className="font-medium text-yellow-800 mb-2">Debug Info:</h4>
-          <div className="text-sm text-yellow-700 space-y-1">
-            <p>User ID: {AuthService.getInstance().getCurrentUser()?.user_id}</p>
-            <p>Dados carregados: {isDataLoaded ? 'Sim' : 'Não'}</p>
-            <p>Talhões de café: {talhoesCafe.length} (Área: {areaCultivada} ha)</p>
-          </div>
-        </div>
-      )}
 
       {/* Incomplete talhões banner (mostrar apenas se houver 1+ talhão incompleto) */}
       {incompleteTalhoes.length > 0 && (
@@ -512,10 +506,12 @@ export default function DashboardOverview() {
         </div>
       )}
 
-      {/* Incomplete activities banner */}
-      <div className="mb-6">
-        <IncompleteActivitiesBanner count={incompleteActivities.length} onReview={() => setIsActivitiesReviewOpen(true)} />
-      </div>
+      {/* Incomplete activities banner (mostrar apenas se houver 1+ atividade incompleta) */}
+      {incompleteActivities.length > 0 && (
+        <div className="mb-6">
+          <IncompleteActivitiesBanner count={incompleteActivities.length} onReview={() => setIsActivitiesReviewOpen(true)} />
+        </div>
+      )}
 
       <IncompleteTalhoesReviewModal
         isOpen={isTalhoesReviewOpen}
@@ -768,13 +764,23 @@ export default function DashboardOverview() {
         onClose={() => setIsActivitiesReviewOpen(false)}
         onEdit={async (id, payload) => {
           try {
+            console.log('📝 DashboardOverview - onEdit chamado');
+            console.log('Activity ID:', id);
+            console.log('Payload recebido:', payload);
+            
             await ActivityService.updateLancamento(id, payload as any);
+            
+            console.log('✅ ActivityService.updateLancamento concluído');
           } catch (err) {
-            console.error('Erro ao atualizar atividade:', err);
+            console.error('❌ Erro ao atualizar atividade no onEdit:', err);
           }
           const userId = AuthService.getInstance().getCurrentUser()?.user_id || '';
-          const updated = await ActivityService.getLancamentos(userId, 100);
-          setIncompleteActivities(normalizeActivities(updated || []));
+          const [updated, freshTalhoes] = await Promise.all([
+            ActivityService.getLancamentos(userId, 100),
+            TalhaoService.getTalhoesCafe(userId)
+          ]);
+          setTalhoesCafe(freshTalhoes);
+          setIncompleteActivities(normalizeActivities(updated || [], freshTalhoes));
         }}
         onDelete={async (id) => {
           try {
@@ -783,8 +789,12 @@ export default function DashboardOverview() {
             console.error('Erro ao deletar atividade:', err);
           }
           const userId = AuthService.getInstance().getCurrentUser()?.user_id || '';
-          const updated = await ActivityService.getLancamentos(userId, 100);
-          setIncompleteActivities(normalizeActivities(updated || []));
+          const [updated, freshTalhoes] = await Promise.all([
+            ActivityService.getLancamentos(userId, 100),
+            TalhaoService.getTalhoesCafe(userId)
+          ]);
+          setTalhoesCafe(freshTalhoes);
+          setIncompleteActivities(normalizeActivities(updated || [], freshTalhoes));
         }}
         onConfirmItem={async (id) => {
           try {
@@ -793,8 +803,12 @@ export default function DashboardOverview() {
             console.error('Erro ao marcar atividade como completa:', err);
           }
           const userId = AuthService.getInstance().getCurrentUser()?.user_id || '';
-          const updated = await ActivityService.getLancamentos(userId, 100);
-          setIncompleteActivities(normalizeActivities(updated || []));
+          const [updated, freshTalhoes] = await Promise.all([
+            ActivityService.getLancamentos(userId, 100),
+            TalhaoService.getTalhoesCafe(userId)
+          ]);
+          setTalhoesCafe(freshTalhoes);
+          setIncompleteActivities(normalizeActivities(updated || [], freshTalhoes));
         }}
         onConfirmAll={async () => {
           const userId = AuthService.getInstance().getCurrentUser()?.user_id || '';
@@ -807,8 +821,12 @@ export default function DashboardOverview() {
               console.error('Erro ao marcar atividade como completa:', err, t);
             }
           }
-          const updated = await ActivityService.getLancamentos(userId, 100);
-          setIncompleteActivities(normalizeActivities(updated || []));
+          const [updated, freshTalhoes] = await Promise.all([
+            ActivityService.getLancamentos(userId, 100),
+            TalhaoService.getTalhoesCafe(userId)
+          ]);
+          setTalhoesCafe(freshTalhoes);
+          setIncompleteActivities(normalizeActivities(updated || [], freshTalhoes));
           setIsActivitiesReviewOpen(false);
         }}
       />
@@ -867,12 +885,10 @@ export default function DashboardOverview() {
       {dadosGrafico.length > 0 && <FinancialChart data={dadosGrafico} />}
 
       {/* Transaction Sections */}
-      {transacoes.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-          <RecentTransactions transactions={transacoes} ultimas5={ultimas5Transacoes} />
-          <PlannedTransactions transactions={transacoes} proximas5={proximas5Transacoes} />
-        </div>
-      )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+        <RecentTransactions transactions={transacoes} ultimas5={ultimas5Transacoes} />
+        <PlannedTransactions transactions={transacoes} proximas5={proximas5Transacoes} />
+      </div>
 
       
 

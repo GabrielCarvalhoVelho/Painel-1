@@ -116,10 +116,9 @@ export default function RecentTransactions({ transactions, ultimas5 }: RecentTra
         <div className="space-y-4">
           {recentTransactions.length === 0 ? (
             <div className="text-center py-8 text-[#004417]/70">
-              <div className="flex items-center space-x-2 text-[#00A651]">
-                <p>Nenhuma transação executada encontrada</p>
-                <p className="text-sm">Registre transações via WhatsApp do ZÉ</p>
-              </div>
+              <CheckCircle className="w-12 h-12 mx-auto mb-3 opacity-50 text-[#00A651]" />
+              <p>Nenhuma transação executada encontrada</p>
+              <p className="text-sm">Registre transações via WhatsApp do ZÉ</p>
             </div>
           ) : (
             recentTransactions.map((transaction, idx) => {

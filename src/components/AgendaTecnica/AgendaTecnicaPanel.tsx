@@ -12,7 +12,8 @@ import {
   Coffee,
   Users,
   BookOpen,
-  TestTube
+  TestTube,
+  AlertCircle
 } from 'lucide-react';
 
 // Dados mockados dos eventos
@@ -347,8 +348,15 @@ export default function AgendaTecnicaPanel() {
           </div>
           
           <div className="divide-y divide-gray-200">
-            {eventosData.map(event => (
-              <div key={event.id} className="p-6 hover:bg-gray-50 transition-colors">
+            {eventosData.length === 0 ? (
+              <div className="text-center py-12 text-[#004417]/70 p-6">
+                <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50 text-[#00A651]" />
+                <p>Nenhuma atividade agendada</p>
+                <p className="text-sm">Acompanhe sua agenda técnica aqui</p>
+              </div>
+            ) : (
+              eventosData.map(event => (
+                <div key={event.id} className="p-6 hover:bg-gray-50 transition-colors">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-4">
                     <div className={`p-2 rounded-lg border ${getEventTypeColor(event.type)}`}>
@@ -385,7 +393,8 @@ export default function AgendaTecnicaPanel() {
                   </button>
                 </div>
               </div>
-            ))}
+            ))
+            )}
           </div>
         </div>
       )}
