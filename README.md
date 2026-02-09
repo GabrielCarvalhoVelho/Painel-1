@@ -3,6 +3,8 @@
 > **Sistema de Gestão Agrícola para Fazendas de Café**  
 > Desenvolvido pela Solos.ag — Painel completo para gerenciamento financeiro, operacional e técnico de propriedades cafeicultoras.
 
+**🚀 [Guia de Deploy](./DEPLOY.md)** | **📖 [Documentação Completa](#-índice)**
+
 ---
 
 ## 📋 Índice

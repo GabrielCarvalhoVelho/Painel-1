@@ -35,6 +35,9 @@ const isDevelopment = () => {
 
 const DEV_BYPASS = isDevelopment();
 
+// 🔓 Permite acesso com usuário demo em produção (configurável)
+const ALLOW_DEMO_USER = String(import.meta.env.VITE_ALLOW_DEMO_USER || '').toLowerCase() === 'true';
+
 // Log de diagnóstico
 if (typeof window !== 'undefined') {
   console.log('🔍 Debug Ambiente:', {
@@ -66,6 +69,14 @@ export class AuthService {
     return {
       user_id: 'c7f13743-67ef-45d4-807c-9f5de81d4999',
       nome: 'Dev User - Teste',
+    };
+  }
+
+  // 👤 Usuário demo para produção (quando VITE_ALLOW_DEMO_USER=true)
+  private getDemoUser() {
+    return {
+      user_id: 'c7f13743-67ef-45d4-807c-9f5de81d4999',
+      nome: 'Usuário Demo',
     };
   }
 
@@ -118,12 +129,23 @@ export class AuthService {
       } catch (err) {
         console.error('❌ Falha ao decodificar JWT:', err);
         if (!DEV_BYPASS) {
-          return null;
-        }
-        console.warn('⚠️ [DEV] Prosseguindo com usuário de bypass devido a falha no token');
-      }
-    } else {
-      console.warn('⚠️ Nenhum token encontrado no localStorage');
+    // 🔓 Bypass em desenvolvimento
+    if (DEV_BYPASS) {
+      const dev = this.getBypassedDevUser();
+      this.currentUser = dev;
+      console.log('🔓 MODO DESENVOLVIMENTO ATIVO - Bypass habilitado');
+      console.log('👤 Usuário de desenvolvimento:', dev);
+      return dev;
+    }
+
+    // 👤 Modo demo em produção (se habilitado)
+    if (ALLOW_DEMO_USER && !DEV_BYPASS) {
+      const demo = this.getDemoUser();
+      this.currentUser = demo;
+      console.log('🎭 MODO DEMO ATIVO - Acesso com usuário demo');
+      console.log('👤 Usuário demo:', demo);
+      console.log('⚠️ ATENÇÃO: Modo demo ativo em produção!');
+      return demorn('⚠️ Nenhum token encontrado no localStorage');
     }
 
     if (DEV_BYPASS) {

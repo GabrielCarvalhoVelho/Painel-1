@@ -6,6 +6,8 @@ const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const serviceRole = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 // Permite forçar uso da service_role no client (inseguro). Defina 'true' para ativar.
 const forceServiceRole = String(import.meta.env.VITE_FORCE_USE_SERVICE_ROLE || '').toLowerCase() === 'true';
+// Modo demo: permite acesso sem token em produção
+const allowDemoUser = String(import.meta.env.VITE_ALLOW_DEMO_USER || '').toLowerCase() === 'true';
 
 if (!url || !anon) {
   console.error('❌ Configuração do Supabase incompleta:', {
@@ -33,10 +35,14 @@ const isDevelopment = () => {
 const DEV_MODE = isDevelopment();
 
 // 🔑 Em desenvolvimento, use service role para bypass de RLS.
+// Com ALLOW_DEMO_USER=true em produção, também usa service_role (se disponível)
 // Opcional: em produção você pode forçar uso da `service_role` definindo
 // a variável `VITE_FORCE_USE_SERVICE_ROLE=true` e provendo `VITE_SUPABASE_SERVICE_ROLE_KEY`.
 // ATENÇÃO: isso expõe uma chave com poderes totais ao bundle frontend — use apenas em emergência.
-const apiKey = (DEV_MODE && serviceRole) || (forceServiceRole && serviceRole) ? serviceRole : anon;
+const shouldUseServiceRole = (DEV_MODE && serviceRole) || 
+                              (forceServiceRole && serviceRole) || 
+                              (allowDemoUser && serviceRole);
+const apiKey = shouldUseServiceRole ? serviceRole : anon;
 
 if (forceServiceRole && !serviceRole) {
   console.error('VITE_FORCE_USE_SERVICE_ROLE=true mas VITE_SUPABASE_SERVICE_ROLE_KEY não está definida!');
@@ -55,9 +61,10 @@ if (!apiKey) {
 console.log('🔧 Supabase Client Mode:', {
   mode: import.meta.env.MODE,
   isDev: DEV_MODE,
-  usingServiceRole: (DEV_MODE && !!serviceRole) || (forceServiceRole && !!serviceRole),
+  allowDemoUser: allowDemoUser,
+  usingServiceRole: shouldUseServiceRole,
   hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
-  keyType: DEV_MODE && serviceRole ? 'SERVICE_ROLE (⚠️ BYPASS RLS)' : 'ANON (✅ RLS ATIVO)'
+  keyType: shouldUseServiceRole ? 'SERVICE_ROLE (⚠️ BYPASS RLS)' : 'ANON (✅ RLS ATIVO)'
 });
 
 console.log('🔑 Criando Supabase Client com:', {
