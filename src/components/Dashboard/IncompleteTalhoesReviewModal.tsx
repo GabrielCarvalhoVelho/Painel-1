@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { formatDateTimeBR, parseDateFromDB } from '../../lib/dateUtils';
 import NfDeleteConfirmModal from '../Estoque/NfDeleteConfirmModal';
@@ -19,6 +19,18 @@ export default function IncompleteTalhoesReviewModal({ isOpen, talhoes, onClose,
   const [processing, setProcessing] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name?: string } | null>(null);
   const [editingTalhao, setEditingTalhao] = useState<TalhaoType | null>(null);
+
+  // Fecha automaticamente quando não houver mais talhões para revisar
+  useEffect(() => {
+    if (isOpen && talhoes.length === 0) {
+      // Pequeno delay para garantir que a UI processe a remoção antes de fechar
+      const timer = setTimeout(() => {
+        onClose();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, talhoes.length]);
 
   if (!isOpen) return null;
 
