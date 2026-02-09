@@ -129,6 +129,14 @@ export class AuthService {
       } catch (err) {
         console.error('❌ Falha ao decodificar JWT:', err);
         if (!DEV_BYPASS) {
+          return null;
+        }
+        console.warn('⚠️ [DEV] Prosseguindo com usuário de bypass devido a falha no token');
+      }
+    } else {
+      console.warn('⚠️ Nenhum token encontrado no localStorage');
+    }
+
     // 🔓 Bypass em desenvolvimento
     if (DEV_BYPASS) {
       const dev = this.getBypassedDevUser();
@@ -145,15 +153,7 @@ export class AuthService {
       console.log('🎭 MODO DEMO ATIVO - Acesso com usuário demo');
       console.log('👤 Usuário demo:', demo);
       console.log('⚠️ ATENÇÃO: Modo demo ativo em produção!');
-      return demorn('⚠️ Nenhum token encontrado no localStorage');
-    }
-
-    if (DEV_BYPASS) {
-      const dev = this.getBypassedDevUser();
-      this.currentUser = dev;
-      console.log('🔓 MODO DESENVOLVIMENTO ATIVO - Bypass habilitado');
-      console.log('👤 Usuário de desenvolvimento:', dev);
-      return dev;
+      return demo;
     }
 
     return null;
