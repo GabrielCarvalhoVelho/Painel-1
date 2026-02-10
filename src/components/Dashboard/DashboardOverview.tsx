@@ -235,8 +235,13 @@ export default function DashboardOverview() {
           const talhoesLanc = l.lancamento_talhoes || l.talhoes || [];
           const nomes = talhoesLanc
             .map((t: any) => {
-              const match = (talhoes || []).find((th: any) => th.id_talhao === t.talhao_id || th.id_talhao === t.talho_id);
-              return match ? match.nome : t.talhao_id || t.talho_id || null;
+              // Agora o JOIN traz t.talhoes com { id_talhao, nome }
+              if (t.talhoes && t.talhoes.nome) {
+                return t.talhoes.nome;
+              }
+              // Fallback: tentar procurar nos talhões carregados
+              const match = (talhoes || []).find((th: any) => th.id_talhao === t.talhao_id);
+              return match ? match.nome : null;
             })
             .filter(Boolean as any);
 

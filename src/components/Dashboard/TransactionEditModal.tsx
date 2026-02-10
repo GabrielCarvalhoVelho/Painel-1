@@ -303,11 +303,11 @@ export default function TransactionEditModal({ isOpen, transaction, onClose, onS
             <input
               className="mt-1 border rounded px-3 py-2 focus:border-[#397738]"
               value={(local!.descricao as string) || ''}
-              maxLength={30}
-              onChange={(e) => setLocal({ ...local, descricao: e.target.value.slice(0, 30) })}
+              maxLength={40}
+              onChange={(e) => setLocal({ ...local, descricao: e.target.value.slice(0, 40) })}
             />
-            {(String(local!.descricao || '').length >= 30) && (
-              <p className="mt-1 text-sm text-[#F7941F]">Você atingiu o limite de 30 caracteres. Use uma descrição curta.</p>
+            {(String(local!.descricao || '').length >= 40) && (
+              <p className="mt-1 text-sm text-[#F7941F]">Você atingiu o limite de 40 caracteres. Use uma descrição curta.</p>
             )}
           </label>
 

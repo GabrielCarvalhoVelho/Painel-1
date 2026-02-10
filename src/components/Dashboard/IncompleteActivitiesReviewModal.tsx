@@ -66,7 +66,7 @@ export default function IncompleteActivitiesReviewModal({ isOpen, activities, on
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-[#004417] truncate">{act.descricao}</div>
-                    <div className="mt-1 text-xs text-[#092f20]">Talhão: {act.nome_talhao || '-'}</div>
+                    <div className="mt-1 text-xs text-[#092f20]">Talhão: {act.nome_talhao ? act.nome_talhao.charAt(0).toUpperCase() + act.nome_talhao.slice(1) : '-'}</div>
                     {(act.produtos && Array.isArray(act.produtos) && act.produtos.length > 0) && (
                       <div className="mt-2 text-xs text-[#092f20]">
                         <div className="font-semibold text-[13px] text-[#004417]">Produtos:</div>
@@ -118,7 +118,7 @@ export default function IncompleteActivitiesReviewModal({ isOpen, activities, on
                       <div className="mt-1 text-xs text-[#092f20]">{''}</div>
                     </div>
                     <div className="text-right">
-                        <div className="text-sm font-medium text-[#092f20] whitespace-nowrap">{act.nome_talhao || '-'}</div>
+                        <div className="text-sm font-medium text-[#092f20] whitespace-nowrap">{act.nome_talhao ? act.nome_talhao.charAt(0).toUpperCase() + act.nome_talhao.slice(1) : '-'}</div>
                     </div>
                   </div>
 

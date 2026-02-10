@@ -26,7 +26,11 @@ export class ActivityService {
       const query = supabase
         .from('lancamentos_agricolas')
         .select(
-          `*, lancamento_talhoes(*), lancamento_responsaveis(*), lancamento_produtos(*), lancamento_maquinas(*)`
+          `*, 
+          lancamento_talhoes(*), 
+          lancamento_responsaveis(*), 
+          lancamento_produtos(*), 
+          lancamento_maquinas(*)`
         )
         .order('data_atividade', { ascending: false })
         .limit(limit);
@@ -58,7 +62,11 @@ export class ActivityService {
       const { data, error } = await supabase
         .from('lancamentos_agricolas')
         .select(
-          `*, lancamento_talhoes(*), lancamento_responsaveis(*), lancamento_produtos(*), lancamento_maquinas(*)`
+          `*, 
+          lancamento_talhoes(*), 
+          lancamento_responsaveis(*), 
+          lancamento_produtos(*), 
+          lancamento_maquinas(*)`
         )
         .eq('atividade_id', atividade_id)
         .single();
