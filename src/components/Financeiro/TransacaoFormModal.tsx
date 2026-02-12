@@ -89,10 +89,10 @@ export default function TransacaoFormModal({
     if (transacao) {
       const tx = transacao as any;
       
-      // Derivar condição de pagamento
-      const derivedCond = tx.condicao_pagamento || tx.condicao || 
+      // Derivar condição de pagamento (coluna real é tipo_pagamento)
+      const derivedCond = tx.tipo_pagamento || tx.condicao_pagamento || tx.condicao || 
         ((tx.parcela || tx.numero_parcelas) ? 
-          (((tx.parcela && String(tx.parcela).toLowerCase().includes('parcel')) || Number(tx.numero_parcelas) > 1) ? 'Parcelado' : 'À vista') 
+          (((tx.parcela && String(tx.parcela).toLowerCase().includes('parcel')) || Number(tx.numero_parcelas) > 1) ? 'Parcelado' : 'À Vista') 
           : '');
       
       // Se for parcelado, preferir data_primeira_parcela
@@ -172,15 +172,28 @@ export default function TransacaoFormModal({
 
       // Capturar dados ANTERIORES para o histórico
       const tx = transacao as any;
+      
+      // Derivar condição de pagamento anterior usando a mesma lógica do useEffect (coluna real é tipo_pagamento)
+      const condicaoAnterior = tx.tipo_pagamento || tx.condicao_pagamento || tx.condicao || 
+        ((tx.parcela || tx.numero_parcelas) ? 
+          (((tx.parcela && String(tx.parcela).toLowerCase().includes('parcel')) || Number(tx.numero_parcelas) > 1) ? 'Parcelado' : 'À Vista') 
+          : '');
+      
+      // Normalizar tipo_transacao para capitalizado (consistência com o front)
+      const tipoAnterior = tx.tipo_transacao 
+        ? (String(tx.tipo_transacao).toLowerCase() === 'gasto' ? 'Gasto' : 
+           String(tx.tipo_transacao).toLowerCase() === 'receita' ? 'Receita' : tx.tipo_transacao)
+        : '';
+      
       const dadosAnteriores = {
-        tipo_transacao: tx.tipo_transacao || '',
+        tipo_transacao: tipoAnterior,
         descricao: tx.descricao || '',
         valor: tx.valor,
         categoria: tx.categoria || '',
         pagador_recebedor: tx.pagador_recebedor || '',
         forma_pagamento: tx.forma_pagamento || tx.forma_pagamento_recebimento || '',
         status: tx.status || '',
-        condicao_pagamento: tx.condicao_pagamento || tx.condicao || '',
+        tipo_pagamento: condicaoAnterior,
         numero_parcelas: tx.numero_parcelas || '',
         data_agendamento_pagamento: extrairDataParaInput(tx.data_agendamento_pagamento),
         talhao_id: tx.talhao_id || '',
@@ -208,7 +221,7 @@ export default function TransacaoFormModal({
         pagador_recebedor: local.pagador_recebedor,
         forma_pagamento: local.forma_pagamento,
         status: local.status,
-        condicao_pagamento: local.condicao_pagamento,
+        tipo_pagamento: local.condicao_pagamento,
         numero_parcelas: local.numero_parcelas || '',
         data_agendamento_pagamento: local.data_agendamento_pagamento || '',
         talhao_id: local.talhao_id || '',
@@ -230,6 +243,8 @@ export default function TransacaoFormModal({
         pagador_recebedor: local.pagador_recebedor || undefined,
         forma_pagamento_recebimento: local.forma_pagamento || undefined,
         status: local.status || undefined,
+        // tipo_pagamento é coluna GENERATED, não pode ser atualizada diretamente
+        // É calculada automaticamente: numero_parcelas > 1 ? 'Parcelado' : 'À Vista'
         parcela: local.condicao_pagamento === 'Parcelado' ? (local.condicao_pagamento || undefined) : undefined,
         numero_parcelas: local.condicao_pagamento === 'Parcelado' ? (local.numero_parcelas ?? undefined) : 1,
         data_agendamento_pagamento: toDate(local.condicao_pagamento === 'Parcelado' ? local.data_primeira_parcela : local.data_agendamento_pagamento),
@@ -237,6 +252,7 @@ export default function TransacaoFormModal({
 
       // Verificar se está mudando para Parcelado (conversão de transação simples para parcelada)
       const eraParcelado = Boolean(
+        (tx.tipo_pagamento && tx.tipo_pagamento === 'Parcelado') ||
         (tx.condicao_pagamento && tx.condicao_pagamento === 'Parcelado') ||
         (tx.parcela && String(tx.parcela).toLowerCase().includes('parcel')) ||
         (tx.numero_parcelas && Number(tx.numero_parcelas) > 1) ||
@@ -249,7 +265,7 @@ export default function TransacaoFormModal({
         virarParcelado,
         'local.condicao_pagamento': local.condicao_pagamento,
         'local.numero_parcelas': local.numero_parcelas,
-        'tx.condicao_pagamento': tx.condicao_pagamento,
+        'tx.tipo_pagamento': tx.tipo_pagamento,
         'tx.parcela': tx.parcela,
         'tx.numero_parcelas': tx.numero_parcelas,
         'tx.eh_transacao_pai': tx.eh_transacao_pai,
@@ -519,7 +535,7 @@ export default function TransacaoFormModal({
                   }}
                 >
                   <option value="">Selecione</option>
-                  <option value="À vista">À vista</option>
+                  <option value="À Vista">À Vista</option>
                   <option value="Parcelado">Parcelado</option>
                 </select>
               </label>

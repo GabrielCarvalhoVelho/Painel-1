@@ -184,7 +184,7 @@ export class HistoricoTransacoesService {
       const valorNovo = novo[chave];
 
       // Comparar valores (tratando null/undefined como equivalentes)
-      if (!this.valoresIguais(valorAnterior, valorNovo)) {
+      if (!this.valoresIguais(valorAnterior, valorNovo, chave)) {
         camposAlterados.push(chave);
       }
     }
@@ -196,7 +196,7 @@ export class HistoricoTransacoesService {
    * Compara dois valores considerando null/undefined como equivalentes
    * e tratando datas e números de forma especial.
    */
-  private static valoresIguais(a: unknown, b: unknown): boolean {
+  private static valoresIguais(a: unknown, b: unknown, campo?: string): boolean {
     // Tratar null/undefined como equivalentes
     const aVazio = a === null || a === undefined || a === '';
     const bVazio = b === null || b === undefined || b === '';
@@ -204,8 +204,15 @@ export class HistoricoTransacoesService {
     if (aVazio !== bVazio) return false;
 
     // Comparar como string para evitar problemas com tipos
-    const strA = String(a).trim();
-    const strB = String(b).trim();
+    let strA = String(a).trim();
+    let strB = String(b).trim();
+
+    // Campos que devem ser comparados case-insensitive
+    const camposCaseInsensitive = ['tipo_transacao', 'status', 'categoria', 'tipo_pagamento'];
+    if (campo && camposCaseInsensitive.includes(campo)) {
+      strA = strA.toLowerCase();
+      strB = strB.toLowerCase();
+    }
 
     // Tentar comparar como números se ambos parecem numéricos
     const numA = Number(strA);
@@ -247,6 +254,9 @@ export class HistoricoTransacoesService {
       data_agendamento_pagamento: 'Data de pagamento',
       pagador_recebedor: 'Pagador/Recebedor',
       forma_pagamento_recebimento: 'Forma de pagamento',
+      forma_pagamento: 'Forma de pagamento',
+      tipo_pagamento: 'Condição',
+      condicao_pagamento: 'Condição',
       status: 'Status',
       tipo_transacao: 'Tipo',
       numero_parcelas: 'Número de parcelas',
@@ -310,6 +320,20 @@ export class HistoricoTransacoesService {
     // Formatar booleanos
     if (campo === 'is_completed' || campo === 'ativo') {
       return valor === true ? 'Sim' : 'Não';
+    }
+
+    // Normalizar tipo_transacao para exibição capitalizada
+    if (campo === 'tipo_transacao') {
+      const str = String(valor).toLowerCase();
+      if (str === 'gasto') return 'Gasto';
+      if (str === 'receita') return 'Receita';
+    }
+
+    // Normalizar tipo_pagamento para exibição consistente
+    if (campo === 'tipo_pagamento') {
+      const str = String(valor).toLowerCase();
+      if (str === 'à vista' || str === 'a vista') return 'À Vista';
+      if (str === 'parcelado') return 'Parcelado';
     }
 
     return String(valor);
