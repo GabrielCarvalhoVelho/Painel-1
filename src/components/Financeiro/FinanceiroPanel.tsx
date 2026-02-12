@@ -18,7 +18,9 @@ import {
   AlertCircle,
   Info,
   Plus,
-  X
+  X,
+  Edit2,
+  History
 } from 'lucide-react';
 import { 
   FinanceService, 
@@ -30,6 +32,8 @@ import { TransacaoFinanceira } from '../../lib/supabase';
 import LoadingSpinner from '../Dashboard/LoadingSpinner';
 import ErrorMessage from '../Dashboard/ErrorMessage';
 import AttachmentModal from './AttachmentModal';
+import TransacaoFormModal from './TransacaoFormModal';
+import TransacaoHistoricoModal from './TransacaoHistoricoModal';
 import DateInput from '../common/DateInput';
 
 const FinanceiroPanel: React.FC = () => {
@@ -62,6 +66,8 @@ const FinanceiroPanel: React.FC = () => {
     transactionId: '',
     description: ''
   });
+  const [editingTransaction, setEditingTransaction] = useState<TransacaoFinanceira | null>(null);
+  const [viewingHistoryId, setViewingHistoryId] = useState<string | null>(null);
 
   const openAttachmentModal = (transactionId: string, description: string) => {
     setAttachmentModal({
@@ -77,6 +83,27 @@ const FinanceiroPanel: React.FC = () => {
       transactionId: '',
       description: ''
     });
+  };
+
+  const openEditModal = (transaction: TransacaoFinanceira) => {
+    setEditingTransaction(transaction);
+  };
+
+  const closeEditModal = () => {
+    setEditingTransaction(null);
+  };
+
+  const handleSaveEdit = () => {
+    // Recarregar dados após edição
+    loadFinancialData();
+  };
+
+  const openHistoryModal = (transactionId: string) => {
+    setViewingHistoryId(transactionId);
+  };
+
+  const closeHistoryModal = () => {
+    setViewingHistoryId(null);
   };
 
   const toggleTooltip = (tooltipId: string) => {
@@ -294,16 +321,33 @@ const FinanceiroPanel: React.FC = () => {
           {/* Espaçador quando não há informação de lançamento */}
           {(!isFuture || !transaction.data_registro) && <div className="flex-1"></div>}
           
-          <button
-            onClick={() => openAttachmentModal(
-              transaction.id_transacao || '',
-              transaction.descricao || 'Transação'
-            )}
-            className={`p-2 rounded-lg transition-colors flex-shrink-0 ${isIncome ? 'text-[#00A651] hover:bg-[#00A651]/10' : 'text-[#F7941F] hover:bg-[#F7941F]/10'}`}
-            title="Gerenciar anexo"
-          >
-            <Paperclip className="w-4 h-4" />
-          </button>
+          {/* Botões de ação */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              onClick={() => openEditModal(transaction)}
+              className={`p-2 rounded-lg transition-colors ${isIncome ? 'text-[#00A651] hover:bg-[#00A651]/10' : 'text-[#F7941F] hover:bg-[#F7941F]/10'}`}
+              title="Editar transação"
+            >
+              <Edit2 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => openHistoryModal(transaction.id_transacao || '')}
+              className={`p-2 rounded-lg transition-colors ${isIncome ? 'text-[#00A651] hover:bg-[#00A651]/10' : 'text-[#F7941F] hover:bg-[#F7941F]/10'}`}
+              title="Ver histórico de edições"
+            >
+              <History className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => openAttachmentModal(
+                transaction.id_transacao || '',
+                transaction.descricao || 'Transação'
+              )}
+              className={`p-2 rounded-lg transition-colors ${isIncome ? 'text-[#00A651] hover:bg-[#00A651]/10' : 'text-[#F7941F] hover:bg-[#F7941F]/10'}`}
+              title="Gerenciar anexo"
+            >
+              <Paperclip className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -778,6 +822,23 @@ const FinanceiroPanel: React.FC = () => {
         onClose={closeAttachmentModal}
         transactionId={attachmentModal.transactionId}
         transactionDescription={attachmentModal.description}
+      />
+
+      {/* Modal de edição */}
+      {editingTransaction && (
+        <TransacaoFormModal
+          isOpen={!!editingTransaction}
+          onClose={closeEditModal}
+          onSave={handleSaveEdit}
+          transacao={editingTransaction}
+        />
+      )}
+
+      {/* Modal de histórico */}
+      <TransacaoHistoricoModal
+        isOpen={!!viewingHistoryId}
+        onClose={closeHistoryModal}
+        idTransacao={viewingHistoryId || ''}
       />
     </div>
   );

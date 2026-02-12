@@ -1,0 +1,317 @@
+import { supabase } from '../lib/supabase';
+
+/**
+ * Interface que representa um registro de histórico de edição
+ */
+export interface HistoricoEdicao {
+  id: string;
+  id_transacao: string;
+  user_id: string;
+  nome_editor: string;
+  dados_anteriores: Record<string, unknown>;
+  dados_novos: Record<string, unknown>;
+  campos_alterados: string[];
+  editado_em: string;
+}
+
+/**
+ * Interface para exibição formatada do histórico
+ */
+export interface HistoricoEdicaoFormatado {
+  id: string;
+  editadoEm: Date;
+  nomeEditor: string;
+  alteracoes: Array<{
+    campo: string;
+    valorAnterior: unknown;
+    valorNovo: unknown;
+  }>;
+}
+
+/**
+ * Service para gerenciar histórico de edições de transações financeiras.
+ * Segue o padrão do projeto: métodos estáticos, nunca lança exceções.
+ */
+export class HistoricoTransacoesService {
+  /**
+   * Registra uma edição no histórico.
+   * Calcula automaticamente quais campos foram alterados comparando dados anteriores e novos.
+   * 
+   * @param idTransacao - UUID da transação editada
+   * @param userId - UUID do usuário que editou
+   * @param nomeEditor - Nome do usuário que editou (evita JOINs na consulta)
+   * @param dadosAnteriores - Objeto com os dados ANTES da edição
+   * @param dadosNovos - Objeto com os dados DEPOIS da edição
+   * @returns true se registrou com sucesso, false em caso de erro
+   */
+  static async registrarEdicao(
+    idTransacao: string,
+    userId: string,
+    nomeEditor: string,
+    dadosAnteriores: Record<string, unknown>,
+    dadosNovos: Record<string, unknown>
+  ): Promise<boolean> {
+    try {
+      // Calcular quais campos foram alterados
+      const camposAlterados = this.calcularCamposAlterados(dadosAnteriores, dadosNovos);
+
+      // Se não houve alteração real, não registra
+      if (camposAlterados.length === 0) {
+        console.log('HistoricoTransacoesService: Nenhum campo foi alterado, histórico não registrado');
+        return true; // Não é um erro, apenas não havia o que registrar
+      }
+
+      // Filtrar dados para incluir apenas campos relevantes (evita gravar campos internos)
+      const dadosAnterioresFiltrados = this.filtrarCamposRelevantes(dadosAnteriores, camposAlterados);
+      const dadosNovosFiltrados = this.filtrarCamposRelevantes(dadosNovos, camposAlterados);
+
+      const { error } = await supabase
+        .from('historico_transacoes_financeiras')
+        .insert({
+          id_transacao: idTransacao,
+          user_id: userId,
+          nome_editor: nomeEditor,
+          dados_anteriores: dadosAnterioresFiltrados,
+          dados_novos: dadosNovosFiltrados,
+          campos_alterados: camposAlterados,
+        });
+
+      if (error) {
+        console.error('HistoricoTransacoesService: Erro ao registrar edição:', error);
+        return false;
+      }
+
+      console.log('HistoricoTransacoesService: Edição registrada com sucesso', {
+        idTransacao,
+        camposAlterados,
+        nomeEditor,
+      });
+
+      return true;
+    } catch (err) {
+      console.error('HistoricoTransacoesService: Erro crítico ao registrar edição:', err);
+      return false;
+    }
+  }
+
+  /**
+   * Busca o histórico de edições de uma transação específica.
+   * Retorna ordenado por editado_em DESC (mais recente primeiro).
+   * 
+   * @param idTransacao - UUID da transação
+   * @returns Array de registros de histórico ou array vazio em caso de erro
+   */
+  static async getHistoricoByTransacao(idTransacao: string): Promise<HistoricoEdicao[]> {
+    try {
+      const { data, error } = await supabase
+        .from('historico_transacoes_financeiras')
+        .select('*')
+        .eq('id_transacao', idTransacao)
+        .order('editado_em', { ascending: false });
+
+      if (error) {
+        console.error('HistoricoTransacoesService: Erro ao buscar histórico:', error);
+        return [];
+      }
+
+      return (data || []) as HistoricoEdicao[];
+    } catch (err) {
+      console.error('HistoricoTransacoesService: Erro crítico ao buscar histórico:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Busca o histórico formatado para exibição no modal.
+   * Converte os dados brutos em um formato mais amigável para o frontend.
+   * 
+   * @param idTransacao - UUID da transação
+   * @returns Array formatado para exibição ou array vazio em caso de erro
+   */
+  static async getHistoricoFormatado(idTransacao: string): Promise<HistoricoEdicaoFormatado[]> {
+    try {
+      const historico = await this.getHistoricoByTransacao(idTransacao);
+
+      return historico.map((registro) => ({
+        id: registro.id,
+        editadoEm: new Date(registro.editado_em),
+        nomeEditor: registro.nome_editor,
+        alteracoes: registro.campos_alterados.map((campo) => ({
+          campo: this.formatarNomeCampo(campo),
+          valorAnterior: this.formatarValor(campo, registro.dados_anteriores[campo]),
+          valorNovo: this.formatarValor(campo, registro.dados_novos[campo]),
+        })),
+      }));
+    } catch (err) {
+      console.error('HistoricoTransacoesService: Erro ao formatar histórico:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Calcula quais campos foram alterados comparando dois objetos.
+   * Ignora campos internos/técnicos que não devem ser rastreados.
+   */
+  private static calcularCamposAlterados(
+    anterior: Record<string, unknown>,
+    novo: Record<string, unknown>
+  ): string[] {
+    // Campos que não devem ser considerados como "alteração"
+    const camposIgnorados = new Set([
+      'id_transacao',
+      'user_id',
+      'created_at',
+      'data_registro',
+      'updated_at',
+      'alocacoes', // Calculado separadamente
+      'transacoes_talhoes', // Campo de relacionamento
+      'talhao_id', // Usar nome_talhao para exibição amigável
+    ]);
+
+    const camposAlterados: string[] = [];
+
+    // Pegar todas as chaves de ambos os objetos
+    const todasChaves = new Set([
+      ...Object.keys(anterior),
+      ...Object.keys(novo),
+    ]);
+
+    for (const chave of todasChaves) {
+      // Ignorar campos técnicos
+      if (camposIgnorados.has(chave)) continue;
+
+      const valorAnterior = anterior[chave];
+      const valorNovo = novo[chave];
+
+      // Comparar valores (tratando null/undefined como equivalentes)
+      if (!this.valoresIguais(valorAnterior, valorNovo)) {
+        camposAlterados.push(chave);
+      }
+    }
+
+    return camposAlterados;
+  }
+
+  /**
+   * Compara dois valores considerando null/undefined como equivalentes
+   * e tratando datas e números de forma especial.
+   */
+  private static valoresIguais(a: unknown, b: unknown): boolean {
+    // Tratar null/undefined como equivalentes
+    const aVazio = a === null || a === undefined || a === '';
+    const bVazio = b === null || b === undefined || b === '';
+    if (aVazio && bVazio) return true;
+    if (aVazio !== bVazio) return false;
+
+    // Comparar como string para evitar problemas com tipos
+    const strA = String(a).trim();
+    const strB = String(b).trim();
+
+    // Tentar comparar como números se ambos parecem numéricos
+    const numA = Number(strA);
+    const numB = Number(strB);
+    if (!isNaN(numA) && !isNaN(numB)) {
+      return numA === numB;
+    }
+
+    return strA === strB;
+  }
+
+  /**
+   * Filtra os dados para incluir apenas os campos alterados + alguns campos de contexto.
+   */
+  private static filtrarCamposRelevantes(
+    dados: Record<string, unknown>,
+    camposAlterados: string[]
+  ): Record<string, unknown> {
+    const resultado: Record<string, unknown> = {};
+
+    for (const campo of camposAlterados) {
+      if (campo in dados) {
+        resultado[campo] = dados[campo];
+      }
+    }
+
+    return resultado;
+  }
+
+  /**
+   * Formata o nome do campo para exibição amigável.
+   */
+  private static formatarNomeCampo(campo: string): string {
+    const mapeamento: Record<string, string> = {
+      descricao: 'Descrição',
+      valor: 'Valor',
+      categoria: 'Categoria',
+      data_transacao: 'Data da transação',
+      data_agendamento_pagamento: 'Data de pagamento',
+      pagador_recebedor: 'Pagador/Recebedor',
+      forma_pagamento_recebimento: 'Forma de pagamento',
+      status: 'Status',
+      tipo_transacao: 'Tipo',
+      numero_parcelas: 'Número de parcelas',
+      parcela: 'Parcela',
+      observacao: 'Observação',
+      anexo_arquivo_url: 'Anexo',
+      anexo_compartilhado_url: 'Anexo compartilhado',
+      propriedade_id: 'Propriedade',
+      area_vinculada: 'Área vinculada',
+      is_completed: 'Confirmada',
+      ativo: 'Ativo',
+      talhao_id: 'Talhão',
+      nome_talhao: 'Talhão',
+    };
+
+    return mapeamento[campo] || campo.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+  }
+
+  /**
+   * Formata o valor de um campo para exibição amigável.
+   */
+  private static formatarValor(campo: string, valor: unknown): string {
+    if (valor === null || valor === undefined || valor === '') {
+      return '(vazio)';
+    }
+
+    // Formatar valores monetários
+    if (campo === 'valor') {
+      const num = Number(valor);
+      if (!isNaN(num)) {
+        return new Intl.NumberFormat('pt-BR', {
+          style: 'currency',
+          currency: 'BRL',
+        }).format(num);
+      }
+    }
+
+    // Formatar datas
+    if (campo.includes('data') || campo.includes('_em')) {
+      try {
+        const strValor = String(valor);
+        // Se já está no formato YYYY-MM-DD, formata diretamente sem conversão de timezone
+        if (/^\d{4}-\d{2}-\d{2}$/.test(strValor)) {
+          const [ano, mes, dia] = strValor.split('-');
+          return `${dia}/${mes}/${ano}`;
+        }
+        // Fallback para outros formatos
+        const date = new Date(strValor);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          });
+        }
+      } catch {
+        // Se falhar, retorna valor original
+      }
+    }
+
+    // Formatar booleanos
+    if (campo === 'is_completed' || campo === 'ativo') {
+      return valor === true ? 'Sim' : 'Não';
+    }
+
+    return String(valor);
+  }
+}

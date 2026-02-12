@@ -140,6 +140,7 @@ export interface TransacaoFinanceira {
   status: string;
   data_agendamento_pagamento?: Date;
   data_registro?: Date;
+  updated_at?: Date;
   parcela?: string;
   numero_parcelas?: number;
   id_transacao_pai?: string;
@@ -148,6 +149,7 @@ export interface TransacaoFinanceira {
   id_grupo_anexo?: string;
   parcela_com_anexo_original?: boolean;
   nome_talhao?: string;
+  talhao_id?: string;
   alocacoes?: Array<{
     id: string;
     id_talhao: string;

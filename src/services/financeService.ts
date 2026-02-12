@@ -346,14 +346,16 @@ export class FinanceService {
    */
   static async createParcelasFromParent(parentId: string): Promise<Array<{ id_transacao: string }> | null> {
     try {
+      console.log('🔄 Chamando RPC create_parcelas_from_parent com parentId:', parentId);
       const { data, error } = await supabase.rpc('create_parcelas_from_parent', { p_parent_id: parentId });
+      console.log('📦 Resposta RPC:', { data, error });
       if (error) {
-        console.error('Erro ao criar parcelas via RPC:', error);
+        console.error('❌ Erro ao criar parcelas via RPC:', error);
         return null;
       }
       return (data as any) || null;
     } catch (err) {
-      console.error('Erro crítico em createParcelasFromParent:', err);
+      console.error('💥 Erro crítico em createParcelasFromParent:', err);
       return null;
     }
   }
@@ -1528,12 +1530,16 @@ static async getTotalNegativeTransactions(userId: string): Promise<number> {
         const nomeTalhao = talhoes.length > 0 && talhoes[0].talhoes?.nome
           ? talhoes[0].talhoes.nome
           : 'Sem talhão específico';
+        const talhaoId = talhoes.length > 0 && talhoes[0].id_talhao
+          ? talhoes[0].id_talhao
+          : '';
 
         const alocacoesPlaceholder: any[] = [];
 
         return {
           ...transacaoRaw,
           nome_talhao: nomeTalhao,
+          talhao_id: talhaoId,
           alocacoes: alocacoesPlaceholder
         } as TransacaoFinanceira;
       });
