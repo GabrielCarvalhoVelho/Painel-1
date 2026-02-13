@@ -132,16 +132,26 @@ export class HistoricoTransacoesService {
     try {
       const historico = await this.getHistoricoByTransacao(idTransacao);
 
-      return historico.map((registro) => ({
-        id: registro.id,
-        editadoEm: new Date(registro.editado_em),
-        nomeEditor: registro.nome_editor,
-        alteracoes: registro.campos_alterados.map((campo) => ({
+      return historico.map((registro) => {
+        // Mapear e formatar as alterações
+        const alteracoesFormatadas = registro.campos_alterados.map((campo) => ({
           campo: this.formatarNomeCampo(campo),
           valorAnterior: this.formatarValor(campo, registro.dados_anteriores[campo]),
           valorNovo: this.formatarValor(campo, registro.dados_novos[campo]),
-        })),
-      }));
+        }));
+
+        // Filtrar alterações onde o valor formatado é igual (ex: GASTO → Gasto)
+        const alteracoesReais = alteracoesFormatadas.filter(
+          (alt) => alt.valorAnterior !== alt.valorNovo
+        );
+
+        return {
+          id: registro.id,
+          editadoEm: new Date(registro.editado_em),
+          nomeEditor: registro.nome_editor,
+          alteracoes: alteracoesReais,
+        };
+      }).filter((registro) => registro.alteracoes.length > 0); // Remove registros sem alterações reais
     } catch (err) {
       console.error('HistoricoTransacoesService: Erro ao formatar histórico:', err);
       return [];
